@@ -1,0 +1,208 @@
+{
+  "name": "vscode-cedar",
+  "displayName": "Cedar",
+  "description": "Cedar policy language support - syntax highlighting, formatting, and validation",
+  "publisher": "cedar-policy",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cedar-policy/vscode-cedar"
+  },
+  "bugs": {
+    "url": "https://github.com/cedar-policy/vscode-cedar/issues"
+  },
+  "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
+  "version": "0.5.0",
+  "preview": true,
+  "icon": "icons/cedar-policy.png",
+  "engines": {
+    "vscode": "^1.77.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters",
+    "Formatters"
+  ],
+  "keywords": [
+    "Cedar"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.cedar",
+    "workspaceContains:**/*.cedarschema.json",
+    "workspaceContains:**/cedarschema.json",
+    "workspaceContains:**/*.cedarentities.json",
+    "workspaceContains:**/cedarentities.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "cedar",
+        "aliases": [
+          "Cedar",
+          "cedar"
+        ],
+        "extensions": [
+          ".cedar"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/Cedar-Policy_16.svg",
+          "dark": "./icons/Cedar-Policy_16_White.svg"
+        }
+      },
+      {
+        "id": "cedar-injection"
+      }
+    ],
+    "commands": [
+      {
+        "command": "cedar.validate",
+        "category": "Cedar",
+        "title": "Validate Cedar policy"
+      },
+      {
+        "command": "cedar.schemavalidate",
+        "category": "Cedar",
+        "title": "Validate Cedar schema"
+      },
+      {
+        "command": "cedar.schemaexport",
+        "category": "Cedar",
+        "title": "Export Cedar schema"
+      },
+      {
+        "command": "cedar.schemaopen",
+        "category": "Cedar",
+        "title": "Open Cedar schema"
+      },
+      {
+        "command": "cedar.entitiesvalidate",
+        "category": "Cedar",
+        "title": "Validate Cedar entities"
+      },
+      {
+        "command": "cedar.clearproblems",
+        "category": "Cedar",
+        "title": "Clear problems"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorLangId == cedar",
+          "command": "cedar.validate",
+          "group": "1_modification"
+        },
+        {
+          "when": "editorLangId == cedar || resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "command": "cedar.schemaopen",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "command": "cedar.schemavalidate",
+          "group": "1_modification"
+        },
+        {
+          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "command": "cedar.schemaexport",
+          "group": "y_commands"
+        },
+        {
+          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "command": "cedar.entitiesvalidate",
+          "group": "1_modification"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "cedar.validate",
+          "when": "editorLangId == cedar"
+        },
+        {
+          "command": "cedar.schemavalidate",
+          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+        },
+        {
+          "command": "cedar.schemaexport",
+          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+        },
+        {
+          "command": "cedar.entitiesvalidate",
+          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+        }
+      ]
+    },
+    "grammars": [
+      {
+        "language": "cedar",
+        "scopeName": "source.cedar",
+        "path": "./syntaxes/cedar.tmLanguage.json"
+      },
+      {
+        "language": "cedar-injection",
+        "scopeName": "markdown.cedar.codeblock",
+        "path": "./syntaxes/codeblock.json",
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.cedar": "cedar"
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "cedar",
+        "path": "./snippets.json"
+      }
+    ],
+    "configuration": {
+      "title": "Cedar",
+      "properties": {
+        "cedar.schemaFile": {
+          "type": "string",
+          "default": null,
+          "description": "Location of Cedar schema file used for policy validation."
+        },
+        "cedar.autodetectSchemaFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto detect Cedar schema file used for policy validation."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",
+    "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../.."
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.2.0",
+    "vscode-cedar-wasm": "file:vscode-cedar-wasm/pkg"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^16.18.39",
+    "@types/vscode": "^1.77.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "@vscode/test-electron": "^2.3.3",
+    "@vscode/vsce": "^2.19.0",
+    "eslint": "^8.45.0",
+    "glob": "^8.1.0",
+    "js-yaml": "^4.1.0",
+    "mocha": "^10.2.0",
+    "typescript": "^4.9.5"
+  }
+}

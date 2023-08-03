@@ -1,0 +1,1 @@
+permit (principal == Tst::"offset", action == Action::"doTst", resource);

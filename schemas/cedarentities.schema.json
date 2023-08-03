@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "array",
+  "description": "Cedar entities schema",
+  "items": {
+    "type": "object",
+    "properties": {
+      "uid": {
+        "type": "string"
+      },
+      "parents": {
+        "type": "array"
+      },
+      "attrs": {
+        "type": "object"
+      }
+    },
+    "required": ["uid", "parents", "attrs"],
+    "additionalProperties": false,
+    "defaultSnippets": [
+      {
+        "label": "New entity",
+        "body": {
+          "uid": "$1",
+          "parents": [],
+          "attrs": {}
+        }
+      }
+    ]
+  }
+}

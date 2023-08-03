@@ -1,0 +1,12 @@
+[
+  {
+    "uid": { "type": "Test", "id": "mismatchentity" },
+    "attrs": {
+      "test" : "test",
+      "self" : {
+        "__entity": { "type": "Tst", "id": "mismatchtype" }
+      }
+    },
+    "parents": []
+  }
+]

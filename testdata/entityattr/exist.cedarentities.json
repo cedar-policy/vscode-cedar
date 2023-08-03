@@ -1,0 +1,10 @@
+[
+  {
+    "uid": { "type": "Test", "id": "exist" },
+    "attrs": {
+      "test" : "test",
+      "tst": "tst"
+    },
+    "parents": []
+  }
+]

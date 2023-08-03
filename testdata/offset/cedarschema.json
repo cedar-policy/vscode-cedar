@@ -1,0 +1,15 @@
+{
+  "" : {
+    "entityTypes": {
+      "Test": {}
+    },
+    "actions": {
+      "doTest" : {
+        "appliesTo": {
+          "principalTypes": ["Test"],
+          "resourceTypes": ["Test"]
+        }
+      }
+    }
+  }
+}

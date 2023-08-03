@@ -1,0 +1,29 @@
+{
+  "": {
+    "entityTypes": {
+      "Test": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "test": {
+              "type": "String"
+            },
+            "self": {
+              "type": "Entity",
+              "name": "Test",
+              "required": false
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "doTest": {
+        "appliesTo": {
+          "principalTypes": ["Test"],
+          "resourceTypes": ["Test"]
+        }
+      }
+    }
+  }
+}

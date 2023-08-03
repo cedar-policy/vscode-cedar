@@ -1,0 +1,36 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+  "files.exclude": {
+    "out": false // set this to true to hide the "out" folder with the compiled JS files
+  },
+  "search.exclude": {
+    "out": true // set this to false to include "out" folder in search results
+  },
+  // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
+  "typescript.tsc.autoDetect": "off",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    // tell the ESLint plugin to run on save
+    "editor.codeActionsOnSave": {
+      "source.fixAll": true
+    },
+  },
+  "cSpell.words": ["cedarentities", "cedarlanguage", "cedarschema", "vsix"],
+  "markdownlint.config": {
+    "MD024": false
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json",
+    "tsconfig.json": ".eslint*, .prettier*"
+  },
+  "terminal.integrated.env.osx": {
+    "PATH": "/usr/local/opt/llvm/bin/:$PATH",
+    "CC": "/usr/local/opt/llvm/bin/clang",
+    "AR": "/usr/local/opt/llvm/bin/llvm-ar"
+  }
+}

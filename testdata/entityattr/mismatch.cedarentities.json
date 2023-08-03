@@ -1,0 +1,9 @@
+[
+  {
+    "uid": { "type": "Test", "id": "mismatch" },
+    "attrs": {
+      "test" : 1
+    },
+    "parents": []
+  }
+]
