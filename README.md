@@ -2,6 +2,11 @@
 
 The Cedar policy language extension for Visual Studio Code supports syntax highlighting, formatting, and validation.
 
+## Installation
+
+The extension can be installed from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=cedar-policy.vscode-cedar) 
+or by [searching within VS Code](https://code.visualstudio.com/docs/editor/extension-gallery#_search-for-an-extension).
+
 ## Features
 
 - Cedar policy language (`*.cedar`) files
