@@ -11,6 +11,7 @@ import * as cedar from 'vscode-cedar-wasm';
 import {
   AT_LINE_SCHEMA_REGEX,
   EXIST_ATTR_REGEX,
+  EXPECTED_ATTR2_REGEX,
   EXPECTED_ATTR_REGEX,
   FOUND_AT_REGEX,
   MISMATCH_ATTR_REGEX,
@@ -182,6 +183,38 @@ suite('Validation RegEx Test Suite', () => {
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'expected');
+        assert.equal(found?.groups.suggestion, 'test');
+      }
+    }
+
+    result.free();
+  });
+
+  test('validate entity expected nested attributes', async () => {
+    const entities = readTestDataFile(
+      'entityattr',
+      'expected2.cedarentities.json'
+    );
+    const schema = readTestDataFile('entityattr', 'cedarschema.json');
+
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
+      entities,
+      schema
+    );
+    assert.equal(result.success, false);
+
+    if (result.errors) {
+      // error while deserializing entities: Expected Test::"expected" to have an attribute "test", but it didn't
+      // error while deserializing entities: In attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it didn't
+      let errorMsg: string = result.errors[0];
+      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
+      assert(found?.groups);
+      if (found?.groups) {
+        assert.equal(found?.groups.type, 'Test');
+        assert.equal(found?.groups.id, 'expected');
+        assert.equal(found?.groups.attribute, 'nested');
         assert.equal(found?.groups.suggestion, 'test');
       }
     }
