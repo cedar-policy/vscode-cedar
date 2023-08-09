@@ -15,6 +15,8 @@ import {
   EXPECTED_ATTR_REGEX,
   FOUND_AT_REGEX,
   MISMATCH_ATTR_REGEX,
+  NOTALLOWED_PARENT_REGEX,
+  NOTDECLARED_TYPE_REGEX,
   OFFSET_POLICY_REGEX,
   UNDECLARED_REGEX,
   UNRECOGNIZED_REGEX,
@@ -303,6 +305,64 @@ suite('Validation RegEx Test Suite', () => {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'exist');
         assert.equal(found?.groups.attribute, 'tst');
+      }
+    }
+
+    result.free();
+  });
+
+  test('validate entity exist type', async () => {
+    const entities = readTestDataFile(
+      'entitytype',
+      'missingnamespace.cedarentities.json'
+    );
+    const schema = readTestDataFile('entitytype', 'cedarschema.json');
+
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
+      entities,
+      schema
+    );
+    assert.equal(result.success, false);
+
+    if (result.errors) {
+      // error while deserializing entities: Employee::"12UA45" has type Employee which is not declared in the schema; did you mean XYZCorp::Employee?
+      let errorMsg: string = result.errors[0];
+      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
+      assert(found?.groups);
+      if (found?.groups) {
+        assert.equal(found?.groups.type, 'Employee');
+        assert.equal(found?.groups.id, '12UA45');
+      }
+    }
+
+    result.free();
+  });
+
+  test('validate entity parent type', async () => {
+    const entities = readTestDataFile(
+      'entitytype',
+      'notallowedparent.cedarentities.json'
+    );
+    const schema = readTestDataFile('entitytype', 'cedarschema.json');
+
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
+      entities,
+      schema
+    );
+    assert.equal(result.success, false);
+
+    if (result.errors) {
+      // error while deserializing entities: In parents field of XYZCorp::Employee::"12UA45", XYZCorp::Employee::"12UA45" is not allowed to have a parent of type XYZCorp::Employee according to the schema
+      let errorMsg: string = result.errors[0];
+      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
+      assert(found?.groups);
+      if (found?.groups) {
+        assert.equal(found?.groups.type, 'XYZCorp::Employee');
+        assert.equal(found?.groups.id, '12UA45');
       }
     }
 

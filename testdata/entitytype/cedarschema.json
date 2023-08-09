@@ -1,0 +1,24 @@
+{
+  "XYZCorp": {
+    "entityTypes": {
+      "Employee": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "isFullTime": {
+              "type": "Boolean"
+            },
+            "department": {
+              "type": "String"
+            },
+            "manager": {
+              "type": "Entity",
+              "name": "Employee"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

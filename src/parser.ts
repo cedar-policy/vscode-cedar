@@ -102,6 +102,7 @@ export type EntityRange = {
   uid: string;
   range: vscode.Range;
   uidKeyRange: vscode.Range;
+  uidTypeRange: vscode.Range | null;
   attrsKeyRange: vscode.Range | null;
   attrsRange: vscode.Range | null;
   attrsNameRanges: Record<string, vscode.Range>;
@@ -139,6 +140,7 @@ export const parseCedarDocEntities = (
   let uidStart: vscode.Position | null = null;
   let uidEnd: vscode.Position | null = null;
   let uidKeyRange: vscode.Range | null = null;
+  let uidTypeRange: vscode.Range | null = null;
   let attrsKeyRange: vscode.Range | null = null;
   let attrsRange: vscode.Range | null = null;
   let parentsKeyRange: vscode.Range | null = null;
@@ -164,6 +166,7 @@ export const parseCedarDocEntities = (
             uid: uid,
             range: new vscode.Range(uidStart, uidEnd),
             uidKeyRange: uidKeyRange,
+            uidTypeRange: uidTypeRange,
             attrsKeyRange: attrsKeyRange,
             attrsRange: attrsRange,
             attrsNameRanges: attrsNameRanges,
@@ -258,6 +261,10 @@ export const parseCedarDocEntities = (
         if (pathSupplier()[jsonPathLen - 1] === 'type') {
           uidType = value;
           uid = `${uidType}::"${uidId}"`;
+          uidTypeRange = new vscode.Range(
+            new vscode.Position(startLine, startCharacter + 1),
+            new vscode.Position(startLine, startCharacter + length - 1)
+          );
         }
         if (pathSupplier()[jsonPathLen - 1] === 'id') {
           uidId = value;

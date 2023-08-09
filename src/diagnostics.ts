@@ -19,6 +19,8 @@ import {
   UNDECLARED_REGEX,
   UNRECOGNIZED_REGEX,
   EXPECTED_ATTR2_REGEX,
+  NOTDECLARED_TYPE_REGEX,
+  NOTALLOWED_PARENT_REGEX,
 } from './regex';
 
 export const createDiagnosticCollection = () => {
@@ -225,6 +227,8 @@ const handleEntitiesDiagnosticError = (
 ): boolean => {
   let uid = '';
   let attribute = '';
+  let uidTypeError = false;
+  let parentsError = false;
   let found = error.match(MISMATCH_ATTR_REGEX);
   if (found?.groups) {
     uid = `${found.groups.type}::"${found.groups.id}"`;
@@ -243,6 +247,18 @@ const handleEntitiesDiagnosticError = (
         if (found?.groups) {
           uid = `${found.groups.type}::"${found.groups.id}"`;
           attribute = found.groups.attribute;
+        } else {
+          found = error.match(NOTDECLARED_TYPE_REGEX);
+          if (found?.groups) {
+            uid = `${found.groups.type}::"${found.groups.id}"`;
+            uidTypeError = true;
+          } else {
+            found = error.match(NOTALLOWED_PARENT_REGEX);
+            if (found?.groups) {
+              uid = `${found.groups.type}::"${found.groups.id}"`;
+              parentsError = true;
+            }
+          }
         }
       }
     }
@@ -257,13 +273,16 @@ const handleEntitiesDiagnosticError = (
         )
           ? entityRange.attrsNameRanges[attribute]
           : null;
-        addDiagnosticsError(
-          diagnostics,
+        let diagnosticRange =
           attributeRange ||
-            entityRange.attrsKeyRange ||
-            entityRange.uidKeyRange,
-          error
-        );
+          entityRange.attrsKeyRange ||
+          entityRange.uidKeyRange;
+        if (uidTypeError) {
+          diagnosticRange = entityRange.uidTypeRange || entityRange.uidKeyRange;
+        } else if (parentsError) {
+          diagnosticRange = entityRange.parentsRange || entityRange.uidKeyRange;
+        }
+        addDiagnosticsError(diagnostics, diagnosticRange, error);
       }
     });
     return true;
@@ -286,6 +305,8 @@ export const addSyntaxDiagnosticErrors = (
       if (handleEntitiesDiagnosticError(diagnostics, document, e)) {
         return;
       }
+    } else if (e.startsWith('JSON Schema file could not be parsed: ')) {
+      e = e.substring(e.indexOf(': ') + 2);
     }
 
     let found = e.match(UNDECLARED_REGEX);
