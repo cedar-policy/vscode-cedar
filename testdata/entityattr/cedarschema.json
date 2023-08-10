@@ -8,6 +8,15 @@
             "test": {
               "type": "String"
             },
+            "nested": {
+              "type": "Record",
+              "required": false,
+              "attributes": {
+                "test": {
+                  "type": "String"
+                }
+              }
+            },
             "self": {
               "type": "Entity",
               "name": "Test",

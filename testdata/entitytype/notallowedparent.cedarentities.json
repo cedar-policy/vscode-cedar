@@ -1,0 +1,11 @@
+[
+  {
+      "uid": { "type": "XYZCorp::Employee", "id": "12UA45" },
+      "attrs": {
+          "isFullTime": true,
+          "department": "Sales",
+          "manager": { "type": "XYZCorp::Employee", "id": "34FB87" }
+      },
+      "parents": [{ "type": "XYZCorp::Employee", "id": "34FB87" }]
+  }
+]

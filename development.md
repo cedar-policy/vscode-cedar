@@ -73,6 +73,21 @@ Then run the `package` command to create the .vsix file.
 npm run package
 ```
 
+### Docker
+
+To build and run tests in a clean environment, first build the container, then open a bash shell in the container.
+
+```bash
+docker build . -t cedar-policy/vscode-cedar
+docker run --rm -it --entrypoint bash cedar-policy/vscode-cedar
+```
+
+Then build and test the extension inside the container.  This will take several minutes.
+
+```bash
+./build.sh
+```
+
 ### Local Install
 
 This extension can locally be installed to `~/.vscode/extensions` using the command palette and selecting **Extensions: Install from VSIX...** or running the following [Visual Studio Code command-line interface](https://code.visualstudio.com/docs/editor/command-line) command (see link if `code` is not in your PATH):
