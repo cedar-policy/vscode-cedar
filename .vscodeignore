@@ -13,3 +13,4 @@ vscode-cedar-wasm/**
 development.md
 testdata/**
 Dockerfile
+docs/**
