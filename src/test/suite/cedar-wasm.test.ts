@@ -268,7 +268,7 @@ suite('Cedar WASM validate Suite', () => {
       schema
     );
     assert.equal(result.success, false);
-    // `error while deserializing entities: Attribute "tags" on User::"JaneDoe" shouldn't exist according to the schema`
+    // `entities deserialization error: Attribute "tags" on User::"JaneDoe" shouldn't exist according to the schema`
 
     result.free();
   });

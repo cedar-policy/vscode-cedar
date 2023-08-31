@@ -298,8 +298,8 @@ export const addSyntaxDiagnosticErrors = (
 ) => {
   // create an error for each of the syntax validator errors
   errors.forEach((e) => {
-    // error while deserializing entities: Attribute "subjects" on PhotoApp::Photo2::"Judges.jpg" shouldn't exist according to the schema
-    if (e.startsWith('error while deserializing entities')) {
+    // entities deserialization error: Attribute "subjects" on PhotoApp::Photo2::"Judges.jpg" shouldn't exist according to the schema
+    if (e.startsWith('entities deserialization error')) {
       e = e.substring(e.indexOf(': ') + 2);
 
       if (handleEntitiesDiagnosticError(diagnostics, document, e)) {

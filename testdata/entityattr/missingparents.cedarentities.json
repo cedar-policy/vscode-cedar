@@ -1,0 +1,8 @@
+[
+  {
+    "uid": { "type": "Test", "id": "expected" },
+    "attrs": {
+      "test": "test"
+    }
+  }
+]
