@@ -17,10 +17,10 @@ export const NOTDECLARED_TYPE_REGEX =
 export const EXPECTED_ATTR_REGEX =
   /Expected (?<type>.+)::"(?<id>.+)" to have an attribute "(?<suggestion>.+)", but it didn't/;
 export const EXPECTED_ATTR2_REGEX =
-  /In attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", expected the record to have an attribute "(?<suggestion>.+)", but it didn't/;
+  /in attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", expected the record to have an attribute "(?<suggestion>.+)", but it didn't/;
 export const MISMATCH_ATTR_REGEX =
-  /In attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", type mismatch: attribute was expected to have type (\(entity of type )?(?<suggestion>.+)(\))?, but actually has type (\(entity of type )?(?<unrecognized>.+)(\))?/;
+  /in attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", type mismatch: attribute was expected to have type (\(entity of type )?(?<suggestion>.+)(\))?, but actually has type (\(entity of type )?(?<unrecognized>.+)(\))?/;
 export const EXIST_ATTR_REGEX =
   /Attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)" shouldn't exist according to the schema/;
 export const NOTALLOWED_PARENT_REGEX =
-  /In parents field of (?<type>.+)::"(?<id>.+)", (.+) is not allowed to have a parent of type (?<undeclared>.+) according to the schema/;
+  /in parents field of (?<type>.+)::"(?<id>.+)", (.+) is not allowed to have a parent of type (?<undeclared>.+) according to the schema/;

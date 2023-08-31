@@ -176,9 +176,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error while deserializing entities: Expected Test::"expected" to have an attribute "test", but it didn't
+      // entities deserialization error: Expected Test::"expected" to have an attribute "test", but it didn't
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(EXPECTED_ATTR_REGEX);
       assert(found?.groups);
@@ -206,10 +206,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error while deserializing entities: Expected Test::"expected" to have an attribute "test", but it didn't
-      // error while deserializing entities: In attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it didn't
+      // entities deserialization error: in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it didn't
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
       assert(found?.groups);
@@ -238,9 +237,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error while deserializing entities: In attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long
+      // entities deserialization error: in attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
@@ -270,7 +269,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // In attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
@@ -295,9 +294,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error while deserializing entities: Attribute "tst" on Test::"exist" shouldn't exist according to the schema
+      // entities deserialization error: Attribute "tst" on Test::"exist" shouldn't exist according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(EXIST_ATTR_REGEX);
       assert(found?.groups);
@@ -325,9 +324,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error while deserializing entities: Employee::"12UA45" has type Employee which is not declared in the schema; did you mean XYZCorp::Employee?
+      // entities deserialization error: Employee::"12UA45" has type Employee which is not declared in the schema; did you mean XYZCorp::Employee?
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert(found?.groups);
@@ -354,9 +353,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error while deserializing entities: In parents field of XYZCorp::Employee::"12UA45", XYZCorp::Employee::"12UA45" is not allowed to have a parent of type XYZCorp::Employee according to the schema
+      // entities deserialization error: in parents field of XYZCorp::Employee::"12UA45", XYZCorp::Employee::"12UA45" is not allowed to have a parent of type XYZCorp::Employee according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error while deserializing entities'));
+      assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
       assert(found?.groups);
