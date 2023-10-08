@@ -8,6 +8,7 @@ import { DEFAULT_RANGE } from './diagnostics';
 // Cedar policies
 
 export type PolicyRange = {
+  id: string;
   range: vscode.Range;
   effectRange: vscode.Range;
 };
@@ -18,6 +19,8 @@ type PolicyCacheItem = {
 };
 
 const policyCache: Record<string, PolicyCacheItem> = {};
+
+const ID_ATTR = /@id\("(?<id>(.+))"\)/;
 
 export const parseCedarDocPolicies = (
   cedarDoc: vscode.TextDocument,
@@ -35,16 +38,22 @@ export const parseCedarDocPolicies = (
   }
 
   const policies: PolicyRange[] = [];
+  let count = 0;
+  let id: string | null = null;
 
   let tmpPolicy = '';
   let effectRange: vscode.Range = DEFAULT_RANGE;
   let startLine = 1;
   for (let i = 0; i < cedarDoc.lineCount; i++) {
     const textLine = cedarDoc.lineAt(i).text;
-    if (
-      textLine.trim().startsWith('permit') ||
-      textLine.trim().startsWith('forbid')
-    ) {
+    const trimmed = textLine.trim();
+    if (id === null && trimmed.startsWith('@id(')) {
+      const found = trimmed.match(ID_ATTR);
+      if (found?.groups) {
+        id = found.groups.id;
+      }
+    }
+    if (trimmed.startsWith('permit') || trimmed.startsWith('forbid')) {
       const startPos = Math.max(
         0,
         textLine.indexOf('permit'),
@@ -71,6 +80,7 @@ export const parseCedarDocPolicies = (
         .endsWith(';')
     ) {
       const policyRange = {
+        id: id || `policy${count}`,
         range: new vscode.Range(
           new vscode.Position(startLine, 0),
           new vscode.Position(i, textLine.length)
@@ -84,6 +94,8 @@ export const parseCedarDocPolicies = (
       }
 
       tmpPolicy = '';
+      count++;
+      id = null;
       effectRange = DEFAULT_RANGE;
     }
   }

@@ -21,7 +21,7 @@ export class CedarDocumentSymbolProvider
       policyRanges.forEach((policyRange, index) => {
         symbols.push(
           new vscode.DocumentSymbol(
-            `policy${index}`,
+            policyRange.id,
             '',
             vscode.SymbolKind.Function,
             policyRange.range,
