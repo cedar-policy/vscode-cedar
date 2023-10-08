@@ -1,0 +1,11 @@
+{
+  "MyNameSpace": {
+    "commonTypes": {
+      "My Common Type": {
+        "type": "String"
+      }
+    },
+    "entityTypes": {},
+    "actions": {}
+  }
+}
