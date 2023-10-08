@@ -140,6 +140,48 @@ suite('Cedar WASM validate Suite', () => {
     result.free();
   });
 
+  test('validate_syntax_returns_validation_errors_when_poorly_formed', async () => {
+    const policy = 'permit (principal, action, resource) whenless {};';
+    const result: cedar.ValidateSyntaxResult = cedar.validateSyntax(policy);
+    assert.equal(result.success, false);
+    assert.ok(result.errors);
+    assert.equal(result.errors?.length, 1);
+    assert.equal(
+      result.errors?.[0].message,
+      'poorly formed: not a valid policy condition: whenless'
+    );
+    assert.equal(result.errors?.[0].offset, 0);
+    assert.equal(result.errors?.[0].length, 0);
+    result.free();
+  });
+
+  test('validate_syntax_returns_validation_errors_when_expected_commas', async () => {
+    const policy = 'permit (principal action resource);';
+    const result: cedar.ValidateSyntaxResult = cedar.validateSyntax(policy);
+    console.log(result.errors);
+    assert.equal(result.success, false);
+    assert.ok(result.errors);
+    assert.equal(result.errors?.length, 3);
+    if (result.errors) {
+      let errorOffset: number = result.errors[0].offset;
+      let errorLength: number = result.errors[0].length;
+      assert.equal(errorOffset, 18);
+      assert.equal(errorLength, 6);
+
+      errorOffset = result.errors[1].offset;
+      errorLength = result.errors[1].length;
+      assert.equal(errorOffset, 25);
+      assert.equal(errorLength, 8);
+
+      errorOffset = result.errors[2].offset;
+      errorLength = result.errors[2].length;
+      assert.equal(errorOffset, 33);
+      assert.equal(errorLength, 1);
+    }
+
+    result.free();
+  });
+
   test('validate_schema_passes', async () => {
     const schema = `{
       "" : {

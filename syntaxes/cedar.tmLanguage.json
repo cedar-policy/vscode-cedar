@@ -97,7 +97,7 @@
 		},
 		"ipmethods": {
 			"patterns": [{
-				"match": "\\.(isIpV4|isIpV6|isLoopback|isMulticast|isInRange)\\(",
+				"match": "\\.(isIpv4|isIpv6|isLoopback|isMulticast|isInRange)\\(",
 				"captures": {
 					"1" : {
 						"name": "entity.name.function.member.cedar"

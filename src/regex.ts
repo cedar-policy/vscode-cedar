@@ -2,25 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // parses out start / end characters from Cedar validator
-export const FOUND_AT_REGEX = /found at (?<start>(\d)+)(:)?(?<end>(\d)+)?\n/;
+//export const FOUND_AT_REGEX = /found at (?<start>(\d)+)(:)?(?<end>(\d)+)?\n/;
+export const PARSE_ERROR_SCHEMA_REGEX =
+  /(P|p)arse error in (?<type>(entity type|common type|namespace))( identifier)?: /;
 export const AT_LINE_SCHEMA_REGEX =
-  /at line (?<line>(\d)+)? column (?<column>(\d)+)?/;
+  / at line (?<line>(\d)+)? column (?<column>(\d)+)?/;
 export const OFFSET_POLICY_REGEX =
-  /at offset (?<start>(\d)+)(-)?(?<end>(\d)+)?: /;
+  / at offset (?<start>(\d)+)(-)?(?<end>(\d)+)?: /;
 export const UNRECOGNIZED_REGEX =
-  /Unrecognized (action id|entity type) (?<unrecognized>.+), did you mean (?<suggestion>.+)\?/;
+  /unrecognized (action|entity type) `(?<unrecognized>.+)`, did you mean `(?<suggestion>.+)`\?/;
 export const UNDECLARED_REGEX =
-  /Undeclared ((?<type>entity|common) types|actions): {(?<undeclared>.+)}/;
+  /(U|u)ndeclared (?<type>(entity types|common types|actions)): {(?<undeclared>.+)}/;
 // Cedar entities errors
 export const NOTDECLARED_TYPE_REGEX =
-  /(?<type>.+)::"(?<id>.+)" has type (.+) which is not declared in the schema/;
+  /entity `(?<type>.+)::"(?<id>.+)"` has type `(.+)` which is not declared in the schema; did you mean (?<suggestion>.+)\?/;
 export const EXPECTED_ATTR_REGEX =
-  /Expected (?<type>.+)::"(?<id>.+)" to have an attribute "(?<suggestion>.+)", but it didn't/;
+  /expected entity `(?<type>.+)::"(?<id>.+)"` to have an attribute "(?<suggestion>.+)", but it doesn't/;
 export const EXPECTED_ATTR2_REGEX =
-  /in attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", expected the record to have an attribute "(?<suggestion>.+)", but it didn't/;
+  /in attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", expected the record to have an attribute "(?<suggestion>.+)", but it doesn't/;
 export const MISMATCH_ATTR_REGEX =
   /in attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)", type mismatch: attribute was expected to have type (\(entity of type )?(?<suggestion>.+)(\))?, but actually has type (\(entity of type )?(?<unrecognized>.+)(\))?/;
 export const EXIST_ATTR_REGEX =
-  /Attribute "(?<attribute>.+)" on (?<type>.+)::"(?<id>.+)" shouldn't exist according to the schema/;
+  /attribute "(?<attribute>.+)" on `(?<type>.+)::"(?<id>.+)"` shouldn't exist according to the schema/;
 export const NOTALLOWED_PARENT_REGEX =
   /in parents field of (?<type>.+)::"(?<id>.+)", (.+) is not allowed to have a parent of type (?<undeclared>.+) according to the schema/;

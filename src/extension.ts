@@ -30,10 +30,7 @@ import {
   schemaTokensProvider,
   semanticTokensLegend,
 } from './semantictokens';
-import {
-  UndeclaredCommonTypeQuickFix,
-  UnrecognizedCedarQuickFix,
-} from './quickfix';
+import { CedarSchemaJSONQuickFix, CedarQuickFix } from './quickfix';
 import {
   COMMAND_CEDAR_CLEARPROBLEMS,
   COMMAND_CEDAR_ENTITIESVALIDATE,
@@ -84,14 +81,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.languages.registerCodeActionsProvider(
-      'cedar',
-      new UnrecognizedCedarQuickFix(),
-      {
-        providedCodeActionKinds:
-          UnrecognizedCedarQuickFix.providedCodeActionKinds,
-      }
-    )
+    vscode.languages.registerCodeActionsProvider('cedar', new CedarQuickFix(), {
+      providedCodeActionKinds: CedarQuickFix.providedCodeActionKinds,
+    })
   );
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
@@ -109,20 +101,20 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
       { pattern: CEDAR_SCHEMA_GLOB, scheme: 'file' },
-      new UndeclaredCommonTypeQuickFix(),
+      new CedarSchemaJSONQuickFix(),
       {
         providedCodeActionKinds:
-          UndeclaredCommonTypeQuickFix.providedCodeActionKinds,
+          CedarSchemaJSONQuickFix.providedCodeActionKinds,
       }
     )
   );
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
-      CEDAR_SCHEMA_FILE,
-      new UndeclaredCommonTypeQuickFix(),
+      { pattern: CEDAR_SCHEMA_FILE_GLOB, scheme: 'file' },
+      new CedarSchemaJSONQuickFix(),
       {
         providedCodeActionKinds:
-          UndeclaredCommonTypeQuickFix.providedCodeActionKinds,
+          CedarSchemaJSONQuickFix.providedCodeActionKinds,
       }
     )
   );

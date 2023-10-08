@@ -1,0 +1,17 @@
+{
+  "": {
+    "commonTypes": {},
+    "entityTypes": {
+      "User": {
+        "memberOfTypes": [],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "name": { "type": "string" }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}
