@@ -10,8 +10,8 @@ use wasm_bindgen::prelude::*;
 const VALIDATE_ENTITIES_RESULT: &'static str = r#"
 export class ValidateEntitiesResult {
   free(): void;
-  readonly errors: Array<string> | undefined;
   readonly success: boolean;
+  readonly errors: Array<string> | undefined;
 }"#;
 
 #[wasm_bindgen(getter_with_clone, skip_typescript)]
