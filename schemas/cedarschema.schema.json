@@ -1,100 +1,142 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$comment": "https://docs.cedarpolicy.com/schema/schema.html",
   "type": "object",
-  "description": "Cedar Schema schema",
+  "description": "Declaration of the structure of the entity types that you want to support in your application and for which you want Cedar to provide authorization services.",
   "additionalProperties": {
     "type": "object",
-    "description": "The schema contains a map of namespaces declaration. Each namespace entry has a key that identifies the name of the namespace and a value with two objects: the entity types specification and the actions specification.",
-    "items": {
-      "type": "object",
-      "properties": {
-        "entityTypes": {
+    "description": "A namespace declaration identifies and defines a scope for all entity types and actions declared within it.",
+    "properties": {
+      "commonTypes": {
+        "type": "object",
+        "description": "Each JSON object within commonTypes consists of the name of a type being defined and its associated definition.",
+        "markdownDescription": "Each JSON object within `commonTypes` consists of the name of a type being defined and its associated definition.",
+        "additionalProperties": {
+          "$ref": "#/$defs/shapeDef",
+          "description": "Specifies the shape of the data of this type. Must have type Record, and be accompanied by a description of the common type's attributes.",
+          "markdownDescription": "Specifies the shape of the data of this type.\n\nMust have type `Record`, and be accompanied by a description of the common type's attributes."
+        }
+      },
+      "entityTypes": {
+        "type": "object",
+        "description": "A collection of the principal and resource entity types supported by your application. The entityTypes element contains a comma-separated list of JSON objects.",
+        "markdownDescription": "A collection of the `principal` and `resource` entity types supported by your application.\n\nThe `entityTypes` element contains a comma-separated list of JSON objects.",
+        "additionalProperties": {
           "type": "object",
-          "description": "The key is the name of the entity type.This must be an identifier, which is defined in the Cedar grammar as a sequence of alphanumeric character, omitting any Cedar reserved words, and starting with a letter.",
-          "additionalProperties": {
-            "type": "object",
-            "description": "The entity types object describes the type of each entity that may appear in the entity hierarchy, including the entity type's attributes and the parent/child relationship that entities of that type can have to other entities in the hierarchy, if any.",
-            "properties": {
-              "memberOfTypes": {
-                "type": "array",
-                "description": "A list containing strings which are the entity types that can be direct parents of an entity with this entity type.",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "shape": {
-                "$ref": "#/$defs/shapeDef",
-                "description": "A JSON object following the JSON Schema-style format with custom type property values for Cedar types."
+          "description": "The entity types object describes the type of each entity that may appear in the entity hierarchy, including the entity type's attributes and the parent/child relationship that entities of that type can have to other entities in the hierarchy, if any.",
+          "properties": {
+            "memberOfTypes": {
+              "type": "array",
+              "description": "Specifies a list of entity types that can be direct parents of entities of this type. Values in this list must be valid entity type names declared in the schema. If the memberOfTypes element is empty or not defined, then entities of that entity type can't have any parents in the entity hierarchy.",
+              "markdownDescription": "Specifies a list of entity types that can be direct parents of entities of this type. Values in this list must be valid entity type names declared in the schema. If the `memberOfTypes` element is empty or not defined, then entities of that entity type can't have any parents in the entity hierarchy.",
+              "items": {
+                "type": "string"
               }
             },
-            "additionalProperties": false,
-            "defaultSnippets": [
-              {
-                "label": "New entity",
-                "body": {
-                  "$1": {
-                    "memberOf": [],
-                    "shape": {
-                      "type": "Record",
-                      "attributes": {
-                        "$2": { "type": "$3" }
-                      }
+            "shape": {
+              "oneOf": [
+                { "$ref": "#/$defs/shapeDef" },
+                { "$ref": "#/$defs/commonShapeDef" }
+              ],
+              "description": "Specifies the shape of the data stored in entities of this type. The shape element, if present, must have type Record, and be accompanied by a description of the entity's attributes.",
+              "markdownDescription": "Specifies the shape of the data stored in entities of this type.\n\nThe `shape` element, if present, must have type `Record`, and be accompanied by a description of the entity's attributes."
+            }
+          },
+          "additionalProperties": false,
+          "defaultSnippets": [
+            {
+              "label": "New entity type",
+              "body": {
+                "$1": {
+                  "memberOfTypes": [],
+                  "shape": {
+                    "type": "Record",
+                    "attributes": {
+                      "$2": { "type": "$3" }
                     }
                   }
                 }
               }
-            ]
+            }
+          ]
+        }
+      },
+      "actions": {
+        "type": "object",
+        "description": "A collection of the Action entities usable as actions in authorization requests submitted by your application. The actions element contains a comma-separated list of one or more JSON objects.",
+        "markdownDescription": "A collection of the Action entities usable as actions in authorization requests submitted by your application.\n\nThe `actions` element contains a comma-separated list of one or more JSON objects.",
+        "additionalProperties": {
+          "type": "object",
+          "description": "Specifies the identifier for the action entity, as a string. Since this is an entity identifier (rather than an entity type, as in the entityTypes section) it can contain anything that would be valid inside a Cedar string.",
+          "properties": {
+            "appliesTo": {
+              "type": "object",
+              "description": "Specifies a JSON object containing two lists, principalTypes and resourceTypes, which contain the principal and resources entity types, respectively, that can accompany the action in an authorization request.",
+              "markdownDescription": "Specifies a JSON object containing two lists, `principalTypes` and `resourceTypes`, which contain the principal and resources entity types, respectively, that can accompany the action in an authorization request.",
+              "properties": {
+                "principalTypes": {
+                  "type": "array",
+                  "description": "The principal entity types that the action can accompany in an authorization request.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "resourceTypes": {
+                  "type": "array",
+                  "description": "The resource entity types that the action can accompany in an authorization request.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "context": {
+                  "oneOf": [
+                    { "$ref": "#/$defs/shapeDef" },
+                    { "$ref": "#/$defs/commonShapeDef" }
+                  ],
+                  "description": "Specifies a JSON object in the same format as an entity's shape property, which defines the attributes that can be present in the context record in authorization requests made with this action. Specifying a context enables Cedar to validate policies that attempt to reference the context record's attributes.",
+                  "markdownDescription": "Specifies a JSON object in the same format as an entity's `shape` property, which defines the attributes that can be present in the context record in authorization requests made with this action.\n\nSpecifying a `context` enables Cedar to validate policies that attempt to reference the `context` record's attributes."
+                }
+              }
+            },
+            "memberOf": {
+              "type": "array",
+              "description": "Specifies a list of action entity groups the action is a member of. The memberOf component is optional. If omitted, it means the action is a member of no action groups.",
+              "markdownDescription": "Specifies a list of action entity groups the action is a member of. The `memberOf` component is optional. If omitted, it means the action is a member of no action groups.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "To declare membership in an action group in a different namespace you need to include type alongside the id portion.",
+                    "markdownDescription": "To declare membership in an action group in a different namespace you need to include `type` alongside the `id` portion."
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": ["id"]
+              }
+            }
           }
         },
-        "actions": {
-          "type": "object",
-          "items": {
-            "type": "object",
-            "properties": {
-              "appliesTo": {
-                "type": "object",
-                "description": "A JSON object containing two lists, principalTypes and resourceTypes , which contain the principal and resources entity types that the action can accompany in an authorization request.",
-                "properties": {
-                  "principalTypes": {
-                    "type": "array",
-                    "description": "The principal entity types that the action can accompany in an authorization request.",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "resourceTypes": {
-                    "type": "array",
-                    "description": "The resource entity types that the action can accompany in an authorization request.",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              },
-              "context": {
-                "$ref": "#/$defs/shapeDef",
-                "description": "A JSON object in the same format as entity shape property which defines the attributes that must be present in the context record in authorization requests made with this action."
-              }
-            },
-            "additionalProperties": false,
-            "defaultSnippets": [
-              {
-                "label": "New action",
-                "body": {
-                  "$1": {
-                    "appliesTo": {
-                      "principalTypes": ["$2"],
-                      "resourceTypes": ["$3"]
-                    },
-                    "context": { "type": "Record", "attributes": {} }
-                  }
+        "defaultSnippets": [
+          {
+            "label": "New action",
+            "body": {
+              "$1": {
+                "appliesTo": {
+                  "principalTypes": ["$2"],
+                  "resourceTypes": ["$3"],
+                  "context": { "type": "Record", "attributes": {} }
                 }
               }
-            ]
+            }
           }
-        }
+        ]
       }
-    }
+    },
+    "required": ["entityTypes", "actions"],
+    "additionalProperties": false
   },
   "$defs": {
     "shapeDef": {
@@ -103,24 +145,39 @@
         "type": {
           "type": "string",
           "pattern": "^Record$",
-          "description": "Record encodes Cedar record types.",
-          "markdownDescription": "`Record` encodes Cedar record types."
+          "description": "A Record is collection of attributes. Each attribute consists of a name and an associated value. Names are simple strings. Values can be of any type."
         },
         "attributes": { "$ref": "#/$defs/attributesDef" }
       },
       "required": ["type", "attributes"],
       "additionalProperties": false
     },
+    "commonShapeDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^(?!(String|Long|Boolean|Record|Set|Entity|Extension)$).*$",
+          "description": "Specifies a common type"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
     "attributesDef": {
-      "description": "The attributes property is a map from record attribute names to their type.",
+      "description": "Each attribute in a Record is a JSON object that describes one attribute in the record associated with entities of this type.",
+      "markdownDescription": "Each attribute in a `Record` is a JSON object that describes one attribute in the record associated with entities of this type.",
       "patternProperties": {
         "[_a-zA-Z][_a-zA-Z0-9]*": { "$ref": "#/$defs/attributesTypeDef" }
       }
     },
     "attributesTypeDef": {
       "type": "object",
+      "description": "Attributes' type can be \"String\", \"Long\", \"Boolean\", \"Record\", \"Set\", \"Entity\", or \"Extension\"",
+      "markdownDescription": "Attributes' `type` can be \"String\", \"Long\", \"Boolean\", \"Record\", \"Set\", \"Entity\", or \"Extension\"",
       "oneOf": [
         { "$ref": "#/$defs/primitiveTypeDef" },
+        { "$ref": "#/$defs/extensionTypeDef" },
         { "$ref": "#/$defs/entityTypeDef" },
         { "$ref": "#/$defs/setTypeDef" },
         { "$ref": "#/$defs/recordTypeDef" }
@@ -130,10 +187,24 @@
       "type": "object",
       "properties": {
         "type": {
-          "type": "string",
-          "pattern": "^(String|Long|Boolean)$",
-          "description": "String, Long, and Boolean types are used to encode the primitive Cedar types.",
-          "markdownDescription": "`String`, `Long`, and `Boolean` types are used to encode the primitive Cedar types."
+          "oneOf" : [
+            {
+              "type": "string",
+              "pattern": "^String$",
+              "description": "A sequence of characters consisting of letters, numbers, or symbols."
+            },
+            {
+              "type": "string",
+              "pattern": "^Long$",
+              "description": "A whole number without decimals that can range from -9223372036854775808 to 9223372036854775807."
+            },
+            {
+              "type": "string",
+              "pattern": "^Boolean$",
+              "description": "A value that is either true or false.",
+              "markdownDescription": "A value that is either `true` or `false`."
+            }
+          ]
         },
         "required": { "$ref": "#/$defs/requiredDef" }
       },
@@ -146,13 +217,33 @@
         "type": {
           "type": "string",
           "pattern": "^Entity$",
-          "description": "Entity encodes Cedar entity reference types.",
-          "markdownDescription": "`Entity` encodes Cedar entity reference types."
+          "description": "For attributes of type \"Entity\", you must also specify a name that identifies the entity type of this attribute.",
+          "markdownDescription": "For attributes of `type` \"Entity\", you must also specify a `name` that identifies the entity type of this attribute."
         },
         "required": { "$ref": "#/$defs/requiredDef" },
         "name": {
           "type": "string",
-          "description": "The value of name is a Cedar Name."
+          "description": "The entity type must be defined in the schema."
+        }
+      },
+      "required": ["type", "name"],
+      "additionalProperties": false
+    },
+    "extensionTypeDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^Extension$",
+          "description": "For attributes of type \"Extension \", you must also specify the name of the specific extension type.",
+          "markdownDescription": "For attributes of `type` \"Extension \", you must also specify the `name` of the specific extension type."
+        },
+        "required": { "$ref": "#/$defs/requiredDef" },
+        "name": {
+          "type": "string",
+          "pattern": "^(ipaddr|decimal)$",
+          "description": "There are two extension types: ipaddr for IP address values, and decimal for decimal values.",
+          "markdownDescription": "There are two extension types: `ipaddr` for IP address values, and `decimal` for decimal values."
         }
       },
       "required": ["type", "name"],
@@ -164,8 +255,7 @@
         "type": {
           "type": "string",
           "pattern": "^Set$",
-          "description": "Set encodes the Cedar set type.",
-          "markdownDescription": "`Set` encodes the Cedar set type."
+          "description": "A Set is collection of elements that can be of the same or different types. A set is constructed using bracket characters [ ] and separating the elements with commas."
         },
         "required": { "$ref": "#/$defs/requiredDef" },
         "element": { "$ref": "#/$defs/attributesTypeDef" }
@@ -179,7 +269,7 @@
         "type": {
           "type": "string",
           "pattern": "^Record$",
-          "description": "Record encodes Cedar record types."
+          "description": "A Record attribute has the same JSON format as the entity shape's Record's attributes"
         },
         "required": { "$ref": "#/$defs/requiredDef" },
         "attributes": { "$ref": "#/$defs/attributesDef" }
@@ -189,8 +279,7 @@
     },
     "requiredDef": {
       "type": "boolean",
-      "description": "Specifies if the attribute is always present in the record. This property is true by default.",
-      "markdownDescription": "Specifies if the attribute is always present in the record. This property is `true` by default."
+      "description": "You can choose to specify whether an attribute is required or optional. By default, attributes that you define are required."
     }
   }
 }

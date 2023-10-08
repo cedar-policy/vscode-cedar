@@ -1,18 +1,43 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$comment": "https://docs.cedarpolicy.com/auth/entities-syntax.html",
   "type": "array",
-  "description": "Cedar entities schema",
+  "description": "Each object in this list represents a single entity, and should have three attributes: uid, parents, attrs",
+  "markdownDescription": "Each object in this list represents a single entity, and should have three attributes: `uid`, `parents`, `attrs`",
   "items": {
     "type": "object",
     "properties": {
       "uid": {
-        "type": "string"
+        "description": "The uid object specifies the Cedar type and unique identifier for the entity. You can explicitly include the __entity escape, or leave it implicit. You should reference a Cedar type defined in the schema, and provide a unique, immutable, and non-reusable identifier for the entity.",
+        "markdownDescription": "The `uid` object specifies the Cedar type and unique identifier for the entity. You can explicitly include the `__entity` escape, or leave it implicit.\n\nYou should reference a Cedar type defined in the schema, and provide a unique, immutable, and non-reusable identifier for the entity.",
+        "anyOf": [
+          { "$ref": "#/$defs/entityDef" },
+          { "$ref": "#/$defs/__entityDef" },
+          { "$ref": "#/$defs/__exprDef" },
+          {
+            "type": "string"
+          }
+        ]
       },
       "parents": {
-        "type": "array"
+        "type": "array",
+        "description": "The parents object identifies other entities that represent containers in a hierarchy, such as a group that can contain users. This object's value is a JSON list that contains entity references. Those entity references take either of the two forms defined for uid, with __entity either explicitly specified or implied.",
+        "markdownDescription": "The `parents` object identifies other entities that represent containers in a hierarchy, such as a group that can contain users. This object's value is a JSON list that contains entity references.\n\nThose entity references take either of the two forms defined for `uid`, with `__entity` either explicitly specified or implied.",
+        "items": {
+          "anyOf": [
+            { "$ref": "#/$defs/entityDef" },
+            { "$ref": "#/$defs/__entityDef" },
+            { "$ref": "#/$defs/__exprDef" },
+            {
+              "type": "string"
+            }
+          ]
+        }
       },
       "attrs": {
-        "type": "object"
+        "type": "object",
+        "description": "Use the attrs object to specify the key name and value of each attribute attached to the associated entity.",
+        "markdownDescription": "Use the `attrs` object to specify the key name and value of each attribute attached to the associated entity."
       }
     },
     "required": ["uid", "parents", "attrs"],
@@ -21,11 +46,71 @@
       {
         "label": "New entity",
         "body": {
-          "uid": "$1",
+          "uid": { "type": "$1", "id": "$2" },
           "parents": [],
           "attrs": {}
         }
       }
     ]
+  },
+  "$defs": {
+    "entityDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type must be a normalized entity type, i.e., without whitespace or Cedar comments."
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": ["type", "id"],
+      "additionalProperties": false
+    },
+    "__entityDef": {
+      "type": "object",
+      "properties": {
+        "__entity": {
+          "anyOf": [{ "$ref": "#/$defs/entityDef" }]
+        }
+      },
+      "required": ["__entity"],
+      "additionalProperties": false
+    },
+    "extnDef": {
+      "type": "object",
+      "properties": {
+        "fn": {
+          "type": "string"
+        },
+        "arg": {
+          "type": "string"
+        }
+      },
+      "required": ["fn", "arg"],
+      "additionalProperties": false
+    },
+    "__extnDef": {
+      "type": "object",
+      "properties": {
+        "__extn": {
+          "anyOf": [{ "$ref": "#/$defs/extnDef" }]
+        }
+      },
+      "required": ["__extn"],
+      "additionalProperties": false
+    },
+    "__exprDef": {
+      "type": "object",
+      "properties": {
+        "__expr": {
+          "anyOf": [{ "$ref": "#/$defs/entityDef" }]
+        }
+      },
+      "required": ["__expr"],
+      "additionalProperties": false,
+      "deprecated": true
+    }
   }
 }
