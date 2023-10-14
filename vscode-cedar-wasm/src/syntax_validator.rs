@@ -12,7 +12,6 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(typescript_custom_section)]
 const VALIDATE_SCHEMA_RESULT: &'static str = r#"
 export class ValidateSyntaxError {
-  free(): void;
   readonly message: string;
   readonly length: number;
   readonly offset: number;

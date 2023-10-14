@@ -153,9 +153,6 @@ export const validateCedarDoc = async (
     }
   }
   diagnosticCollection.set(cedarDoc.uri, diagnostics);
-  syntaxResult.errors?.forEach((e) => {
-    e.free();
-  });
   syntaxResult.free();
 
   validationCache.store(cedarDoc, success);
