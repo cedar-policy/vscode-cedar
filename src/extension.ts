@@ -25,11 +25,6 @@ import {
   validateSchemaDoc,
   validateTextDocument,
 } from './validate';
-import {
-  entitiesTokensProvider,
-  schemaTokensProvider,
-  semanticTokensLegend,
-} from './semantictokens';
 import { CedarSchemaJSONQuickFix, CedarQuickFix } from './quickfix';
 import {
   COMMAND_CEDAR_CLEARPROBLEMS,
@@ -45,6 +40,17 @@ import {
   CedarFoldingRangeProvider,
   CedarSchemaDocumentSymbolProvider,
 } from './documentsymbols';
+import {
+  CedarDefinitionProvider,
+  CedarEntitiesDefinitionProvider,
+  CedarSchemaDefinitionProvider,
+} from './definition';
+import {
+  semanticTokensLegend,
+  cedarTokensProvider,
+  entitiesTokensProvider,
+  schemaTokensProvider,
+} from './parser';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -95,6 +101,19 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerFoldingRangeProvider(
       { language: 'cedar' },
       new CedarFoldingRangeProvider()
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      { language: 'cedar' },
+      new CedarDefinitionProvider()
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: 'cedar' },
+      cedarTokensProvider,
+      semanticTokensLegend
     )
   );
 
@@ -380,6 +399,20 @@ export async function activate(context: vscode.ExtensionContext) {
       )
     );
 
+    const schemaDefinitionProvider = new CedarSchemaDefinitionProvider();
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        schemaSelector,
+        schemaDefinitionProvider
+      )
+    );
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        schemaFileSelector,
+        schemaDefinitionProvider
+      )
+    );
+
     // @ts-ignore
     const entitiesPattern: vscode.RelativePattern = {
       baseUri: vscode.workspace.workspaceFolders[0].uri,
@@ -419,6 +452,20 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.languages.registerDocumentSymbolProvider(
         entitiesFileSelector,
         entitiesSymbolProvider
+      )
+    );
+
+    const entitiesDefinitionProvider = new CedarEntitiesDefinitionProvider();
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        entitiesSelector,
+        entitiesDefinitionProvider
+      )
+    );
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        entitiesFileSelector,
+        entitiesDefinitionProvider
       )
     );
   }

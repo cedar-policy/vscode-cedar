@@ -126,7 +126,7 @@ const determineRangeFromError = (
     } else if (
       error === 'Entity type `Action` declared in `entityTypes` list.'
     ) {
-      const entityRanges = parseCedarDocSchema(document, undefined);
+      const entityRanges = parseCedarDocSchema(document).entities;
       for (let entityRange of entityRanges) {
         if (entityRange.etype === 'Action') {
           range = entityRange.etypeRange;
@@ -335,7 +335,7 @@ const handleEntitiesDiagnosticError = (
   }
 
   if (uid) {
-    const entityRanges = parseCedarDocEntities(document, undefined);
+    const entityRanges = parseCedarDocEntities(document).entities;
     entityRanges.forEach((entityRange, index) => {
       if (entityRange.uid === uid) {
         const attributeRange = entityRange.attrsNameRanges.hasOwnProperty(

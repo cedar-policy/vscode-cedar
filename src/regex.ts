@@ -1,6 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+export const ENTITY_REGEX = /(?<type>.+)::"(?<id>.+)"/;
+export const EFFECT_ENTITY_REGEX =
+  /(principal|resource)\s+(==|in)\s+(?<type>.+)::"(?<id>.+)"/;
+
 // parses out start / end characters from Cedar validator
 //export const FOUND_AT_REGEX = /found at (?<start>(\d)+)(:)?(?<end>(\d)+)?\n/;
 export const PARSE_ERROR_SCHEMA_REGEX =
