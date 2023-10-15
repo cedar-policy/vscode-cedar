@@ -489,7 +489,7 @@ when {
     );
     // console.log(result.errors);
     assert.equal(result.success, false);
-    assert.equal(result.errors?.length, 6);
+    assert.equal(result.errors?.length, 9);
     result.free();
   });
 });
