@@ -113,7 +113,7 @@ export const parseCedarDocPolicies = (
     let found = nonCommentLine.match(EFFECT_ENTITY_REGEX);
     if (found && found?.groups) {
       const type = found?.groups.type;
-      const startCharacter = nonCommentLine.indexOf(type) || 0;
+      const startCharacter = nonCommentLine.indexOf(type + '::"') || 0;
       const typeRange = new vscode.Range(
         new vscode.Position(i, startCharacter),
         new vscode.Position(i, startCharacter + type.length)

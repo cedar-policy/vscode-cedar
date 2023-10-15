@@ -3,7 +3,7 @@
 
 export const ENTITY_REGEX = /(?<type>.+)::"(?<id>.+)"/;
 export const EFFECT_ENTITY_REGEX =
-  /(principal|resource)\s+(==|in)\s+(?<type>.+)::"(?<id>.+)"/;
+  /(principal|resource)\s+(==|in)\s+(?<type>.+?)::"/;
 
 // parses out start / end characters from Cedar validator
 //export const FOUND_AT_REGEX = /found at (?<start>(\d)+)(:)?(?<end>(\d)+)?\n/;
