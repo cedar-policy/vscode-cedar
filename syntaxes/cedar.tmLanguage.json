@@ -138,7 +138,7 @@
 		},
 		"entities": {
 			"patterns": [{
-				"match": "\\b([^\\s].+?)(?:::)(?=\")",
+				"match": "\\b([^\\s]+?)(?:::)(?=\")",
 				"captures": {
 					"1" : {
 						"name": "entity.name.type.cedar"
