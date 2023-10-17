@@ -1,8 +1,8 @@
 ## v0.5.3 (Preview) 2023-10-16
 
 - Update to Cedar 2.4.1
-- Use Cedar policy `@id` value in Outline and Breadcrumb
-- Support "Go to Definition" on Cedar entity types 
+- Use Cedar policy `@id` attribute value in Outline and Breadcrumb
+- Support "Go to Definition" on Cedar entity types and action names
 
 ## v0.5.2 (Preview) 2023-08-31
 
