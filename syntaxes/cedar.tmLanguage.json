@@ -40,6 +40,9 @@
 		},
 		{
 			"include": "#strings"
+		},
+		{
+			"include": "#entities"
 		}
 	],
 	"repository": {
@@ -52,7 +55,7 @@
 				"match": "\\s*([@][_a-zA-Z][_a-zA-Z0-9]*)\\(",
 				"captures": {
 					"1" : {
-						"name": "decorator.cedar"
+						"name": "meta.decorator.cedar"
 					}
 				}
 			}]
@@ -129,8 +132,18 @@
 		},
 		"constants": {
 			"patterns": [{
-				"name": "support.variable.parameter.cedar",
+				"name": "variable.other.constant.cedar",
 				"match": "\\b(principal|action|resource|context)\\b"
+			}]
+		},
+		"entities": {
+			"patterns": [{
+				"match": "\\b([^\\s].+?)(?:::)(?=\")",
+				"captures": {
+					"1" : {
+						"name": "entity.name.type.cedar"
+					}
+				}
 			}]
 		},
 		"strings": {
