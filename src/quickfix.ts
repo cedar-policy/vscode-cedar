@@ -8,7 +8,7 @@ import {
   COMMAND_CEDAR_SCHEMAVALIDATE,
 } from './commands';
 
-export class UnrecognizedCedarQuickFix implements vscode.CodeActionProvider {
+export class CedarQuickFix implements vscode.CodeActionProvider {
   public static readonly providedCodeActionKinds = [
     vscode.CodeActionKind.QuickFix,
   ];
@@ -66,7 +66,14 @@ export class UnrecognizedCedarQuickFix implements vscode.CodeActionProvider {
   }
 }
 
-export class UndeclaredCommonTypeQuickFix implements vscode.CodeActionProvider {
+const CEDARSCHEMA_JSON = `{
+  "": {
+    "entityTypes": {},
+    "actions": {}
+  }
+}`;
+
+export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
   public static readonly providedCodeActionKinds = [
     vscode.CodeActionKind.QuickFix,
   ];
@@ -89,6 +96,15 @@ export class UndeclaredCommonTypeQuickFix implements vscode.CodeActionProvider {
         if (action) {
           actions.push(action);
         }
+      } else if (diagnostic.code === 'empty') {
+        actions.push(
+          this.createSchemaCodeAction(
+            document,
+            diagnostic,
+            `Insert Cedar schema`,
+            CEDARSCHEMA_JSON
+          )
+        );
       }
     });
 
@@ -101,7 +117,7 @@ export class UndeclaredCommonTypeQuickFix implements vscode.CodeActionProvider {
   ): vscode.CodeAction | null {
     let fix = null;
 
-    if (diagnostic.message.startsWith('Undeclared common type:')) {
+    if (diagnostic.message.startsWith('undeclared common type:')) {
       const type = diagnostic.message.substring(
         diagnostic.message.indexOf(': ') + 2
       );
@@ -117,20 +133,33 @@ export class UndeclaredCommonTypeQuickFix implements vscode.CodeActionProvider {
       }
 
       if (suggestion) {
-        fix = new vscode.CodeAction(
+        fix = this.createSchemaCodeAction(
+          document,
+          diagnostic,
           `Replace with ${suggestion}`,
-          vscode.CodeActionKind.QuickFix
+          suggestion
         );
-        fix.edit = new vscode.WorkspaceEdit();
-        fix.edit.replace(document.uri, diagnostic.range, suggestion);
-        fix.isPreferred = true;
-        fix.diagnostics = [diagnostic];
-        fix.command = {
-          command: COMMAND_CEDAR_SCHEMAVALIDATE,
-          title: 'Validate Cedar schema',
-        };
       }
     }
+
+    return fix;
+  }
+
+  private createSchemaCodeAction(
+    document: vscode.TextDocument,
+    diagnostic: vscode.Diagnostic,
+    title: string,
+    suggestion: string
+  ): vscode.CodeAction {
+    const fix = new vscode.CodeAction(title, vscode.CodeActionKind.QuickFix);
+    fix.edit = new vscode.WorkspaceEdit();
+    fix.edit.replace(document.uri, diagnostic.range, suggestion);
+    fix.isPreferred = true;
+    fix.diagnostics = [diagnostic];
+    fix.command = {
+      command: COMMAND_CEDAR_SCHEMAVALIDATE,
+      title: 'Validate Cedar schema',
+    };
 
     return fix;
   }

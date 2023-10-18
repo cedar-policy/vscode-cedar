@@ -179,11 +179,10 @@ export const validateSchemaDoc = (
   const success = schemaResult.success;
   if (schemaResult.success === false && schemaResult.errors) {
     let schemaDiagnostics: vscode.Diagnostic[] = [];
-    addSyntaxDiagnosticErrors(
-      schemaDiagnostics,
-      schemaResult.errors,
-      schemaDoc
-    );
+    let vse = schemaResult.errors.map((e) => {
+      return { message: e, offset: 0, length: 0 };
+    });
+    addSyntaxDiagnosticErrors(schemaDiagnostics, vse, schemaDoc);
     diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
   } else {
     // reset any errors for the schema from a previous validateSchema
@@ -229,11 +228,10 @@ export const validateEntitiesDoc = async (
         cedar.validateEntities(entities, schemaDoc.getText());
       success = entitiesResult.success;
       if (entitiesResult.success === false && entitiesResult.errors) {
-        addSyntaxDiagnosticErrors(
-          entitiesDiagnostics,
-          entitiesResult.errors,
-          entitiesDoc
-        );
+        let vse = entitiesResult.errors.map((e) => {
+          return { message: e, offset: 0, length: 0 };
+        });
+        addSyntaxDiagnosticErrors(entitiesDiagnostics, vse, entitiesDoc);
       }
       entitiesResult.free();
     }

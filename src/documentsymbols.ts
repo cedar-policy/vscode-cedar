@@ -17,11 +17,11 @@ export class CedarDocumentSymbolProvider
   ): Promise<vscode.DocumentSymbol[]> {
     try {
       const symbols: vscode.DocumentSymbol[] = [];
-      const policyRanges = parseCedarDocPolicies(document, undefined);
+      const policyRanges = parseCedarDocPolicies(document).policies;
       policyRanges.forEach((policyRange, index) => {
         symbols.push(
           new vscode.DocumentSymbol(
-            `policy${index}`,
+            policyRange.id,
             '',
             vscode.SymbolKind.Function,
             policyRange.range,
@@ -44,7 +44,7 @@ export class CedarFoldingRangeProvider implements vscode.FoldingRangeProvider {
     token: vscode.CancellationToken
   ): vscode.FoldingRange[] {
     const ranges: vscode.FoldingRange[] = [];
-    const policyRanges = parseCedarDocPolicies(document, undefined);
+    const policyRanges = parseCedarDocPolicies(document).policies;
     policyRanges.forEach((policyRange, index) => {
       ranges.push(
         new vscode.FoldingRange(
@@ -78,7 +78,7 @@ export class CedarEntitiesDocumentSymbolProvider
     try {
       const symbols: vscode.DocumentSymbol[] = [];
 
-      const entityRanges = parseCedarDocEntities(document, undefined);
+      const entityRanges = parseCedarDocEntities(document).entities;
       entityRanges.forEach((entityRange, index) => {
         const symbol = new vscode.DocumentSymbol(
           entityRange.uid,
@@ -123,19 +123,19 @@ export class CedarSchemaDocumentSymbolProvider
   implements vscode.DocumentSymbolProvider
 {
   async provideDocumentSymbols(
-    document: vscode.TextDocument,
+    cedarSchemaDoc: vscode.TextDocument,
     token: vscode.CancellationToken
   ): Promise<vscode.DocumentSymbol[]> {
     try {
       const symbols: vscode.DocumentSymbol[] = [];
 
-      const entityRanges = parseCedarDocSchema(document, undefined);
+      const entityRanges = parseCedarDocSchema(cedarSchemaDoc).entities;
       entityRanges.forEach((entityRange, index) => {
         symbols.push(
           new vscode.DocumentSymbol(
             entityRange.etype,
             '',
-            vscode.SymbolKind.Class,
+            entityRange.symbol,
             entityRange.range,
             entityRange.etypeRange
           )

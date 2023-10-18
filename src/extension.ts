@@ -25,15 +25,7 @@ import {
   validateSchemaDoc,
   validateTextDocument,
 } from './validate';
-import {
-  entitiesTokensProvider,
-  schemaTokensProvider,
-  semanticTokensLegend,
-} from './semantictokens';
-import {
-  UndeclaredCommonTypeQuickFix,
-  UnrecognizedCedarQuickFix,
-} from './quickfix';
+import { CedarSchemaJSONQuickFix, CedarQuickFix } from './quickfix';
 import {
   COMMAND_CEDAR_CLEARPROBLEMS,
   COMMAND_CEDAR_ENTITIESVALIDATE,
@@ -48,6 +40,17 @@ import {
   CedarFoldingRangeProvider,
   CedarSchemaDocumentSymbolProvider,
 } from './documentsymbols';
+import {
+  CedarDefinitionProvider,
+  CedarEntitiesDefinitionProvider,
+  CedarSchemaDefinitionProvider,
+} from './definition';
+import {
+  semanticTokensLegend,
+  cedarTokensProvider,
+  entitiesTokensProvider,
+  schemaTokensProvider,
+} from './parser';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -84,14 +87,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.languages.registerCodeActionsProvider(
-      'cedar',
-      new UnrecognizedCedarQuickFix(),
-      {
-        providedCodeActionKinds:
-          UnrecognizedCedarQuickFix.providedCodeActionKinds,
-      }
-    )
+    vscode.languages.registerCodeActionsProvider('cedar', new CedarQuickFix(), {
+      providedCodeActionKinds: CedarQuickFix.providedCodeActionKinds,
+    })
   );
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
@@ -105,24 +103,37 @@ export async function activate(context: vscode.ExtensionContext) {
       new CedarFoldingRangeProvider()
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      { language: 'cedar' },
+      new CedarDefinitionProvider()
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: 'cedar' },
+      cedarTokensProvider,
+      semanticTokensLegend
+    )
+  );
 
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
       { pattern: CEDAR_SCHEMA_GLOB, scheme: 'file' },
-      new UndeclaredCommonTypeQuickFix(),
+      new CedarSchemaJSONQuickFix(),
       {
         providedCodeActionKinds:
-          UndeclaredCommonTypeQuickFix.providedCodeActionKinds,
+          CedarSchemaJSONQuickFix.providedCodeActionKinds,
       }
     )
   );
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
-      CEDAR_SCHEMA_FILE,
-      new UndeclaredCommonTypeQuickFix(),
+      { pattern: CEDAR_SCHEMA_FILE_GLOB, scheme: 'file' },
+      new CedarSchemaJSONQuickFix(),
       {
         providedCodeActionKinds:
-          UndeclaredCommonTypeQuickFix.providedCodeActionKinds,
+          CedarSchemaJSONQuickFix.providedCodeActionKinds,
       }
     )
   );
@@ -388,6 +399,20 @@ export async function activate(context: vscode.ExtensionContext) {
       )
     );
 
+    const schemaDefinitionProvider = new CedarSchemaDefinitionProvider();
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        schemaSelector,
+        schemaDefinitionProvider
+      )
+    );
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        schemaFileSelector,
+        schemaDefinitionProvider
+      )
+    );
+
     // @ts-ignore
     const entitiesPattern: vscode.RelativePattern = {
       baseUri: vscode.workspace.workspaceFolders[0].uri,
@@ -427,6 +452,20 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.languages.registerDocumentSymbolProvider(
         entitiesFileSelector,
         entitiesSymbolProvider
+      )
+    );
+
+    const entitiesDefinitionProvider = new CedarEntitiesDefinitionProvider();
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        entitiesSelector,
+        entitiesDefinitionProvider
+      )
+    );
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider(
+        entitiesFileSelector,
+        entitiesDefinitionProvider
       )
     );
   }

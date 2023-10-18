@@ -1,17 +1,17 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::str::FromStr;
 use cedar_policy::Schema;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(typescript_custom_section)]
 const VALIDATE_SCHEMA_RESULT: &'static str = r#"
 export class ValidateSchemaResult {
   free(): void;
-  readonly errors: Array<string> | undefined;
   readonly success: boolean;
+  readonly errors: Array<string> | undefined;
 }"#;
 
 #[wasm_bindgen(getter_with_clone, skip_typescript)]

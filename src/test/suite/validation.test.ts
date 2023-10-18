@@ -13,7 +13,6 @@ import {
   EXIST_ATTR_REGEX,
   EXPECTED_ATTR2_REGEX,
   EXPECTED_ATTR_REGEX,
-  FOUND_AT_REGEX,
   MISMATCH_ATTR_REGEX,
   NOTALLOWED_PARENT_REGEX,
   NOTDECLARED_TYPE_REGEX,
@@ -37,36 +36,26 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.errors?.length, 3);
 
     if (result.errors) {
-      // Unrecognized token `action` found at 18:24
-      let errorMsg: string = result.errors[0];
-      let found = errorMsg.match(FOUND_AT_REGEX);
-      assert(found?.groups);
-      if (found?.groups) {
-        assert.equal(parseInt(found?.groups.start), 18);
-        assert.equal(parseInt(found?.groups.end), 24);
-      }
+      let e = result.errors[0];
+      assert.ok(e.message.startsWith('unexpected token `action`'));
+      assert.equal(e.offset, 18);
+      assert.equal(e.length, 6);
 
-      errorMsg = result.errors[1];
-      found = errorMsg.match(FOUND_AT_REGEX);
-      assert(found?.groups);
-      if (found?.groups) {
-        assert.equal(parseInt(found?.groups.start), 25);
-        assert.equal(parseInt(found?.groups.end), 33);
-      }
+      e = result.errors[1];
+      assert.ok(e.message.startsWith('unexpected token `resource`'));
+      assert.equal(e.offset, 25);
+      assert.equal(e.length, 8);
 
-      errorMsg = result.errors[2];
-      found = errorMsg.match(FOUND_AT_REGEX);
-      assert(found?.groups);
-      if (found?.groups) {
-        assert.equal(parseInt(found?.groups.start), 33);
-        assert.equal(parseInt(found?.groups.end), 34);
-      }
+      e = result.errors[2];
+      assert.ok(e.message.startsWith('unexpected token `)`'));
+      assert.equal(e.offset, 33);
+      assert.equal(e.length, 1);
     }
 
     result.free();
   });
 
-  test('validate policy error "offset', async () => {
+  test('validate policy error "offset"', async () => {
     const policy = readTestDataFile('offset', 'policy.cedar');
     const schema = readTestDataFile('offset', 'cedarschema.json');
 
@@ -143,7 +132,10 @@ suite('Validation RegEx Test Suite', () => {
   });
 
   test('validate policy schema undeclared entity type', async () => {
-    const schema = readTestDataFile('undeclared', 'cedarschema.json');
+    const schema = readTestDataFile(
+      'undeclared',
+      'entitytype.cedarschema.json'
+    );
 
     const result: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
     assert.equal(result.success, false);
@@ -154,8 +146,31 @@ suite('Validation RegEx Test Suite', () => {
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
-        assert.equal(found?.groups.type, 'entity');
+        assert.equal(found?.groups.type, 'entity types');
         assert.equal(found?.groups.undeclared, '"Test"');
+      }
+    }
+
+    result.free();
+  });
+
+  test('validate policy schema undeclared actions', async () => {
+    const schema = readTestDataFile('undeclared', 'actions.cedarschema.json');
+
+    const result: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
+    assert.equal(result.success, false);
+
+    if (result.errors) {
+      // Undeclared actions: {"Action::\"test1\"", "Action::\"test2\""}
+      let errorMsg: string = result.errors[0];
+      let found = errorMsg.match(UNDECLARED_REGEX);
+      assert(found?.groups);
+      if (found?.groups) {
+        assert.equal(found?.groups.type, 'actions');
+        assert.equal(
+          found?.groups.undeclared,
+          '"Action::\\"test1\\"", "Action::\\"test2\\""'
+        );
       }
     }
 
@@ -176,10 +191,14 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: Expected Test::"expected" to have an attribute "test", but it didn't
+      // entities deserialization error: expected entity `Test::"expected"` to have an attribute "test", but it doesn't
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'expected entity `Test::"expected"` to have an attribute "test", but it doesn\'t'
+      );
       let found = errorMsg.match(EXPECTED_ATTR_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -206,10 +225,14 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it didn't
+      // entities deserialization error: in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it doesn't
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it doesn\'t'
+      );
       let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -241,6 +264,10 @@ suite('Validation RegEx Test Suite', () => {
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'in attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long'
+      );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -267,10 +294,14 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // In attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)
+      // entities deserialization error: in attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'in attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)'
+      );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -294,10 +325,14 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: Attribute "tst" on Test::"exist" shouldn't exist according to the schema
+      // entities deserialization error: attribute "tst" on `Test::"exist"` shouldn't exist according to the schema
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'attribute "tst" on `Test::"exist"` shouldn\'t exist according to the schema'
+      );
       let found = errorMsg.match(EXIST_ATTR_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -324,10 +359,14 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: Employee::"12UA45" has type Employee which is not declared in the schema; did you mean XYZCorp::Employee?
+      // entities deserialization error: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema; did you mean XYZCorp::Employee?
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema; did you mean XYZCorp::Employee?'
+      );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -353,10 +392,14 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in parents field of XYZCorp::Employee::"12UA45", XYZCorp::Employee::"12UA45" is not allowed to have a parent of type XYZCorp::Employee according to the schema
+      // entities deserialization error: in parents field of XYZCorp::Employee::"12UA45", `XYZCorp::Employee::"12UA45"` is not allowed to have a parent of type `XYZCorp::Employee` according to the schema
       let errorMsg: string = result.errors[0];
       assert.ok(errorMsg.startsWith('entities deserialization error'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
+      assert.equal(
+        errorMsg,
+        'in parents field of XYZCorp::Employee::"12UA45", `XYZCorp::Employee::"12UA45"` is not allowed to have a parent of type `XYZCorp::Employee` according to the schema'
+      );
       let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
       assert(found?.groups);
       if (found?.groups) {
