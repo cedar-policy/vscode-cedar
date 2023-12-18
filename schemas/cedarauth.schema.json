@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$comment": "https://docs.cedarpolicy.com/auth/authorization.html",
+  "type": "object",
+  "description": "Declaration of the structure of the authorization request used by the Cedar CLI.",
+  "properties": {
+    "principal": {
+      "type": "string",
+      "description": "Can this principal take this action on this resource in this context?",
+      "markdownDescription": "Can this `principal` take this `action` on this `resource` in this `context`?"
+    },
+    "action": {
+      "type": "string",
+      "description": "Can this principal take this action on this resource in this context?",
+      "markdownDescription": "Can this `principal` take this `action` on this `resource` in this `context`?"
+    },
+    "resource": {
+      "type": "string",
+      "description": "Can this principal take this action on this resource in this context?",
+      "markdownDescription": "Can this `principal` take this `action` on this `resource` in this `context`?"
+    },
+    "context": {
+      "type": "object",
+      "description": "Can this principal take this action on this resource in this context?",
+      "markdownDescription": "Can this `principal` take this `action` on this `resource` in this `context`?"
+    }
+  },
+  "required": ["principal", "action", "resource", "context"],
+  "defaultSnippets": [
+    {
+      "label": "New authorization request",
+      "body": {
+        "principal": "$1::\"$2\"",
+        "action": "$3Action::\"$4\"",
+        "resource": "$5::\"$6\"",
+        "context": "^{$7}"
+      }
+    }
+  ]
+}
