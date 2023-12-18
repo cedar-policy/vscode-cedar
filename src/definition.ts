@@ -3,9 +3,12 @@
 
 import * as vscode from 'vscode';
 import {
-  parseCedarDocEntities,
-  parseCedarDocPolicies,
-  parseCedarDocSchema,
+  parseCedarEntitiesDoc,
+  parseCedarPoliciesDoc,
+  parseCedarAuthDoc,
+  parseCedarSchemaDoc,
+  parseCedarTemplateLinksDoc,
+  parseCedarJsonPolicyDoc,
 } from './parser';
 import { getSchemaTextDocument } from './fileutil';
 
@@ -17,7 +20,7 @@ const findSchemaDefinition = async (
   schemaDoc: vscode.TextDocument
 ): Promise<vscode.Definition | null | undefined> => {
   // TODO: update from O(n^2) to something more efficient
-  const schemaItem = parseCedarDocSchema(schemaDoc);
+  const schemaItem = parseCedarSchemaDoc(schemaDoc);
   const schemaEntityTypeRanges = schemaItem.entities;
   for (let entityTypeRange of entityTypeRanges) {
     if (entityTypeRange.contains(position)) {
@@ -64,12 +67,89 @@ export class CedarEntitiesDefinitionProvider
     const schemaDoc = await getSchemaTextDocument(undefined, cedarEntitiesDoc);
     if (schemaDoc) {
       const entityTypeRanges =
-        parseCedarDocEntities(cedarEntitiesDoc).entityTypes;
+        parseCedarEntitiesDoc(cedarEntitiesDoc).entityTypes;
       return findSchemaDefinition(
         cedarEntitiesDoc,
         position,
         entityTypeRanges,
         [],
+        schemaDoc
+      );
+    }
+
+    return null;
+  }
+}
+
+export class CedarTemplateLinksDefinitionProvider
+  implements vscode.DefinitionProvider
+{
+  async provideDefinition(
+    cedarTemplateLinksDoc: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken
+  ): Promise<vscode.Definition | null | undefined> {
+    const schemaDoc = await getSchemaTextDocument(
+      undefined,
+      cedarTemplateLinksDoc
+    );
+    if (schemaDoc) {
+      const entityTypeRanges = parseCedarTemplateLinksDoc(
+        cedarTemplateLinksDoc
+      ).entityTypes;
+      return findSchemaDefinition(
+        cedarTemplateLinksDoc,
+        position,
+        entityTypeRanges,
+        [],
+        schemaDoc
+      );
+    }
+
+    return null;
+  }
+}
+
+export class CedarAuthDefinitionProvider implements vscode.DefinitionProvider {
+  async provideDefinition(
+    cedarAuthDoc: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken
+  ): Promise<vscode.Definition | null | undefined> {
+    const schemaDoc = await getSchemaTextDocument(undefined, cedarAuthDoc);
+    if (schemaDoc) {
+      const authItem = parseCedarAuthDoc(cedarAuthDoc);
+      const entityTypeRanges = authItem.entityTypes;
+      const actionRanges = authItem.actions;
+      return findSchemaDefinition(
+        cedarAuthDoc,
+        position,
+        entityTypeRanges,
+        actionRanges,
+        schemaDoc
+      );
+    }
+
+    return null;
+  }
+}
+
+export class CedarJsonDefinitionProvider implements vscode.DefinitionProvider {
+  async provideDefinition(
+    cedarJsonDoc: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken
+  ): Promise<vscode.Definition | null | undefined> {
+    const schemaDoc = await getSchemaTextDocument(undefined, cedarJsonDoc);
+    if (schemaDoc) {
+      const authItem = parseCedarJsonPolicyDoc(cedarJsonDoc);
+      const entityTypeRanges = authItem.entityTypes;
+      const actionRanges = authItem.actions;
+      return findSchemaDefinition(
+        cedarJsonDoc,
+        position,
+        entityTypeRanges,
+        actionRanges,
         schemaDoc
       );
     }
@@ -86,7 +166,7 @@ export class CedarSchemaDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaItem = parseCedarDocSchema(schemaDoc);
+    const schemaItem = parseCedarSchemaDoc(schemaDoc);
     const entityTypeRanges = schemaItem.entityTypes;
     const actionRanges = schemaItem.actions;
     return findSchemaDefinition(
@@ -107,7 +187,7 @@ export class CedarDefinitionProvider implements vscode.DefinitionProvider {
   ): Promise<vscode.Definition | null | undefined> {
     const schemaDoc = await getSchemaTextDocument(undefined, cedarDoc);
     if (schemaDoc) {
-      const policyItem = parseCedarDocPolicies(cedarDoc);
+      const policyItem = parseCedarPoliciesDoc(cedarDoc);
       const entityTypeRanges = policyItem.entityTypes;
       const actionRanges = policyItem.actions;
       return findSchemaDefinition(

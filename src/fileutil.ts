@@ -5,15 +5,34 @@ import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { addValidationDiagnosticInfo } from './diagnostics';
 
-export const CEDAR_SCHEMA_FILE = `cedarschema.json`;
-export const CEDAR_SCHEMA_FILE_GLOB = `**/cedarschema.json`;
-/*export*/ const CEDAR_SCHEMA_EXTENSION = `.cedarschema`; // https://github.com/cedar-policy/rfcs/blob/schema-syntax/text/0024-schema-syntax.md
-export const CEDAR_SCHEMA_EXTENSION_JSON = `.cedarschema.json`;
-export const CEDAR_SCHEMA_GLOB = `**/*.cedarschema.json`;
-export const CEDAR_ENTITIES_FILE = `cedarentities.json`;
-export const CEDAR_ENTITIES_FILE_GLOB = `**/cedarentities.json`;
-export const CEDAR_ENTITIES_EXTENSION_JSON = `.cedarentities.json`;
-export const CEDAR_ENTITIES_GLOB = `**/*.cedarentities.json`;
+const CEDAR_SCHEMA_FILE = `cedarschema.json`;
+const CEDAR_SCHEMA_EXTENSION_JSON = `.cedarschema.json`;
+const CEDAR_SCHEMA_EXTENSION = `.cedarschema`; // https://github.com/cedar-policy/rfcs/blob/schema-syntax/text/0024-schema-syntax.md
+export const CEDAR_SCHEMA_GLOB = `{**/cedarschema.json,**/*.cedarschema.json}`;
+
+const CEDAR_ENTITIES_FILE = `cedarentities.json`;
+const CEDAR_ENTITIES_EXTENSION_JSON = `.cedarentities.json`;
+export const CEDAR_ENTITIES_GLOB = `{**/cedarentities.json,**/*.cedarentities.json,**/avpentities.json,**/*.avpentities.json}`;
+
+export const CEDAR_TEMPLATELINKS_GLOB = `{**/cedartemplatelinks.json,**/*.cedartemplatelinks.json,**/cedarlinks.json,**/*.cedarlinks.json}`;
+export const CEDAR_AUTH_GLOB = `{**/cedarauth.json,**/*.cedarauth.json,**/cedarparc.json,**/*.cedarparc.json}`;
+export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
+
+export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
+  const result =
+    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_FILE) ||
+    doc.fileName.endsWith(CEDAR_SCHEMA_EXTENSION_JSON);
+
+  return result;
+};
+
+export const detectEntitiesDoc = (doc: vscode.TextDocument): boolean => {
+  const result =
+    doc.fileName.endsWith(path.sep + CEDAR_ENTITIES_FILE) ||
+    doc.fileName.endsWith(CEDAR_ENTITIES_EXTENSION_JSON);
+
+  return result;
+};
 
 export const findSchemaFilesInFolder = async (filepath: string) => {
   const schemaFiles = [];

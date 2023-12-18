@@ -3,20 +3,17 @@
 
 import * as vscode from 'vscode';
 import * as cedar from 'vscode-cedar-wasm';
-import * as path from 'node:path';
 import {
   addPolicyResultErrors,
   addSyntaxDiagnosticErrors,
   reportFormatterOff,
 } from './diagnostics';
 import {
-  CEDAR_ENTITIES_EXTENSION_JSON,
-  CEDAR_ENTITIES_FILE,
-  CEDAR_SCHEMA_EXTENSION_JSON,
-  CEDAR_SCHEMA_FILE,
   getSchemaTextDocument,
+  detectEntitiesDoc,
+  detectSchemaDoc,
 } from './fileutil';
-import { parseCedarDocPolicies } from './parser';
+import { parseCedarPoliciesDoc } from './parser';
 
 type ValidationCacheItem = {
   version: number;
@@ -92,15 +89,9 @@ export const validateTextDocument = (
   }
   if (doc.languageId === 'cedar') {
     validateCedarDoc(doc, diagnosticCollection);
-  } else if (
-    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_FILE) ||
-    doc.fileName.endsWith(CEDAR_SCHEMA_EXTENSION_JSON)
-  ) {
+  } else if (detectSchemaDoc(doc)) {
     validateSchemaDoc(doc, diagnosticCollection);
-  } else if (
-    doc.fileName.endsWith(path.sep + CEDAR_ENTITIES_FILE) ||
-    doc.fileName.endsWith(CEDAR_ENTITIES_EXTENSION_JSON)
-  ) {
+  } else if (detectEntitiesDoc(doc)) {
     validateEntitiesDoc(doc, diagnosticCollection);
   }
 };
@@ -117,7 +108,6 @@ export const validateCedarDoc = async (
       return Promise.resolve(cachedItem.valid);
     }
   }
-  // console.log(`validateCedarDoc ${cedarDoc.uri.toString()}`);
 
   const diagnostics: vscode.Diagnostic[] = [];
   reportFormatterOff(cedarDoc, diagnostics);
@@ -133,7 +123,7 @@ export const validateCedarDoc = async (
       if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
         validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
 
-        parseCedarDocPolicies(cedarDoc, (policyRange, policyText) => {
+        parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
           const policyResult: cedar.ValidatePolicyResult = cedar.validatePolicy(
             schemaDoc.getText(),
             policyText

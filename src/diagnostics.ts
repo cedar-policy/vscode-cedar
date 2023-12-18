@@ -3,7 +3,7 @@
 
 import * as vscode from 'vscode';
 import * as jsonc from 'jsonc-parser';
-import { parseCedarDocEntities, parseCedarDocSchema } from './parser';
+import { parseCedarEntitiesDoc, parseCedarSchemaDoc } from './parser';
 const SOURCE_CEDAR = 'Cedar';
 export const DEFAULT_RANGE = new vscode.Range(
   new vscode.Position(0, 0),
@@ -126,7 +126,7 @@ const determineRangeFromError = (
     } else if (
       error === 'Entity type `Action` declared in `entityTypes` list.'
     ) {
-      const entityRanges = parseCedarDocSchema(document).entities;
+      const entityRanges = parseCedarSchemaDoc(document).entities;
       for (let entityRange of entityRanges) {
         if (entityRange.etype === 'Action') {
           range = entityRange.etypeRange;
@@ -335,7 +335,7 @@ const handleEntitiesDiagnosticError = (
   }
 
   if (uid) {
-    const entityRanges = parseCedarDocEntities(document).entities;
+    const entityRanges = parseCedarEntitiesDoc(document).entities;
     entityRanges.forEach((entityRange, index) => {
       if (entityRange.uid === uid) {
         const attributeRange = entityRange.attrsNameRanges.hasOwnProperty(

@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:18
 RUN apt-get -y update
 RUN apt-get -y install --fix-missing xvfb 
 RUN apt-get -y install libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm-dev libasound2

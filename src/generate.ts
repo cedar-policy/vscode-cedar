@@ -3,16 +3,25 @@
 
 import { Attributes, CedarSchemaDefinition, Shape } from './cedarschema';
 
-export enum ExportType {
-  // eslint-disable-next-line
+export enum SchemaExportType {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   PlantUML = 'PlantUML',
-  // eslint-disable-next-line
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   Mermaid = 'Mermaid',
 }
+export const schemaExportTypeExtension: Record<
+  keyof typeof SchemaExportType,
+  string
+> = {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  PlantUML: '.puml',
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  Mermaid: '.mmd',
+};
 
 const buildProperties = (
   attributes: Attributes,
-  diagramType: ExportType,
+  diagramType: SchemaExportType,
   prefix: string = ''
 ): string => {
   let properties = '';
@@ -28,13 +37,13 @@ const buildProperties = (
     } else if (attributeType === 'Set') {
       const shapeType = attributes[k].element?.type as String;
       if (shapeType === 'Entity') {
-        if (diagramType === ExportType.Mermaid) {
+        if (diagramType === SchemaExportType.Mermaid) {
           attributeType = `Set~${attributes[k].element?.name}~`;
         } else {
           attributeType = `Set<${attributes[k].element?.name}>`;
         }
       } else {
-        if (diagramType === ExportType.Mermaid) {
+        if (diagramType === SchemaExportType.Mermaid) {
           attributeType = `Set~${shapeType}~`;
         } else {
           attributeType = `Set<${shapeType}>`;
@@ -63,7 +72,7 @@ const buildProperties = (
 export const generateDiagram = (
   diagramFilename: string,
   cedarschema: CedarSchemaDefinition,
-  diagramType: ExportType
+  diagramType: SchemaExportType
 ): string => {
   let dsl = '';
 
@@ -89,7 +98,7 @@ export const generateDiagram = (
             '  '
           );
         }
-        if (diagramType === ExportType.Mermaid) {
+        if (diagramType === SchemaExportType.Mermaid) {
           commonTypesDSL += `class ${name} {\n  <<commonType>>${properties}\n}\n\n`;
         } else {
           commonTypesDSL += `struct ${name} <<commonType>> {${properties}\n}\n\n`;
@@ -110,13 +119,13 @@ export const generateDiagram = (
         properties = buildProperties(attributes, diagramType);
       }
       entityTypesDSLTmp[name] =
-        diagramType === ExportType.Mermaid
+        diagramType === SchemaExportType.Mermaid
           ? `  class ${name} {\n    <<Entity>>${properties}`
           : `  class ${name} <<Entity>> {${properties}`;
 
       if (e?.memberOfTypes) {
         e?.memberOfTypes.forEach((m) => {
-          if (diagramType === ExportType.Mermaid) {
+          if (diagramType === SchemaExportType.Mermaid) {
             membersDSL += `${name} ..> ${m} : memberOf\n`;
           } else {
             membersDSL += `${name} - ${m} : > memberOf\n`;
@@ -124,7 +133,7 @@ export const generateDiagram = (
         });
       }
       if (commonTypes.includes(e?.shape?.type as string)) {
-        if (diagramType === ExportType.Mermaid) {
+        if (diagramType === SchemaExportType.Mermaid) {
           parentsDSL += `${name} ..> ${e?.shape?.type} : shape\n`;
         } else {
           parentsDSL += `${name} -U- ${e?.shape?.type} : > shape\n`;
@@ -138,14 +147,14 @@ export const generateDiagram = (
     Object.keys(cedarschema[namespace].actions).forEach((name) => {
       const a = cedarschema[namespace].actions[name];
       let tmp =
-        diagramType === ExportType.Mermaid
+        diagramType === SchemaExportType.Mermaid
           ? `  class ${name} {\n    <<Action>>`
           : `  class ${name} <<Action>> {`;
 
       if (a.appliesTo?.context?.attributes) {
         const attributes = a.appliesTo.context.attributes;
         let properties = buildProperties(attributes, diagramType);
-        if (diagramType === ExportType.PlantUML) {
+        if (diagramType === SchemaExportType.PlantUML) {
           tmp += '\n    --context--';
         }
         tmp += properties + '\n';
@@ -157,7 +166,7 @@ export const generateDiagram = (
       }
       //tmp += diagramType === ExportType.Mermaid ? `\n  }\n` : `}\n`;
       if (commonTypes.includes(a.appliesTo?.context?.type as string)) {
-        if (diagramType === ExportType.Mermaid) {
+        if (diagramType === SchemaExportType.Mermaid) {
           parentsDSL += `${name} ..> ${a.appliesTo?.context?.type} : context\n`;
         } else {
           parentsDSL += `${name} -U- ${a.appliesTo?.context?.type} : > context\n`;
@@ -167,7 +176,7 @@ export const generateDiagram = (
 
       if (a?.memberOf) {
         a.memberOf.forEach((m) => {
-          if (diagramType === ExportType.Mermaid) {
+          if (diagramType === SchemaExportType.Mermaid) {
             membersDSL += `${name} ..> ${m.id} : memberOf\n`;
           } else {
             membersDSL += `${name} - ${m.id} : > memberOf\n`;
@@ -203,7 +212,7 @@ export const generateDiagram = (
       entityTypesDSL += '}\n\n';
     });
 
-    if (diagramType === ExportType.Mermaid) {
+    if (diagramType === SchemaExportType.Mermaid) {
       dsl += formatMermaid(
         diagramFilename,
         title,

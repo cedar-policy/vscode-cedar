@@ -1,0 +1,66 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Cedar Schema",
+	"patterns": [
+		{
+			"include": "#comment"
+		},
+		{
+			"include": "#keywords"
+		},	
+		{
+			"include": "#sections"
+		},
+		{
+			"include": "#constants"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"comment": {
+			"name": "comment.line.double-slash.cedarschema",
+			"match": "//.*(?=$)"
+		},
+		"sections": {
+			"patterns": [{
+				"name": "keyword.cedarschema",
+				"match": "^\\s*(namespace|type|entity|action)\\b"
+			}]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.cedarschema",
+				"match": "\\b(in|appliesTo)\\b"
+			}]
+		},
+		"types": {
+			"patterns": [{
+				"name": "entity.name.type.cedarschema",
+				"match": "(Boolean|String|Set)"
+			}]
+		},
+		"constants": {
+			"patterns": [{
+				"name": "variable.other.constant.cedarschema",
+				"match": "\\b(principal|resource)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.cedarschema",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.cedarschema",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.cedarschema"
+}
