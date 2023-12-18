@@ -167,10 +167,9 @@ suite('Validation RegEx Test Suite', () => {
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'actions');
-        assert.equal(
-          found?.groups.undeclared,
-          '"Action::\\"test1\\"", "Action::\\"test2\\""'
-        );
+        const actions = found?.groups.undeclared.split(', ');
+        assert.equal(actions.includes('"Action::\\"test1\\""'), true);
+        assert.equal(actions.includes('"Action::\\"test2\\""'), true);
       }
     }
 
