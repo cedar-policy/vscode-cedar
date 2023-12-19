@@ -23,17 +23,19 @@ pub struct ExportPolicyResult {
 
 #[wasm_bindgen(js_name = exportPolicy)]
 pub fn export_policy(input_policy_str: &str) -> ExportPolicyResult {
-  let policy = match Policy::parse(None, input_policy_str) {
-    Ok(policy) => policy,
-    Err(_err) => {
+  let Ok(policy) = Policy::parse(None, input_policy_str) else {
       return ExportPolicyResult {
         success: false,
         json: None,
-      }
-    }
+      };
   };
 
-  let json = policy.to_json().unwrap();
+  let Ok(json) = policy.to_json() else {
+      return ExportPolicyResult {
+        success: false,
+        json: None,
+      };
+  };
 
   ExportPolicyResult {
     success: true,

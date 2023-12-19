@@ -25,7 +25,7 @@ The Visual Studio Code documentation for [JSON schemas and settings](https://cod
   ],
 ```
 
-You can also download theses schema files and change the `url` values to reference your local copies.
+You can also download these schema files and change the `url` values to reference your local copies.
 
 ## Development
 
