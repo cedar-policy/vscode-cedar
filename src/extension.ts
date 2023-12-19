@@ -219,14 +219,22 @@ export async function activate(context: vscode.ExtensionContext) {
         );
         if (results) {
           const cedarDoc = textEditor.document;
-          results.forEach((result) => {
+          results.forEach(async (result) => {
             const exportFilename = cedarDoc.uri.fsPath.replace(
               /\.cedar$/,
               `(${result.label}).cedar.json`
             );
-            exportCedarDocPolicyById(cedarDoc, result.label, exportFilename);
+            const exportJson = await exportCedarDocPolicyById(
+              cedarDoc,
+              result.label,
+              exportFilename
+            );
 
-            if (results.length === 1) {
+            if (!exportJson) {
+              vscode.window.showErrorMessage(
+                `Unable to export Cedar policy: ${result.label}`
+              );
+            } else if (results.length === 1) {
               vscode.commands.executeCommand(
                 'vscode.open',
                 vscode.Uri.file(exportFilename)
