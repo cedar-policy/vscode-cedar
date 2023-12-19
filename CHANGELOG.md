@@ -1,3 +1,9 @@
+## v0.5.4 (Preview) 2023-12-18
+
+- Update to Cedar 2.4.2
+- Add JSON export of Cedar policies
+- Require Visual Studio Code version [1.82](https://code.visualstudio.com/updates/v1_82) or later
+
 ## v0.5.3 (Preview) 2023-10-16
 
 - Update to Cedar 2.4.1

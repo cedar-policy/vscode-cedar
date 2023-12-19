@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$comment": "https://docs.cedarpolicy.com/policies/templates.html",
+  "type": "array",
+  "description": "Each object in this list represents a single template link, and should have three attributes: template_id, link_id, args",
+  "markdownDescription": "Each object in this list represents a single template link, and should have three attributes: `template_id`, `link_id`, `args`",
+  "items": {
+    "type": "object",
+    "properties": {
+      "template_id": {
+        "type": "string",
+        "description": "The id of policy template to link with"
+      },
+      "link_id": {
+        "type": "string",
+        "description": "The id of this template-linked policy"
+      },
+      "args": {
+        "type": "object",
+        "description": "One or both of ?principal and ?resource is required",
+        "markdownDescription": "One or both of `?principal` and `?resource` is required",
+        "properties": {
+          "?principal": {
+            "type": "string",
+            "description": "Exact principal to use for this template-linked policy"
+          },
+          "?resource": {
+            "type": "string",
+            "description": "Exact resource to use for this template-linked policy"
+          }
+        },
+        "anyOf": [
+          {"required": ["?principal"]},
+          {"required": ["?resource"]}
+        ]
+      }
+    },
+    "required": ["template_id", "link_id", "args"],
+    "defaultSnippets": [
+      {
+        "label": "New template link",
+        "body": {
+          "template_id": "$1",
+          "link_id": "$2",
+          "args": {
+            "?principal": "$3::\"$4\"",
+            "?resource": "$5::\"$6\""
+          }
+        }
+      }
+    ]
+  }
+}

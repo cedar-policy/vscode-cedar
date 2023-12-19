@@ -7,6 +7,7 @@ mod syntax_validator;
 mod policy_validator;
 mod schema_validator;
 mod entities_validator;
+mod policy;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.

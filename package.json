@@ -12,11 +12,11 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
-    "vscode": "^1.77.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages",
@@ -54,6 +54,17 @@
       },
       {
         "id": "cedar-injection"
+      },
+      {
+        "id": "cedarschema",
+        "aliases": [
+          "Cedar Schema",
+          "cedar schema"
+        ],
+        "extensions": [
+          ".cedarschema"
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "commands": [
@@ -61,6 +72,11 @@
         "command": "cedar.validate",
         "category": "Cedar",
         "title": "Validate Cedar policy"
+      },
+      {
+        "command": "cedar.export",
+        "category": "Cedar",
+        "title": "Export Cedar policy as JSON"
       },
       {
         "command": "cedar.schemavalidate",
@@ -96,6 +112,11 @@
           "group": "1_modification"
         },
         {
+          "when": "editorLangId == cedar",
+          "command": "cedar.export",
+          "group": "y_commands"
+        },
+        {
           "when": "editorLangId == cedar || resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
           "command": "cedar.schemaopen",
           "group": "navigation"
@@ -119,6 +140,10 @@
       "commandPalette": [
         {
           "command": "cedar.validate",
+          "when": "editorLangId == cedar"
+        },
+        {
+          "command": "cedar.export",
           "when": "editorLangId == cedar"
         },
         {
@@ -151,6 +176,11 @@
         "embeddedLanguages": {
           "meta.embedded.block.cedar": "cedar"
         }
+      },
+      {
+        "language": "cedarschema",
+        "scopeName": "source.cedarschema",
+        "path": "./syntaxes/cedarschema.tmLanguage.json"
       }
     ],
     "snippets": [
@@ -181,7 +211,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js",
+    "test": "vscode-test",
     "package": "vsce package",
     "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",
     "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../.."
@@ -191,16 +221,15 @@
     "vscode-cedar-wasm": "file:vscode-cedar-wasm/pkg"
   },
   "devDependencies": {
-    "@types/glob": "^8.1.0",
-    "@types/mocha": "^10.0.2",
-    "@types/node": "^16.18.58",
-    "@types/vscode": "=1.77.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^18.19.3",
+    "@types/vscode": "=1.82.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
-    "@vscode/test-electron": "^2.3.5",
-    "@vscode/vsce": "^2.21.1",
-    "eslint": "^8.51.0",
-    "glob": "^8.1.0",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.56.0",
     "js-yaml": "^4.1.0",
     "mocha": "^10.2.0",
     "typescript": "^4.9.5"

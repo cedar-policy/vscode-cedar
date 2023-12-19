@@ -3,6 +3,7 @@
 
 // strings need to match commands in package.json
 export const COMMAND_CEDAR_VALIDATE = 'cedar.validate';
+export const COMMAND_CEDAR_EXPORT = 'cedar.export';
 export const COMMAND_CEDAR_SCHEMAVALIDATE = 'cedar.schemavalidate';
 export const COMMAND_CEDAR_SCHEMAEXPORT = 'cedar.schemaexport';
 export const COMMAND_CEDAR_SCHEMAOPEN = 'cedar.schemaopen';

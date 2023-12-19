@@ -106,6 +106,20 @@ when
   });
 });
 
+suite('Cedar WASM export Suite', () => {
+  test('exportPolicies', async () => {
+    const rawPolicy = `permit (
+  principal == User::"bob",
+  action == Action::"view",
+  resource == Album::"trip"
+)
+when { principal.age > 18 };`;
+    const result: cedar.ExportPolicyResult = cedar.exportPolicy(rawPolicy);
+    assert.equal(result.success, true);
+    result.free();
+  });
+});
+
 suite('Cedar WASM validate Suite', () => {
   test('validate_syntax_passes_1_policy', async () => {
     const policy = 'permit(principal, action, resource);';
