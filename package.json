@@ -29,6 +29,7 @@
   ],
   "activationEvents": [
     "workspaceContains:**/*.cedar",
+    "workspaceContains:**/*.cedar.json",
     "workspaceContains:**/*.cedarschema.json",
     "workspaceContains:**/cedarschema.json",
     "workspaceContains:**/*.cedarentities.json",
@@ -72,6 +73,11 @@
         "command": "cedar.validate",
         "category": "Cedar",
         "title": "Validate Cedar policy"
+      },
+      {
+        "command": "cedar.activate",
+        "category": "Cedar",
+        "title": "Activate Cedar extension"
       },
       {
         "command": "cedar.export",
@@ -138,6 +144,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "cedar.activate",
+          "when": "!cedar.activated"
+        },
         {
           "command": "cedar.validate",
           "when": "editorLangId == cedar"
