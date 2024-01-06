@@ -3,11 +3,11 @@
 
 export const ENTITY_REGEX = /(?<type>.+)::"(?<id>.+)"/;
 export const EFFECT_ENTITY_REGEX =
-  /(principal|resource)\s+(==|in)\s+(?<type>.+?)::"/g;
-export const EFFECT_ACTION_REGEX = /\bAction::"(?<id>.+?)"/g;
+  /(principal|resource)\s+(==|in)(\s|\[)+(?<type>.+?)::"/g;
+export const EFFECT_ACTION_REGEX =
+  /\b(?<type>([^\s]+::Action|Action))::"(?<id>.+?)"/g;
 
 // parses out start / end characters from Cedar validator
-//export const FOUND_AT_REGEX = /found at (?<start>(\d)+)(:)?(?<end>(\d)+)?\n/;
 export const PARSE_ERROR_SCHEMA_REGEX =
   /(P|p)arse error in (?<type>(entity type|common type|namespace))( identifier)?: /;
 export const AT_LINE_SCHEMA_REGEX =

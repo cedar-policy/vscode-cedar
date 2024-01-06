@@ -162,8 +162,9 @@ export class CedarSchemaDocumentSymbolProvider
     try {
       const symbols: vscode.DocumentSymbol[] = [];
 
-      const entityRanges = parseCedarSchemaDoc(cedarSchemaDoc).entities;
-      entityRanges.forEach((entityRange, index) => {
+      const definitionRanges =
+        parseCedarSchemaDoc(cedarSchemaDoc).definitionRanges;
+      definitionRanges.forEach((entityRange, index) => {
         symbols.push(
           new vscode.DocumentSymbol(
             entityRange.etype,

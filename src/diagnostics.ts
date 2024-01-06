@@ -14,7 +14,6 @@ import {
   EXPECTED_ATTR_REGEX,
   MISMATCH_ATTR_REGEX,
   OFFSET_POLICY_REGEX,
-  //FOUND_AT_REGEX,
   AT_LINE_SCHEMA_REGEX,
   UNDECLARED_REGEX,
   UNRECOGNIZED_REGEX,
@@ -126,10 +125,13 @@ const determineRangeFromError = (
     } else if (
       error === 'Entity type `Action` declared in `entityTypes` list.'
     ) {
-      const entityRanges = parseCedarSchemaDoc(document).entities;
-      for (let entityRange of entityRanges) {
-        if (entityRange.etype === 'Action') {
-          range = entityRange.etypeRange;
+      const definitionRanges = parseCedarSchemaDoc(document).definitionRanges;
+      for (let definitionRange of definitionRanges) {
+        if (
+          definitionRange.etype === 'Action' ||
+          definitionRange.etype.endsWith('::Action')
+        ) {
+          range = definitionRange.etypeRange;
           break;
         }
       }
