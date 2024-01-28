@@ -193,12 +193,6 @@
         "path": "./syntaxes/cedarschema.tmLanguage.json"
       }
     ],
-    "snippets": [
-      {
-        "language": "cedar",
-        "path": "./snippets.json"
-      }
-    ],
     "configuration": {
       "title": "Cedar",
       "properties": {

@@ -4,11 +4,7 @@
 import * as vscode from 'vscode';
 import * as jsonc from 'jsonc-parser';
 import { DEFAULT_RANGE } from './diagnostics';
-import {
-  EFFECT_ACTION_REGEX,
-  EFFECT_ENTITY_REGEX,
-  ENTITY_REGEX,
-} from './regex';
+import { ENTITY_REGEXG } from './regex';
 
 /*
  * see https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide
@@ -77,11 +73,13 @@ type PolicyCacheItem = {
   tokens: vscode.SemanticTokens;
   referencedTypes: ReferencedRange[];
   actionIds: ReferencedRange[];
+  annotations: Set<String>;
 };
 
 const policyCache: Record<string, PolicyCacheItem> = {};
 
-const ID_ATTR = /@id\("(?<id>(.+))"\)/;
+const ID_ANNOTATION = /@id\("(?<id>(.+))"\)/;
+const ANNOTATION = /@(?<name>[_a-zA-Z][_a-zA-Z0-9]*)\(".*"\)/;
 
 export const parseCedarPoliciesDoc = (
   cedarDoc: vscode.TextDocument,
@@ -101,6 +99,7 @@ export const parseCedarPoliciesDoc = (
   const policies: PolicyRange[] = [];
   const referencedTypes: ReferencedRange[] = [];
   const actionIds: ReferencedRange[] = [];
+  const annotations = new Set<String>(['id']);
   let count = 0;
   let id: string | null = null;
   const tokensBuilder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
@@ -111,10 +110,16 @@ export const parseCedarPoliciesDoc = (
   for (let i = 0; i < cedarDoc.lineCount; i++) {
     const textLine = cedarDoc.lineAt(i).text;
     const trimmed = textLine.trim();
-    if (id === null && trimmed.startsWith('@id(')) {
-      const found = trimmed.match(ID_ATTR);
+    if (id === null && trimmed.startsWith('@')) {
+      let found = trimmed.match(ID_ANNOTATION);
       if (found?.groups) {
         id = found.groups.id;
+      } else {
+        found = trimmed.match(ANNOTATION);
+        if (found?.groups && found?.groups.name) {
+          // collect annotation names for completion items
+          annotations.add(found.groups.name);
+        }
       }
     }
     if (trimmed.startsWith('permit') || trimmed.startsWith('forbid')) {
@@ -141,38 +146,33 @@ export const parseCedarPoliciesDoc = (
       0,
       commentPos > -1 ? commentPos : textLine.length
     );
-    let foundArray = [...linePreComment.matchAll(EFFECT_ENTITY_REGEX)];
-    foundArray.forEach((found) => {
-      if (found && found?.groups) {
-        const type = found?.groups.type;
-        const startCharacter =
-          linePreComment.indexOf(type + '::"', found.index) || 0;
-        referencedTypes.push({
-          name: type,
-          range: determineDefinitionRange(
-            type,
-            i,
-            startCharacter - 1,
-            type.length + 1
-          ),
-        });
-      }
-    });
 
-    foundArray = [...linePreComment.matchAll(EFFECT_ACTION_REGEX)];
+    let foundArray = [...linePreComment.matchAll(ENTITY_REGEXG)];
     foundArray.forEach((found) => {
       if (found && found?.groups) {
-        const id = found?.groups.id;
         const type = found?.groups.type;
-        const startCharacter =
-          linePreComment.indexOf(`"${id}"`, found.index) || 0;
-        actionIds.push({
-          name: `${type}::"${id}"`,
-          range: new vscode.Range(
-            new vscode.Position(i, startCharacter + 1),
-            new vscode.Position(i, startCharacter + id.length + 1)
-          ),
-        });
+        if (type === 'Action' || type.endsWith('::Action')) {
+          const id = found?.groups.id;
+          const startCharacter =
+            linePreComment.indexOf(`"${id}"`, found.index) || 0;
+          actionIds.push({
+            name: `${type}::"${id}"`,
+            range: new vscode.Range(
+              new vscode.Position(i, startCharacter + 1),
+              new vscode.Position(i, startCharacter + 1 + id.length)
+            ),
+          });
+        } else {
+          referencedTypes.push({
+            name: type,
+            range: determineDefinitionRange(
+              type,
+              i,
+              (found.index as number) - 1,
+              type.length + 1
+            ),
+          });
+        }
       }
     });
 
@@ -204,6 +204,7 @@ export const parseCedarPoliciesDoc = (
     tokens: tokensBuilder.build(),
     referencedTypes: referencedTypes,
     actionIds: actionIds,
+    annotations: annotations,
   };
   policyCache[cedarDoc.uri.toString()] = cachedItem;
 
@@ -566,24 +567,26 @@ export const parseCedarEntitiesDoc = (
         (jsonPathLen === 3 && pathSupplier()[1] === PARENTS)
       ) {
         uid = value;
-        let found = uid.match(ENTITY_REGEX);
-        if (found?.groups) {
-          const type = found?.groups.type;
-          const typeRange = new vscode.Range(
-            new vscode.Position(startLine, startCharacter + 1),
-            new vscode.Position(startLine, startCharacter + type.length + 1)
-          );
-          tokensBuilder.push(typeRange, TYPE, []);
-          referencedTypes.push({
-            name: type,
-            range: determineDefinitionRange(
-              type,
-              startLine,
-              startCharacter,
-              type.length + 1
-            ),
-          });
-        }
+        let foundArray = [...uid.matchAll(ENTITY_REGEXG)];
+        foundArray.forEach((found) => {
+          if (found?.groups) {
+            const type = found?.groups.type;
+            const typeRange = new vscode.Range(
+              new vscode.Position(startLine, startCharacter + 1),
+              new vscode.Position(startLine, startCharacter + type.length + 1)
+            );
+            tokensBuilder.push(typeRange, TYPE, []);
+            referencedTypes.push({
+              name: type,
+              range: determineDefinitionRange(
+                type,
+                startLine,
+                startCharacter,
+                type.length + 1
+              ),
+            });
+          }
+        });
       }
 
       if (
@@ -708,24 +711,26 @@ export const parseCedarTemplateLinksDoc = (
       if (pathSupplier()[1] === 'link_id') {
         linkId = value;
       } else if (pathSupplier()[1] === 'args' && jsonPathLen === 3) {
-        let found = value.match(ENTITY_REGEX);
-        if (found?.groups) {
-          const type = found?.groups.type;
-          const typeRange = new vscode.Range(
-            new vscode.Position(startLine, startCharacter + 1),
-            new vscode.Position(startLine, startCharacter + type.length + 1)
-          );
-          tokensBuilder.push(typeRange, 'type', []);
-          referencedTypes.push({
-            name: type,
-            range: determineDefinitionRange(
-              type,
-              startLine,
-              startCharacter,
-              type.length + 1
-            ),
-          });
-        }
+        let foundArray = [...value.matchAll(ENTITY_REGEXG)];
+        foundArray.forEach((found) => {
+          if (found?.groups) {
+            const type = found?.groups.type;
+            const typeRange = new vscode.Range(
+              new vscode.Position(startLine, startCharacter + 1),
+              new vscode.Position(startLine, startCharacter + type.length + 1)
+            );
+            tokensBuilder.push(typeRange, 'type', []);
+            referencedTypes.push({
+              name: type,
+              range: determineDefinitionRange(
+                type,
+                startLine,
+                startCharacter,
+                type.length + 1
+              ),
+            });
+          }
+        });
       }
     },
     onObjectProperty(
@@ -817,42 +822,44 @@ export const parseCedarAuthDoc = (
         ['principal', 'action', 'resource'].includes(property) &&
         jsonPathLen === 1
       ) {
-        let found = value.match(ENTITY_REGEX);
-        if (found?.groups) {
-          const type = found?.groups.type;
-          const typeRange = new vscode.Range(
-            new vscode.Position(startLine, startCharacter + 1),
-            new vscode.Position(startLine, startCharacter + type.length + 1)
-          );
-          tokensBuilder.push(typeRange, 'type', []);
+        let foundArray = [...value.matchAll(ENTITY_REGEXG)];
+        foundArray.forEach((found) => {
+          if (found?.groups) {
+            const type = found?.groups.type;
+            const typeRange = new vscode.Range(
+              new vscode.Position(startLine, startCharacter + 1),
+              new vscode.Position(startLine, startCharacter + type.length + 1)
+            );
+            tokensBuilder.push(typeRange, 'type', []);
 
-          if (property === 'action') {
-            const actionId = found?.groups.id;
-            const pos = value.lastIndexOf(actionId);
-            if (pos > -1) {
-              actionIds.push({
-                name: value,
-                range: new vscode.Range(
-                  new vscode.Position(startLine, startCharacter + pos + 2),
-                  new vscode.Position(
-                    startLine,
-                    startCharacter + pos + 2 + actionId.length
-                  )
+            if (property === 'action') {
+              const actionId = found?.groups.id;
+              const pos = value.lastIndexOf(actionId);
+              if (pos > -1) {
+                actionIds.push({
+                  name: value,
+                  range: new vscode.Range(
+                    new vscode.Position(startLine, startCharacter + pos + 2),
+                    new vscode.Position(
+                      startLine,
+                      startCharacter + pos + 2 + actionId.length
+                    )
+                  ),
+                });
+              }
+            } else {
+              referencedTypes.push({
+                name: type,
+                range: determineDefinitionRange(
+                  type,
+                  startLine,
+                  startCharacter,
+                  type.length + 1
                 ),
               });
             }
-          } else {
-            referencedTypes.push({
-              name: type,
-              range: determineDefinitionRange(
-                type,
-                startLine,
-                startCharacter,
-                type.length + 1
-              ),
-            });
           }
-        }
+        });
       }
     },
     onObjectProperty(
@@ -898,7 +905,7 @@ export const authTokensProvider: vscode.DocumentSemanticTokensProvider = {
 
 // Cedar schema
 
-const PRIMITIVE_TYPES = [
+export const PRIMITIVE_TYPES = [
   'String',
   'Long',
   'Boolean',
@@ -916,12 +923,18 @@ export type SchemaRange = {
   symbol: vscode.SymbolKind;
 };
 
+type SchemaCompletionData = {
+  description: string;
+  children?: SchemaCompletionRecord;
+};
+export type SchemaCompletionRecord = Record<string, SchemaCompletionData>;
 type SchemaCacheItem = {
   version: number;
   definitionRanges: SchemaRange[];
   tokens: vscode.SemanticTokens;
   referencedTypes: ReferencedRange[];
   actionIds: ReferencedRange[];
+  completions: Record<string, SchemaCompletionRecord>;
 };
 
 const schemaCache: Record<string, SchemaCacheItem> = {};
@@ -944,6 +957,7 @@ export const parseCedarSchemaDoc = (
   const definitionRanges: SchemaRange[] = [];
   const referencedTypes: ReferencedRange[] = [];
   const actionIds: ReferencedRange[] = [];
+  const completions: Record<string, SchemaCompletionRecord> = {};
 
   let namespace: string = '';
   let collection: 'commonTypes' | 'entityTypes' | 'actions' = 'entityTypes';
@@ -956,6 +970,42 @@ export const parseCedarSchemaDoc = (
     type: '',
     range: null,
   };
+  let tmpAttribute: {
+    key: string;
+    type: string;
+    element: string;
+    range: vscode.Range | null;
+  } = {
+    key: '',
+    type: '',
+    element: '',
+    range: null,
+  };
+
+  let tmpSchemaCompletionRecord: SchemaCompletionRecord = {};
+  const tmpSchemaCompletionRecordStack: Array<SchemaCompletionRecord> = [];
+  const tmpAttributeDepthStack: Array<number> = [];
+  function captureAttribute(value: string) {
+    tmpSchemaCompletionRecord[tmpAttribute.key] = { description: value };
+    tmpSchemaCompletionRecord[tmpAttribute.key] = { description: value };
+
+    if (value === 'Record') {
+      const children: SchemaCompletionRecord = {};
+      tmpSchemaCompletionRecord[tmpAttribute.key].children = children;
+      tmpSchemaCompletionRecordStack.push(tmpSchemaCompletionRecord);
+      tmpSchemaCompletionRecord = children;
+
+      tmpAttributeDepthStack.push(depth);
+    }
+
+    tmpAttribute = {
+      key: '',
+      type: '',
+      element: '',
+      range: null,
+    };
+  }
+
   let depth = 0;
   let symbol = vscode.SymbolKind.Class;
   const tokensBuilder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
@@ -965,8 +1015,17 @@ export const parseCedarSchemaDoc = (
       depth++;
     },
     onObjectEnd(offset, length, startLine, startCharacter) {
+      if (tmpAttributeDepthStack.length) {
+        if (tmpAttributeDepthStack.at(-1) === depth) {
+          tmpAttributeDepthStack.pop();
+          tmpSchemaCompletionRecord =
+            tmpSchemaCompletionRecordStack.pop() as SchemaCompletionRecord;
+        }
+      }
       depth--;
       if (depth === 3) {
+        completions[etype] = tmpSchemaCompletionRecord;
+        tmpSchemaCompletionRecord = {};
         etypeEnd = new vscode.Position(startLine, startCharacter + length);
         if (etypeStart && etypeEnd && etypeRange) {
           const schemaRange: SchemaRange = {
@@ -1010,6 +1069,8 @@ export const parseCedarSchemaDoc = (
       if (jsonPathLen === 0) {
         if (property) {
           namespace = property + '::';
+        } else {
+          namespace = '';
         }
         tokensBuilder.push(range, 'namespace', ['declaration']);
       } else if (jsonPathLen === 2) {
@@ -1038,6 +1099,8 @@ export const parseCedarSchemaDoc = (
       } else if (pathSupplier()[jsonPathLen - 1] === 'attributes') {
         // anything directly under "attributes" is an property declaration
         tokensBuilder.push(range, 'property', ['declaration']);
+
+        tmpAttribute.key = property;
       }
     },
     onLiteralValue(
@@ -1122,6 +1185,26 @@ export const parseCedarSchemaDoc = (
             ),
           });
         }
+        if (pathSupplier()[jsonPathLen - 3] === 'attributes') {
+          tmpAttribute.type = value;
+          if (!['Set', 'Entity', 'Extension'].includes(value)) {
+            captureAttribute(value);
+          }
+        } else if (pathSupplier()[jsonPathLen - 2] === 'element') {
+          if (value !== 'Entity') {
+            tmpAttribute.element = value;
+            // 'type' under 'element' indicates parent is a Set
+            captureAttribute(`Set<${value}>`);
+          }
+        } else if (pathSupplier()[jsonPathLen - 2] === 'shape') {
+          if (value !== 'Record') {
+            const attributes = completions[ensureNamespace(value, namespace)];
+            Object.keys(attributes).forEach((key) => {
+              tmpAttribute.key = key;
+              captureAttribute(attributes[key].description);
+            });
+          }
+        }
       } else if (pathSupplier()[jsonPathLen - 1] === 'name') {
         // anything directly under "name" is (probably) a type
         if (value === 'ipaddr' || value === 'decimal') {
@@ -1138,6 +1221,17 @@ export const parseCedarSchemaDoc = (
             ),
           });
         }
+        if (pathSupplier()[jsonPathLen - 2] === 'element') {
+          tmpAttribute.element = ensureNamespace(value, namespace);
+          // 'type' under 'element' indicates parent is a Set of Entity
+          captureAttribute(`Set<${tmpAttribute.element}>`);
+        } else if (pathSupplier()[jsonPathLen - 3] === 'attributes') {
+          if (value === 'ipaddr' || value === 'decimal') {
+            captureAttribute(value);
+          } else {
+            captureAttribute(ensureNamespace(value, namespace));
+          }
+        }
       }
     },
   });
@@ -1148,10 +1242,37 @@ export const parseCedarSchemaDoc = (
     tokens: tokensBuilder.build(),
     referencedTypes: referencedTypes,
     actionIds: actionIds,
+    completions: completions,
   };
   schemaCache[schemaDoc.uri.toString()] = cachedItem;
 
   return cachedItem;
+};
+
+export const traversePropertyChain = (
+  completions: Record<string, SchemaCompletionRecord>,
+  properties: string[],
+  entityType: string
+): { lastType: string; completion: SchemaCompletionRecord | undefined } => {
+  let lastType = '';
+  let completion: SchemaCompletionRecord | undefined = completions[entityType];
+  for (let i = 1; i < properties.length; i++) {
+    if (completion && completion[properties[i]]) {
+      lastType = completion[properties[i]].description;
+      if (completion[properties[i]].children) {
+        // Record attributes
+        completion = completion[properties[i]].children;
+      } else {
+        // common type or entity type
+        completion = completions[completion[properties[i]].description];
+      }
+    } else {
+      completion = undefined;
+      lastType = '';
+    }
+  }
+
+  return { lastType, completion };
 };
 
 export const schemaTokensProvider: vscode.DocumentSemanticTokensProvider = {

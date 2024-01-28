@@ -8,7 +8,6 @@ import {
   generateDiagram,
   schemaExportTypeExtension,
 } from './generate';
-import { HOVER_HELP_DEFINITIONS } from './help';
 import {
   handleWillDeleteFiles,
   handleDidRenameFiles,
@@ -65,6 +64,8 @@ import {
   cedarJsonTokensProvider,
 } from './parser';
 import { exportCedarDocPolicyById, getPolicyQuickPickItems } from './policy';
+import { CedarCompletionItemProvider } from './completion';
+import { CedarHoverProvider } from './hover';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -85,19 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
    */
 
   context.subscriptions.push(
-    vscode.languages.registerHoverProvider('cedar', {
-      provideHover(document, position, token) {
-        const word = document.getText(
-          document.getWordRangeAtPosition(position)
-        );
-
-        if (HOVER_HELP_DEFINITIONS[word]) {
-          return {
-            contents: HOVER_HELP_DEFINITIONS[word],
-          };
-        }
-      },
-    })
+    vscode.languages.registerHoverProvider('cedar', new CedarHoverProvider())
   );
 
   context.subscriptions.push(
@@ -128,6 +117,17 @@ export async function activate(context: vscode.ExtensionContext) {
       { language: 'cedar' },
       cedarTokensProvider,
       semanticTokensLegend
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      { language: 'cedar' },
+      new CedarCompletionItemProvider(),
+      '.', // functions
+      ':', // entities
+      '@', // annotations
+      '?' // templates
     )
   );
 

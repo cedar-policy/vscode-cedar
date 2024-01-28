@@ -19,10 +19,17 @@ type ValidationCacheItem = {
   version: number;
   valid: boolean;
 };
+type EntityTypesCacheItem = {
+  version: number;
+  principals: string[];
+  resources: string[];
+  actions: string[];
+};
 
 class ValidationCache {
   docsBySchema: Record<string, Set<string>> = {};
   cache: Record<string, ValidationCacheItem> = {};
+  entityTypes: Record<string, EntityTypesCacheItem> = {};
   constructor() {}
 
   check(doc: vscode.TextDocument): ValidationCacheItem | null {
@@ -41,9 +48,54 @@ class ValidationCache {
     };
   }
 
+  storeEntityTypes(
+    schemaDoc: vscode.TextDocument,
+    principals: string[],
+    resources: string[],
+    actions: string[]
+  ) {
+    this.entityTypes[schemaDoc.uri.toString()] = {
+      version: schemaDoc.version,
+      principals: principals,
+      resources: resources,
+      actions: actions,
+    };
+  }
+
+  checkEntityTypes(
+    schemaDoc: vscode.TextDocument
+  ): EntityTypesCacheItem | null {
+    const cachedItem = this.entityTypes[schemaDoc.uri.toString()];
+    if (cachedItem && cachedItem.version === schemaDoc.version) {
+      return cachedItem;
+    }
+
+    return null;
+  }
+
+  fetchEntityTypes(schemaDoc: vscode.TextDocument): {
+    principals: string[];
+    resources: string[];
+    actions: string[];
+  } {
+    const cachedItem = this.checkEntityTypes(schemaDoc);
+    return cachedItem
+      ? {
+          principals: cachedItem.principals,
+          resources: cachedItem.resources,
+          actions: cachedItem.actions,
+        }
+      : {
+          principals: [],
+          resources: [],
+          actions: [],
+        };
+  }
+
   clear() {
     this.cache = {};
     this.docsBySchema = {};
+    this.entityTypes = {};
   }
 
   associateSchemaWithDoc(
@@ -77,6 +129,25 @@ class ValidationCache {
 const validationCache = new ValidationCache();
 export const clearValidationCache = () => {
   validationCache.clear();
+};
+export const narrowEntityTypes = (
+  schemaDoc: vscode.TextDocument,
+  scope: string
+): string[] => {
+  const { principals, resources, actions } =
+    validationCache.fetchEntityTypes(schemaDoc);
+  let entities: string[] = [];
+  if (scope === 'principal') {
+    entities = principals;
+  } else if (scope === 'resource') {
+    entities = resources;
+  } else if (['context', 'action'].includes(scope)) {
+    entities = actions;
+  } else {
+    const pos = scope.lastIndexOf('::');
+    entities = [scope.substring(0, pos)];
+  }
+  return entities;
 };
 
 export const validateTextDocument = (
@@ -178,6 +249,17 @@ export const validateSchemaDoc = (
     // reset any errors for the schema from a previous validateSchema
     diagnosticCollection.delete(schemaDoc.uri);
 
+    // determine applicable principal and resource types
+    const principalTypes = determineEntityTypes(schemaDoc, 'principal');
+    const resourceTypes = determineEntityTypes(schemaDoc, 'resource');
+    const actionIds = determineEntityTypes(schemaDoc, 'action');
+    validationCache.storeEntityTypes(
+      schemaDoc,
+      principalTypes,
+      resourceTypes,
+      actionIds
+    );
+
     // revalidate any Cedar files using this schema
     validationCache.revalidateSchema(schemaDoc, diagnosticCollection);
   }
@@ -186,6 +268,38 @@ export const validateSchemaDoc = (
   validationCache.store(schemaDoc, success);
 
   return success;
+};
+
+// TODO: find a real API to call for determineEntityTypes
+// parsing errors from intentionally invalid policy is an ugly hack
+const UNEXPECTED_REGEX =
+  /Unexpected type. Expected {"type":"Boolean"} but saw {"type":"Entity","name":"(?<suggestion>.+)"}/;
+const ATTRIBUTE_REGEX =
+  /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
+export const determineEntityTypes = (
+  schemaDoc: vscode.TextDocument,
+  scope: 'principal' | 'resource' | 'action'
+): string[] => {
+  const types: string[] = [];
+  const expr = scope === 'action' ? 'context.__vscode__' : scope;
+  const policyResult: cedar.ValidatePolicyResult = cedar.validatePolicy(
+    schemaDoc.getText(),
+    `permit (principal, action, resource) when { ${expr} };`
+  );
+  if (policyResult.success === false && policyResult.errors) {
+    policyResult.errors.forEach((e) => {
+      let found =
+        scope === 'action'
+          ? e.match(ATTRIBUTE_REGEX)
+          : e.match(UNEXPECTED_REGEX);
+
+      if (found?.groups && found?.groups.suggestion) {
+        types.push(found.groups.suggestion);
+      }
+    });
+  }
+  policyResult.free();
+  return types;
 };
 
 export const validateEntitiesDoc = async (
