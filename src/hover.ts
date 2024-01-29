@@ -125,7 +125,6 @@ export class CedarHoverProvider implements vscode.HoverProvider {
         const lineIncludingWord = document.getText(
           new vscode.Range(new vscode.Position(range.start.line, 0), range.end)
         );
-        console.log(lineIncludingWord);
         let found = lineIncludingWord
           .replaceAll(' has ', '.')
           .match(PROPERTY_CHAIN_REGEX);
