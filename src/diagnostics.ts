@@ -375,8 +375,10 @@ export const addSyntaxDiagnosticErrors = (
   // create an error for each of the syntax validator errors
   errors.forEach((vse) => {
     let e = vse.message;
-    // entities deserialization error: Attribute "subjects" on PhotoApp::Photo2::"Judges.jpg" shouldn't exist according to the schema
-    if (e.startsWith('entities deserialization error')) {
+    if (
+      e.startsWith('entity does not conform to the schema') ||
+      e.startsWith('error during entity deserialization')
+    ) {
       e = e.substring(e.indexOf(': ') + 2);
 
       if (handleEntitiesDiagnosticError(diagnostics, document, e)) {

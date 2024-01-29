@@ -273,7 +273,7 @@ export const validateSchemaDoc = (
 // TODO: find a real API to call for determineEntityTypes
 // parsing errors from intentionally invalid policy is an ugly hack
 const UNEXPECTED_REGEX =
-  /Unexpected type. Expected {"type":"Boolean"} but saw {"type":"Entity","name":"(?<suggestion>.+)"}/;
+  /unexpected type. expected {"type":"Boolean"} but saw {"type":"Entity","name":"(?<suggestion>.+)"}/;
 const ATTRIBUTE_REGEX =
   /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
 export const determineEntityTypes = (
