@@ -87,9 +87,10 @@ const determineRangeFromError = (
 ): { error: string; range: vscode.Range } => {
   let error = vse.message;
   let range = DEFAULT_RANGE;
-  if (vse.offset > 0 && vse.length > 0) {
+  if (vse.offset > 0) {
     const startCharacter = vse.offset;
-    const endCharacter = vse.offset + vse.length;
+    // "invalid token" is 0 length, make range at least 1 character
+    const endCharacter = vse.offset + Math.max(vse.length, 1);
     let lineStart = 0;
     // not efficient, but Cedar policies are small
     for (let i = 0; i < document.lineCount; i++) {
