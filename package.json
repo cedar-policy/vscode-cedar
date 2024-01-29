@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -221,18 +221,18 @@
     "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../.."
   },
   "dependencies": {
-    "jsonc-parser": "^3.2.0",
+    "jsonc-parser": "^3.2.1",
     "vscode-cedar-wasm": "file:vscode-cedar-wasm/pkg"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
-    "@types/node": "^18.19.4",
+    "@types/node": "^18.19.10",
     "@types/vscode": "=1.82.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.8",
-    "@vscode/vsce": "^2.22.0",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^2.23.0",
     "eslint": "^8.56.0",
     "js-yaml": "^4.1.0",
     "mocha": "^10.2.0",
