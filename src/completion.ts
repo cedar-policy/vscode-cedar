@@ -275,7 +275,6 @@ const provideCedarPeriodTriggerItems = async (
   let found = linePrefix.match(PROPERTY_CHAIN_REGEX);
   if (found?.groups) {
     const properties = splitPropertyChain(found[0]);
-    console.log(properties);
     const schemaDoc = await getSchemaTextDocument(undefined, document);
     if (schemaDoc) {
       let entities = narrowEntityTypes(schemaDoc, properties[0]);
