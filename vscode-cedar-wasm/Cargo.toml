@@ -38,6 +38,9 @@ miette = "5.10.0"
 [dev-dependencies]
 wasm-bindgen-test = "0.3.36"
 
+[build-dependencies]
+cargo-lock = "8.0.2"
+
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
