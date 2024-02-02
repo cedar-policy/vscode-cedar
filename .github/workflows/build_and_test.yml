@@ -18,6 +18,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+      - name: Install XVFB for testing with VS Code
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install --fix-missing xvfb 
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
