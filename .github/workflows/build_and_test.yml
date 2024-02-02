@@ -21,7 +21,8 @@ jobs:
       - name: Install XVFB for testing with VS Code
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install --fix-missing xvfb 
+          sudo apt-get -y install --fix-missing xvfb
+          sudo apt-get -y install libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm-dev libasound2
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
@@ -32,4 +33,4 @@ jobs:
           npm run wasm-build
           npm run compile
       - name: Test
-        run: npm run test
+        run: xvfb-run -a npm run test
