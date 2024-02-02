@@ -1,0 +1,31 @@
+name: Build and Test
+ 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+ 
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install Node 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Update rust and install wasm-pack
+        run: |
+          rustup update stable && rustup default stable
+          npm install -g wasm-pack
+      - name: Build
+        run: |
+          npm install
+          npm run wasm-build
+          npm run compile
+      - name: Test
+        run: npm run test
