@@ -80,6 +80,11 @@
         "title": "Activate Cedar extension"
       },
       {
+        "command": "cedar.about",
+        "category": "Cedar",
+        "title": "About Cedar extension"
+      },
+      {
         "command": "cedar.export",
         "category": "Cedar",
         "title": "Export Cedar policy as JSON"

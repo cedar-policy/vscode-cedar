@@ -30,6 +30,7 @@ import {
 } from './validate';
 import { CedarSchemaJSONQuickFix, CedarQuickFix } from './quickfix';
 import {
+  COMMAND_CEDAR_ABOUT,
   COMMAND_CEDAR_ACTIVATE,
   COMMAND_CEDAR_CLEARPROBLEMS,
   COMMAND_CEDAR_ENTITIESVALIDATE,
@@ -66,6 +67,7 @@ import {
 import { exportCedarDocPolicyById, getPolicyQuickPickItems } from './policy';
 import { CedarCompletionItemProvider } from './completion';
 import { CedarHoverProvider } from './hover';
+import { aboutExtension } from './about';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -190,7 +192,11 @@ export async function activate(context: vscode.ExtensionContext) {
   /*
    * vscode commands
    */
-
+  context.subscriptions.push(
+    vscode.commands.registerCommand(COMMAND_CEDAR_ABOUT, (args: any[]) => {
+      aboutExtension();
+    })
+  );
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(
       COMMAND_CEDAR_ACTIVATE,
