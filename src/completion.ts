@@ -100,7 +100,9 @@ const createDecimalItems = (
 
 const ENTITY_REGEX = /(?:\s|=|\[|\()(?<entity>(?:[_a-zA-Z][_a-zA-Z0-9]*::)+)$/;
 const SCOPE_REGEX =
-  /(?<element>(principal|action|resource))(\s*==\s*|\s+in\s+\[?)(?<trigger>.?)$/;
+  /(?<element>(principal|action|resource))(\s*==\s*|(\s+is\s+([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)?\s+in\s+\[?)(?<trigger>.?)$/;
+const IS_REGEX =
+  /\b(?<!\.)(?<element>(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*::"(?<id>([^"]*))"|principal|resource))\s+is\s+(?<trigger>.?)$/;
 
 export const splitPropertyChain = (property: string) => {
   const parts: string[] = [];
@@ -517,13 +519,19 @@ const provideCedarInvokeCompletionItems = async (
     }
   }
 
-  let found = linePrefix.match(SCOPE_REGEX);
+  let typeOnly = false;
+  let found = linePrefix.match(IS_REGEX);
+  if (found) {
+    typeOnly = true;
+  } else {
+    found = linePrefix.match(SCOPE_REGEX);
+  }
   if (found?.groups) {
     const element = found?.groups.element;
     const trigger = found?.groups.trigger;
     const schemaDoc = await getSchemaTextDocument(undefined, document);
     if (schemaDoc) {
-      const typeOnly = lineSuffix.startsWith('::"');
+      typeOnly = typeOnly || lineSuffix.startsWith('::"');
       return createEntityItems(position, schemaDoc, element, trigger, typeOnly);
     }
   }
