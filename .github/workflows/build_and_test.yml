@@ -39,19 +39,19 @@ jobs:
           npm ci
           npm run wasm-build
           npm run compile
-      - name: Find VS Code Stable Release
+      - name: Find VS Code stable release version
         id: code-stable
         run: |
           echo "VSCODE_VERSION=`curl --silent https://update.code.visualstudio.com/api/releases/stable | jq -r '.[0]'`" >> "$GITHUB_OUTPUT"
-      - name: Cache VSCode Test
+      - name: Cache VS Code download
         uses: actions/cache@v4
         with:
           path: |
             .vscode-test
           key: vscode-test-cache-${{ steps.code-stable.outputs.VSCODE_VERSION }}
-      - name: Test
+      - name: Test using VS Code
         run: xvfb-run -a npm run test
-      - name: Package
+      - name: Package VSIX
         run: npm run package
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
