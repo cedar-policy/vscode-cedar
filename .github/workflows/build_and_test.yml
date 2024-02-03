@@ -29,7 +29,7 @@ jobs:
           npm install -g wasm-pack
       - name: Cache cargo build artifacts
         # https://doc.rust-lang.org/cargo/guide/build-cache.html
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             vscode-cedar-wasm/target
@@ -44,7 +44,7 @@ jobs:
         run: |
           echo "VSCODE_VERSION=`curl --silent https://update.code.visualstudio.com/api/releases/stable | jq -r '.[0]'`" >> "$GITHUB_OUTPUT"
       - name: Cache VSCode Test
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             .vscode-test
