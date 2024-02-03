@@ -27,13 +27,6 @@ jobs:
         run: |
           rustup update stable && rustup default stable
           npm install -g wasm-pack
-      - name: Build
-        run: |
-          npm ci
-          npm run wasm-build
-          npm run compile
-      - name: Test
-        run: xvfb-run -a npm run test
       - name: Cache cargo build artifacts
         # https://doc.rust-lang.org/cargo/guide/build-cache.html
         uses: actions/cache@v2
@@ -41,3 +34,21 @@ jobs:
           path: |
             vscode-cedar-wasm/target
           key: cargo-build-cache-${{ hashFiles('vscode-cedar-wasm/Cargo.lock') }}
+      - name: Build
+        run: |
+          npm ci
+          npm run wasm-build
+          npm run compile
+      - name: Find VSCode Stable Release
+        id: code-stable
+        run: |
+          echo "VSCODE_VERSION=`curl --silent https://update.code.visualstudio.com/api/releases/stable | jq '.[0]'`" >> "$GITHUB_OUTPUT"
+      - name: Cache VSCode Test
+        uses: actions/cache@v2
+        with:
+          path: |
+            .vscode-test
+          key: cargo-build-cache-${{ steps.code-stable.outputs.VSCODE_VERSION }}
+      - name: Test
+        run: xvfb-run -a npm run test
+
