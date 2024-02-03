@@ -15,22 +15,29 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Install Node 18
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
       - name: Install XVFB for testing with VS Code
         run: |
           sudo apt-get -y update
           sudo apt-get -y install --fix-missing xvfb
-          sudo apt-get -y install libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm-dev libasound2
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
           npm install -g wasm-pack
       - name: Build
         run: |
-          npm install
+          npm ci
           npm run wasm-build
           npm run compile
       - name: Test
         run: xvfb-run -a npm run test
+      - name: Cache cargo build artifacts
+        # https://doc.rust-lang.org/cargo/guide/build-cache.html
+        uses: actions/cache@v2
+        with:
+          path: |
+            vscode-cedar-wasm/target
+          key: cargo-build-cache-${{ hashFiles('vscode-cedar-wasm/Cargo.lock') }}
