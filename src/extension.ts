@@ -68,12 +68,15 @@ import { exportCedarDocPolicyById, getPolicyQuickPickItems } from './policy';
 import { CedarCompletionItemProvider } from './completion';
 import { CedarHoverProvider } from './hover';
 import { aboutExtension } from './about';
+import * as cedar from 'vscode-cedar-wasm';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Cedar extension activated');
+
+  cedar.setPanicHook();
 
   let diagnosticCollection = createDiagnosticCollection();
 
