@@ -487,6 +487,8 @@ const createUnlessSnippetItems = (
   return [item1];
 };
 
+const SKIP_I_REGEX = /\b(principal|action|resource)\s+i$/;
+
 const provideCedarInvokeCompletionItems = async (
   document: vscode.TextDocument,
   position: vscode.Position,
@@ -560,6 +562,9 @@ const provideCedarInvokeCompletionItems = async (
         return [createVariableItem(range, 'context')];
 
       case 'i':
+        if (linePrefix.match(SKIP_I_REGEX)) {
+          break;
+        }
         return [createIpFunctionItem(range)];
 
       case 'd':
