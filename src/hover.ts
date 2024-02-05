@@ -101,6 +101,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
       const { prevChar, nextChar } = getPrevNextCharacters(document, range);
       if (
         prevChar !== '.' &&
+        prevChar !== '?' &&
         ['principal', 'resource', 'context', 'action'].includes(word)
       ) {
         return new Promise(async (resolve) => {

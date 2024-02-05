@@ -1196,7 +1196,10 @@ export const parseCedarSchemaDoc = (
             // 'type' under 'element' indicates parent is a Set
             captureAttribute(`Set<${value}>`);
           }
-        } else if (pathSupplier()[jsonPathLen - 2] === 'shape') {
+        } else if (
+          pathSupplier()[jsonPathLen - 2] === 'shape' ||
+          pathSupplier()[jsonPathLen - 2] === 'context'
+        ) {
           if (value !== 'Record') {
             const attributes = completions[ensureNamespace(value, namespace)];
             Object.keys(attributes).forEach((key) => {
