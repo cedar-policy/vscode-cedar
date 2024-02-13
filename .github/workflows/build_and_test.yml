@@ -1,0 +1,78 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+ 
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install XVFB for testing with VS Code
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install --fix-missing xvfb
+
+      - name: Update rust and install wasm-pack
+        run: |
+          rustup update stable && rustup default stable
+          npm install -g wasm-pack
+
+      - name: Cache cargo build artifacts
+        # https://doc.rust-lang.org/cargo/guide/build-cache.html
+        uses: actions/cache@v4
+        with:
+          path: |
+            vscode-cedar-wasm/target
+          key: cargo-build-cache-${{ hashFiles('vscode-cedar-wasm/Cargo.lock') }}
+
+      - name: Build
+        run: |
+          npm ci
+          npm run wasm-build
+          npm run compile
+
+      - name: Find VS Code stable release version
+        id: code-stable
+        run: |
+          echo "VSCODE_VERSION=`curl --silent https://update.code.visualstudio.com/api/releases/stable | jq -r '.[0]'`" >> "$GITHUB_OUTPUT"
+
+      - name: Cache VS Code download
+        uses: actions/cache@v4
+        with:
+          path: |
+            .vscode-test
+          key: vscode-test-cache-${{ steps.code-stable.outputs.VSCODE_VERSION }}
+
+      - name: Test using VS Code
+        # commands before `xvfb-run -a npm run test` avoid these ERROR messages:
+        # - Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+        # - Exiting GPU process due to errors during initialization
+        run: |
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
+          export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+          dbus-daemon --session --address=$DBUS_SESSION_BUS_ADDRESS --nofork --nopidfile --syslog-only &
+          mkdir ~/.vscode && echo '{ "disable-hardware-acceleration": true }' > ~/.vscode/argv.json
+          xvfb-run -a npm run test
+
+      - name: Package VSIX
+        run: npm run package
+
+      - name: Upload VSIX as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ./*.vsix
