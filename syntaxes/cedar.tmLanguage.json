@@ -43,6 +43,9 @@
 		},
 		{
 			"include": "#entities"
+		},
+		{
+			"include": "#namespacedTypes"
 		}
 	],
 	"repository": {
@@ -63,13 +66,14 @@
 		"sections": {
 			"patterns": [{
 				"name": "keyword.cedar",
-				"match": "\\b(permit|forbid|when|unless)\\b"
+				"match": "\\b(?<!\\.)(permit|forbid|when|unless)\\b"
 			}]
 		},
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.cedar",
-				"match": "\\b(in|has|like|if|then|else)\\b"
+				"match": "\\b(in|has|like|if|then|else|is)\\b",
+				"comment": "don't worry about excluding . before reserved identifiers"
 			}]
 		},
 		"variables": {
@@ -121,7 +125,8 @@
 		"booleans": {
 			"patterns": [{
 				"name": "constant.language.boolean.cedar",
-				"match": "\\b(true|false)\\b"
+				"match": "\\b(true|false)\\b",
+				"comment": "don't worry about excluding . before reserved identifiers"
 			}]
 		},
 		"integers": {
@@ -133,12 +138,22 @@
 		"constants": {
 			"patterns": [{
 				"name": "variable.other.constant.cedar",
-				"match": "\\b(principal|action|resource|context)\\b"
+				"match": "\\b(?<!\\.)(principal|action|resource|context)\\b"
 			}]
 		},
 		"entities": {
 			"patterns": [{
-				"match": "\\b([^\\s]+?)(?:::)(?=\")",
+				"match": "\\b(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)(?:::)(?=\")",
+				"captures": {
+					"1" : {
+						"name": "entity.name.type.cedar"
+					}
+				}
+			}]
+		},
+		"namespacedTypes": {
+			"patterns": [{
+				"match": "\\b(([_a-zA-Z][_a-zA-Z0-9]*::)+[_a-zA-Z][_a-zA-Z0-9]*)\\b",
 				"captures": {
 					"1" : {
 						"name": "entity.name.type.cedar"

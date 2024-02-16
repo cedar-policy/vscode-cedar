@@ -1,3 +1,11 @@
+## v0.6.0 (Preview) 2024-01-29
+
+- Update to Cedar 2.4.3
+- IntelliSense for entity types and attributes
+- Hover help supports properties and documentation links
+- Support files outside of workspace folder
+- "Go to Definition" updates and fixes
+
 ## v0.5.4 (Preview) 2023-12-18
 
 - Update to Cedar 2.4.2

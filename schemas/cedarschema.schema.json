@@ -180,7 +180,8 @@
         { "$ref": "#/$defs/extensionTypeDef" },
         { "$ref": "#/$defs/entityTypeDef" },
         { "$ref": "#/$defs/setTypeDef" },
-        { "$ref": "#/$defs/recordTypeDef" }
+        { "$ref": "#/$defs/recordTypeDef" },
+        { "$ref": "#/$defs/commonShapeDef" }
       ]
     },
     "primitiveTypeDef": {

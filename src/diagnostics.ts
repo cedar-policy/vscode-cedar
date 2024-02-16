@@ -14,7 +14,6 @@ import {
   EXPECTED_ATTR_REGEX,
   MISMATCH_ATTR_REGEX,
   OFFSET_POLICY_REGEX,
-  //FOUND_AT_REGEX,
   AT_LINE_SCHEMA_REGEX,
   UNDECLARED_REGEX,
   UNRECOGNIZED_REGEX,
@@ -88,9 +87,10 @@ const determineRangeFromError = (
 ): { error: string; range: vscode.Range } => {
   let error = vse.message;
   let range = DEFAULT_RANGE;
-  if (vse.offset > 0 && vse.length > 0) {
+  if (vse.offset > 0) {
     const startCharacter = vse.offset;
-    const endCharacter = vse.offset + vse.length;
+    // "invalid token" is 0 length, make range at least 1 character
+    const endCharacter = vse.offset + Math.max(vse.length, 1);
     let lineStart = 0;
     // not efficient, but Cedar policies are small
     for (let i = 0; i < document.lineCount; i++) {
@@ -126,10 +126,13 @@ const determineRangeFromError = (
     } else if (
       error === 'Entity type `Action` declared in `entityTypes` list.'
     ) {
-      const entityRanges = parseCedarSchemaDoc(document).entities;
-      for (let entityRange of entityRanges) {
-        if (entityRange.etype === 'Action') {
-          range = entityRange.etypeRange;
+      const definitionRanges = parseCedarSchemaDoc(document).definitionRanges;
+      for (let definitionRange of definitionRanges) {
+        if (
+          definitionRange.etype === 'Action' ||
+          definitionRange.etype.endsWith('::Action')
+        ) {
+          range = definitionRange.etypeRange;
           break;
         }
       }

@@ -1,0 +1,78 @@
+{
+  "N1": {
+    "commonTypes": {
+      "C": {
+        "type": "Record",
+        "attributes": {
+          "a": {
+            "type": "String"
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "E": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "l": {
+              "type": "Long"
+            },
+            "s": {
+              "type": "String"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "a1": {
+        "appliesTo": { "principalTypes": ["E"], "resourceTypes": ["E"] }
+      },
+      "a2": {
+        "appliesTo": { "principalTypes": ["N2::E"], "resourceTypes": ["N2::E"] }
+      }
+    }
+  },
+  "N2": {
+    "commonTypes": {
+      "C": {
+        "type": "Record",
+        "attributes": {
+          "a": {
+            "type": "String"
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "E": {}
+    },
+    "actions": {
+      "a1": {
+        "appliesTo": { "principalTypes": ["N1::E"], "resourceTypes": ["N1::E"] }
+      },
+      "a2": {
+        "appliesTo": { "principalTypes": ["E"], "resourceTypes": ["E"] }
+      },
+      "astar": {
+        "memberOf": [
+          { "id": "a1", "type": "N1::Action" },
+          { "type": "N1::Action", "id": "a2" },
+          { "id": "a1" },
+          { "id": "a2", "type": "N2::Action" }
+        ]
+      }
+    }
+  },
+  "": {
+    "entityTypes": { 
+      "Y": {}
+    },
+    "actions": {
+      "a": {
+        "appliesTo": { "principalTypes": ["Y"], "resourceTypes": ["Y"] }
+      }
+    }
+  }
+}
