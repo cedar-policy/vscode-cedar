@@ -19,6 +19,14 @@ suite('Cedar Completion Suite', () => {
     const doc = await vscode.workspace.openTextDocument(
       path.join(process.cwd(), 'testdata', 'triple', 'entities.cedar')
     );
+    return invokeAtTextDocument(doc, position, lastCharacter);
+  };
+
+  const invokeAtTextDocument = async (
+    doc: vscode.TextDocument,
+    position: vscode.Position,
+    lastCharacter: boolean = false
+  ) => {
     await vscode.window.showTextDocument(doc);
     const provider = new cedar.CedarCompletionItemProvider();
     const items = await provider.provideCompletionItems(
@@ -164,6 +172,46 @@ suite('Cedar Completion Suite', () => {
       itemLabel = items[1].label as vscode.CompletionItemLabel;
       assert.strictEqual(itemLabel.label, 's');
       assert.strictEqual(itemLabel.detail, ': String');
+    }
+  });
+
+  test('commonTypes as properties', async () => {
+    const doc = await vscode.workspace.openTextDocument(
+      path.join(process.cwd(), 'testdata', 'context', 'commonTypes.cedar')
+    );
+    let items = await invokeAtTextDocument(
+      doc,
+      new vscode.Position(1, 17),
+      true
+    );
+
+    assert.ok(items);
+    if (items) {
+      assert.strictEqual(items.length, 2);
+      let itemLabel = items[0].label as vscode.CompletionItemLabel;
+      assert.strictEqual(itemLabel.label, 'token_use');
+      assert.strictEqual(itemLabel.detail, ': String');
+      itemLabel = items[1].label as vscode.CompletionItemLabel;
+      assert.strictEqual(itemLabel.label, 'jti');
+      assert.strictEqual(itemLabel.detail, ': String');
+    }
+
+    items = await invokeAtTextDocument(doc, new vscode.Position(2, 15), true);
+    assert.ok(items);
+    if (items) {
+      assert.strictEqual(items.length, 2);
+      let itemLabel = items[0].label as vscode.CompletionItemLabel;
+      assert.strictEqual(itemLabel.label, 'asAdmin');
+      assert.strictEqual(itemLabel.detail, ': Boolean');
+      itemLabel = items[1].label as vscode.CompletionItemLabel;
+      assert.strictEqual(itemLabel.label, 'token');
+      assert.strictEqual(itemLabel.detail, ': Record');
+    }
+
+    items = await invokeAtTextDocument(doc, new vscode.Position(3, 21), true);
+    assert.ok(items);
+    if (items) {
+      assert.strictEqual(items.length, 2);
     }
   });
 
