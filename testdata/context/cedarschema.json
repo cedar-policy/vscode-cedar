@@ -1,0 +1,55 @@
+{
+  "Cognito": {
+    "commonTypes": {
+      "Token": {
+        "type": "Record",
+        "attributes": {
+          "token_use": {
+            "type": "String"
+          },
+          "jti": {
+            "type": "String"
+          }
+        }
+      },
+      "TokenContext": {
+        "type": "Record",
+        "attributes": {
+          "asAdmin": {
+            "type": "Boolean",
+            "required": false
+          },
+          "token": {
+            "type": "Record",
+            "attributes": {
+              "token_use": {
+                "type": "String"
+              },
+              "jti": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "User": {
+        "shape": {
+          "type": "Cognito::Token"
+        }
+      }
+    },
+    "actions": {
+      "a": {
+        "appliesTo": {
+          "context": {
+            "type": "TokenContext"
+          },
+          "principalTypes": ["User"],
+          "resourceTypes": ["User"]
+        }
+      }
+    }
+  }
+}
