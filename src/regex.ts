@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+export const IDENT_REGEX = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
 export const ENTITY_REGEXG =
   /(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)::"(?<id>([^"]*))"/g;
 export const PROPERTY_CHAIN_REGEX =
