@@ -28,7 +28,7 @@ curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
 ### macOS wasm build support
 
-Install `llvm` to va
+Install `llvm`
 
 ```bash
 brew install llvm
@@ -53,7 +53,7 @@ The `package.json` directly refers to the `vscode-cedar-wasm/pkg` folder.
 
 ### Test
 
-To run NodeJS TypeScript test code from `src/test/suite/cedar-wasm.test.ts` and `src/test/suite/validation.test.ts` (using Cedar and Cedar schema files containing errors from `testdata`).
+To run NodeJS TypeScript test code from `src/test/suite/*.test.ts` (using Cedar and Cedar schema files containing errors from `testdata`).
 
 ```bash
 npm run test
@@ -61,7 +61,7 @@ npm run test
 
 ### Build
 
-The `npm install` included a devDependency for vsce (short for "Visual Studio Code Extensions"), a command-line tool for packaging, publishing and managing Visual Studio Code extensions.  Verify the installation of [@vscode/vsce](https://github.com/microsoft/vscode-vsce) by running:
+The `npm install` included a devDependency for `vsce` (short for "Visual Studio Code Extensions"), a command-line tool for packaging, publishing and managing Visual Studio Code extensions.  Verify the installation of [@vscode/vsce](https://github.com/microsoft/vscode-vsce) by running:
 
 ```bash
 npx vsce --version
@@ -93,7 +93,11 @@ Then build and test the extension inside the container.  This will take several 
 This extension can locally be installed to `~/.vscode/extensions` using the command palette and selecting **Extensions: Install from VSIX...** or running the following [Visual Studio Code command-line interface](https://code.visualstudio.com/docs/editor/command-line) command (see link if `code` is not in your PATH):
 
 ```bash
-code --install-extension vscode-cedar-0.6.0.vsix
+code --install-extension vscode-cedar-0.6.1.vsix
 ```
 
 Note: Preview install may see a `[DEP0005] DeprecationWarning` tracked in GitHub issue [install-extension command throws Buffer deprecated warning #82524](https://github.com/microsoft/vscode/issues/82524)
+
+### GitHub Pull Request
+
+The project currently uses GitHub flow where feature branches are merged into the `main` branch where releases are tagged.  `.github\workflows\build_and_test.yml` runs on `push` and `pull_request` to the `main` branch.
