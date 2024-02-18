@@ -1,0 +1,41 @@
+{
+  "NS": {
+    "entityTypes": {
+      "E" : {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "some": {
+              "type": "Record",
+              "attributes": {
+                "nested":{
+                  "type": "Record",
+                  "attributes": {
+                    "attribute": {
+                      "type": "String"
+                    },
+                    "attribute with spaces": {
+                      "type": "String"
+                    }
+                    ,
+                    "attribute:with:colons": {
+                      "type": "String"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "a": {
+        "appliesTo": {
+          "principalTypes": ["E"],
+          "resourceTypes": ["E"]
+        }
+      }
+    }
+  }
+}

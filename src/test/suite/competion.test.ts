@@ -25,7 +25,7 @@ suite('splitPropertyChain Suite', () => {
     assert.deepEqual(parts, ['principal', 'p1', 'p2']);
   });
 
-  test('validate principal.p1', () => {
+  test('validate principal.p1.', () => {
     const parts = splitPropertyChain('principal.p1.');
     assert.deepEqual(parts, ['principal', 'p1']);
   });
@@ -35,8 +35,25 @@ suite('splitPropertyChain Suite', () => {
     assert.deepEqual(parts, ['principal', 'p1']);
   });
 
-  test('validate principal["p1"].p2', () => {
+  test('validate principal["p1"].p2.', () => {
     const parts = splitPropertyChain('principal["p1"].p2.');
     assert.deepEqual(parts, ['principal', 'p1', 'p2']);
+  });
+
+  test('validate principal["some"]["nested"]["attribute"]', () => {
+    const parts = splitPropertyChain(
+      'principal["some"]["nested"]["attribute"]'
+    );
+    assert.deepEqual(parts, ['principal', 'some', 'nested', 'attribute']);
+  });
+
+  test('validate principal["some"].nested["attribute"]', () => {
+    const parts = splitPropertyChain('principal["some"].nested["attribute"]');
+    assert.deepEqual(parts, ['principal', 'some', 'nested', 'attribute']);
+  });
+
+  test('validate context.a.b.c', () => {
+    const parts = splitPropertyChain('context.a.b.c');
+    assert.deepEqual(parts, ['context', 'a', 'b', 'c']);
   });
 });
