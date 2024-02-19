@@ -1,6 +1,6 @@
 [package]
 name = "vscode-cedar-wasm"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 description = "WASM bindgen bindings for cedar-policy 3.0.1"
 license-file = "LICENSE"
