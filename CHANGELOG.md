@@ -1,4 +1,4 @@
-## v0.6.1 (Preview) 2024-02-23
+## v0.6.1 (Preview) 2024-02-19
 
 - IntelliSense and hover help fixes
 
