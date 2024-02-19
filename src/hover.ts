@@ -58,7 +58,8 @@ const createVariableHover = async (
 
 const createPropertyHover = async (
   document: vscode.TextDocument,
-  properties: string[]
+  properties: string[],
+  range: vscode.Range | undefined
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
   const schemaDoc = await getSchemaTextDocument(undefined, document);
@@ -83,6 +84,7 @@ const createPropertyHover = async (
   if (mdarray.length > 0) {
     return {
       contents: mdarray,
+      range: range,
     };
   }
   return undefined;
@@ -94,10 +96,9 @@ export class CedarHoverProvider implements vscode.HoverProvider {
     position: vscode.Position,
     token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.Hover> {
-    const range = document.getWordRangeAtPosition(position);
+    let range = document.getWordRangeAtPosition(position);
     if (range) {
-      const word = document.getText(range);
-
+      let word = document.getText(range);
       const { prevChar, nextChar } = getPrevNextCharacters(document, range);
       if (
         prevChar !== '.' &&
@@ -118,22 +119,65 @@ export class CedarHoverProvider implements vscode.HoverProvider {
         }
       }
 
-      const line = document.lineAt(position).text;
-      const lineBeforeWord = line.substring(0, range.start.character);
+      let lineIncludingWord = document.getText(
+        new vscode.Range(new vscode.Position(range.start.line, 0), range.end)
+      );
+      let attemptPropertyChainMatch = false;
+      if (prevChar === '.') {
+        // principal.propname
+        attemptPropertyChainMatch = true;
+      } else {
+        const line = document.lineAt(position).text;
+        const lineBeforeWord = line.substring(0, range.start.character);
+        if (lineBeforeWord.endsWith(' has ')) {
+          // principal has propname
+          attemptPropertyChainMatch = true;
+          // normalize `X has propname` to `X["propname"]`
+          lineIncludingWord =
+            lineBeforeWord.substring(
+              0,
+              lineBeforeWord.length - 5 // ' has '
+            ) + `["${word}"]`;
+        } else {
+          const prevQuotePos = lineBeforeWord.lastIndexOf('"');
+          const nextQuotePos = line.indexOf('"', range.end.character);
+          if (prevQuotePos !== -1 && nextQuotePos !== -1) {
+            // update hover highlight range to include quoted string
+            range = new vscode.Range(
+              range.start.with({ character: prevQuotePos + 1 }),
+              range.end.with({ character: nextQuotePos })
+            );
+            word = line.substring(prevQuotePos + 1, nextQuotePos);
+            if (line.substring(0, prevQuotePos).endsWith(' has ')) {
+              // principal has "propname"
+              attemptPropertyChainMatch = true;
+              // normalize `X has "propname"` to `X["propname"]`
+              lineIncludingWord =
+                lineBeforeWord.substring(
+                  0,
+                  prevQuotePos - 5 // ' has '
+                ) + `["${word}"]`;
+            } else {
+              if (
+                line[prevQuotePos - 1] === '[' &&
+                line[nextQuotePos + 1] === ']'
+              ) {
+                // principal["propname"]
+                attemptPropertyChainMatch = true;
+                lineIncludingWord = line.substring(0, nextQuotePos + 2);
+              }
+            }
+          }
+        }
+      }
 
-      // TODO: match quoted properties (e.g. principal["propname with space"])
-      if (prevChar === '.' || lineBeforeWord.endsWith(' has ')) {
-        const lineIncludingWord = document.getText(
-          new vscode.Range(new vscode.Position(range.start.line, 0), range.end)
-        );
-        let found = lineIncludingWord
-          .replaceAll(' has ', '.')
-          .match(PROPERTY_CHAIN_REGEX);
+      if (attemptPropertyChainMatch) {
+        let found = lineIncludingWord.match(PROPERTY_CHAIN_REGEX);
         if (found && found?.groups) {
           const properties = splitPropertyChain(found[0]);
           return new Promise(async (resolve) => {
             let result = undefined;
-            result = await createPropertyHover(document, properties);
+            result = await createPropertyHover(document, properties, range);
             resolve(result);
           });
         }

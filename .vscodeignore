@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+.vscode-test.js
 src/**
 .gitignore
 .yarnrc
@@ -13,4 +14,7 @@ vscode-cedar-wasm/**
 development.md
 testdata/**
 Dockerfile
+.dockerignore
+.prettierignore
 docs/**
+.github/**

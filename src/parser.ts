@@ -1201,11 +1201,9 @@ export const parseCedarSchemaDoc = (
           pathSupplier()[jsonPathLen - 2] === 'context'
         ) {
           if (value !== 'Record') {
-            const attributes = completions[ensureNamespace(value, namespace)];
-            Object.keys(attributes).forEach((key) => {
-              tmpAttribute.key = key;
-              captureAttribute(attributes[key].description);
-            });
+            // the whole shape is a commonType, so just link to it
+            tmpSchemaCompletionRecord =
+              completions[ensureNamespace(value, namespace)];
           }
         }
       } else if (pathSupplier()[jsonPathLen - 1] === 'name') {

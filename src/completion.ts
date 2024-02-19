@@ -12,7 +12,7 @@ import {
 } from './parser';
 import { getSchemaTextDocument } from './fileutil';
 import { narrowEntityTypes } from './validate';
-import { PROPERTY_CHAIN_REGEX } from './regex';
+import { IDENT_REGEX, PROPERTY_CHAIN_REGEX } from './regex';
 
 // helper method for set, IPAddr, and Decimal functions
 const createFunctionItem = (
@@ -112,15 +112,19 @@ export const splitPropertyChain = (property: string) => {
       if (char === '"') {
         // doesn't handled embedded " e.g "5' 10\"" and don't care
         parts.push(property.substring(start, pos));
-        pos += 3;
-        start = pos;
+        pos += 1;
+        start = pos + 1;
         insideQuotes = false;
       }
     } else if (char === '.') {
-      parts.push(property.substring(start, pos));
+      if (start !== pos) {
+        parts.push(property.substring(start, pos));
+      }
       start = pos + 1;
     } else if (char === '[') {
-      parts.push(property.substring(start, pos));
+      if (start !== pos) {
+        parts.push(property.substring(start, pos));
+      }
       pos += 2;
       insideQuotes = true;
       start = pos;
@@ -193,8 +197,9 @@ const createAttributeItems = (
       vscode.CompletionItemKind.Field
     );
     item.range = range;
-    if (key.indexOf(' ') > -1) {
-      // properties containing a space need a different notation
+    let match = key.match(IDENT_REGEX);
+    if (match === null) {
+      // properties not matching IDENT need a different notation
       item.insertText = new vscode.SnippetString(`["${key}"]`);
       // and remove the preceding . that triggered the completion
       item.additionalTextEdits = [
