@@ -141,12 +141,12 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // Undeclared entity types: {"Test"}
+      // undeclared entity type(s): {"Test"}
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
-        assert.equal(found?.groups.type, 'entity types');
+        assert.equal(found?.groups.type, 'entity type(s)');
         assert.equal(found?.groups.undeclared, '"Test"');
       }
     }
@@ -166,7 +166,7 @@ suite('Validation RegEx Test Suite', () => {
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
-        assert.equal(found?.groups.type, 'actions');
+        assert.equal(found?.groups.type, 'action(s)');
         const actions = found?.groups.undeclared.split(', ');
         assert.equal(actions.includes('"Action::\\"test1\\""'), true);
         assert.equal(actions.includes('"Action::\\"test2\\""'), true);
@@ -190,13 +190,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: expected entity `Test::"expected"` to have an attribute "test", but it doesn't
+      // entity does not conform to the schema: expected entity `Test::"expected"` to have attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'expected entity `Test::"expected"` to have an attribute "test", but it doesn\'t'
+        'expected entity `Test::"expected"` to have attribute `test`, but it does not'
       );
       let found = errorMsg.match(EXPECTED_ATTR_REGEX);
       assert(found?.groups);
@@ -224,13 +224,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it doesn't
+      // error during entity deserialization: in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it doesn\'t'
+        'in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not'
       );
       let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
       assert(found?.groups);
@@ -259,13 +259,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long
+      // entity does not conform to the schema: in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but actually has type long: `1`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long'
+        'in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but actually has type long: `1`'
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
@@ -293,13 +293,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)
+      // entity does not conform to the schema: in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but actually has type `Tst`: `Tst::"mismatchtype"`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)'
+        'in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but actually has type `Tst`: `Tst::"mismatchtype"`'
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
@@ -324,13 +324,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: attribute "tst" on `Test::"exist"` shouldn't exist according to the schema
+      // error during entity deserialization: attribute `tst` on `Test::"exist"` should not exist according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'attribute "tst" on `Test::"exist"` shouldn\'t exist according to the schema'
+        'attribute `tst` on `Test::"exist"` should not exist according to the schema'
       );
       let found = errorMsg.match(EXIST_ATTR_REGEX);
       assert(found?.groups);
@@ -358,13 +358,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema; did you mean XYZCorp::Employee?
+      // error during entity deserialization: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema. Did you mean `XYZCorp::Employee`?
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema; did you mean XYZCorp::Employee?'
+        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema. Did you mean `XYZCorp::Employee`?'
       );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert(found?.groups);
@@ -391,13 +391,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in parents field of XYZCorp::Employee::"12UA45", `XYZCorp::Employee::"12UA45"` is not allowed to have a parent of type `XYZCorp::Employee` according to the schema
+      // entity does not conform to the schema: `XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in parents field of XYZCorp::Employee::"12UA45", `XYZCorp::Employee::"12UA45"` is not allowed to have a parent of type `XYZCorp::Employee` according to the schema'
+        '`XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema'
       );
       let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
       assert(found?.groups);

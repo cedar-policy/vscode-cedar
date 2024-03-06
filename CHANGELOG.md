@@ -1,3 +1,7 @@
+## v0.7.1 (Pre-release) 2024-02-19
+
+- Update to Cedar 3.0.1
+
 ## v0.6.1 (Preview) 2024-02-19
 
 - IntelliSense and hover help fixes
