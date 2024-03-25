@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, prerelease ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, prerelease ]
   workflow_dispatch:
  
 jobs:
@@ -69,7 +69,12 @@ jobs:
           xvfb-run -a npm run test
 
       - name: Package VSIX
-        run: npm run package
+        run: |
+          if [ $GITHUB_REF_NAME == "prerelease" ]; then
+            npm run package-prerelease
+          else
+            npm run package
+          fi
 
       - name: Upload VSIX as a workflow artifact
         uses: actions/upload-artifact@v4
