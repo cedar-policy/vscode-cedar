@@ -222,6 +222,7 @@
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
     "package": "vsce package",
+    "package-prerelease": "vsce package --pre-release",
     "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",
     "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../.."
   },
