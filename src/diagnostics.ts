@@ -377,8 +377,8 @@ export const addSyntaxDiagnosticErrors = (
   errors.forEach((vse) => {
     let e = vse.message;
     if (
-      e.startsWith('entity does not conform to the schema') ||
-      e.startsWith('error during entity deserialization')
+      e.startsWith('entity does not conform to the schema: ') ||
+      e.startsWith('error during entity deserialization: ')
     ) {
       e = e.substring(e.indexOf(': ') + 2);
 
@@ -450,7 +450,7 @@ export const addPolicyResultErrors = (
       effectRange,
       startLine
     );
-    if (e.startsWith('Validation error on policy')) {
+    if (e.startsWith('validation error on policy `policy0`: ')) {
       e = e.substring(e.indexOf(': ') + 2);
     }
 

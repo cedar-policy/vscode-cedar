@@ -66,7 +66,7 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // Validation error on policy policy0 at offset 44-53: Types of operands in this expression are not equal: [{"type":"Boolean"},{"type":"Long"}]
+      // validation error on policy `policy0` at offset 44-53: unable to find upper bound for types: [{"type":"True"},{"type":"Long"}]
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(OFFSET_POLICY_REGEX);
       assert(found?.groups);
@@ -90,13 +90,16 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
+      // validation error on policy `policy0`: unrecognized entity type `Tst`
       // Validation error on policy policy0: Unrecognized entity type Tst, did you mean Test?
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(UNRECOGNIZED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Tst');
-        assert.equal(found?.groups.suggestion, 'Test');
+        if (found?.groups.suggestion) {
+          assert.equal(found?.groups.suggestion, 'Test');
+        }
       }
 
       errorMsg = result.errors[1];
@@ -104,7 +107,9 @@ suite('Validation RegEx Test Suite', () => {
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Action::"doTst"');
-        assert.equal(found?.groups.suggestion, 'Action::"doTest"');
+        if (found?.groups.suggestion) {
+          assert.equal(found?.groups.suggestion, 'Action::"doTest"');
+        }
       }
     }
 
@@ -192,7 +197,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: expected entity `Test::"expected"` to have attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -226,7 +231,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // error during entity deserialization: in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error during entity deserialization'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -261,7 +266,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but actually has type long: `1`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -295,7 +300,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but actually has type `Tst`: `Tst::"mismatchtype"`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -326,7 +331,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // error during entity deserialization: attribute `tst` on `Test::"exist"` should not exist according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error during entity deserialization'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -358,13 +363,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error during entity deserialization: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema. Did you mean `XYZCorp::Employee`?
+      // error during entity deserialization: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema`?
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error during entity deserialization'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema. Did you mean `XYZCorp::Employee`?'
+        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema'
       );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert(found?.groups);
@@ -393,7 +398,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: `XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,

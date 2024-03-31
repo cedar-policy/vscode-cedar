@@ -162,10 +162,10 @@ suite('Cedar WASM validate Suite', () => {
     assert.equal(result.errors?.length, 1);
     assert.equal(
       result.errors?.[0].message,
-      'not a valid policy condition: `whenless`. Condition must be either `when` or `unless`'
+      'not a valid policy condition: `whenless`'
     );
-    assert.equal(result.errors?.[0].offset, 0);
-    assert.equal(result.errors?.[0].length, 0);
+    assert.equal(result.errors?.[0].offset, 37);
+    assert.equal(result.errors?.[0].length, 8);
     result.free();
   });
 
