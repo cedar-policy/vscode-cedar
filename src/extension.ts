@@ -37,6 +37,7 @@ import {
   COMMAND_CEDAR_EXPORT,
   COMMAND_CEDAR_SCHEMAEXPORT,
   COMMAND_CEDAR_SCHEMAOPEN,
+  COMMAND_CEDAR_SCHEMATRANSLATE,
   COMMAND_CEDAR_SCHEMAVALIDATE,
   COMMAND_CEDAR_VALIDATE,
 } from './commands';
@@ -278,6 +279,80 @@ export async function activate(context: vscode.ExtensionContext) {
         args: any[]
       ) => {
         validateSchemaDoc(textEditor.document, diagnosticCollection, true);
+      }
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      COMMAND_CEDAR_SCHEMATRANSLATE,
+      async (
+        textEditor: vscode.TextEditor,
+        edit: vscode.TextEditorEdit,
+        args: any[]
+      ) => {
+        const uri = textEditor.document.uri;
+        if (uri.scheme !== 'file') {
+          vscode.window.showErrorMessage(
+            `Cedar schema translate only supported for local files`
+          );
+          return;
+        }
+
+        if (
+          !validateSchemaDoc(textEditor.document, diagnosticCollection, true)
+        ) {
+          vscode.window.showErrorMessage(
+            `Cedar schema translate requires a valid Cedar schema file`
+          );
+          return;
+        }
+
+        const schemaDoc = textEditor.document;
+        let translateResult: cedar.TranslateSchemaResult;
+        const schema = schemaDoc.getText();
+        if (schemaDoc.languageId === 'cedarschema') {
+          translateResult = cedar.translateSchemaToJSON(schema);
+        } else {
+          translateResult = cedar.translateSchemaToHuman(schema);
+        }
+        if (translateResult.success) {
+          const saveUri = await vscode.window.showSaveDialog({
+            defaultUri: uri.with({
+              path:
+                schemaDoc.languageId === 'cedarschema'
+                  ? uri.path + '.json'
+                  : uri.path.substring(0, uri.path.length - 5),
+            }),
+          });
+          if (saveUri) {
+            let schemaText = translateResult.schema || '';
+            if (schemaDoc.languageId === 'cedarschema') {
+              schemaText = JSON.stringify(
+                JSON.parse(translateResult.schema as string),
+                (key, value) => {
+                  if (
+                    key === 'additionalAttributes' ||
+                    (key === 'required' && value === true)
+                  ) {
+                    return undefined;
+                  }
+                  return value;
+                },
+                2
+              );
+            }
+            vscode.workspace.fs.writeFile(
+              saveUri,
+              new Uint8Array(Buffer.from(schemaText))
+            );
+            vscode.commands.executeCommand('vscode.open', saveUri);
+          }
+        } else {
+          vscode.window.showErrorMessage(
+            translateResult.error || 'Error translating Cedar Schema'
+          );
+        }
+        translateResult.free();
       }
     )
   );

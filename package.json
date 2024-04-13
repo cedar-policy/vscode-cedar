@@ -30,6 +30,8 @@
   "activationEvents": [
     "workspaceContains:**/*.cedar",
     "workspaceContains:**/*.cedar.json",
+    "workspaceContains:**/cedarschema",
+    "workspaceContains:**/*.cedarschema",
     "workspaceContains:**/*.cedarschema.json",
     "workspaceContains:**/cedarschema.json",
     "workspaceContains:**/*.cedarentities.json",
@@ -65,7 +67,11 @@
         "extensions": [
           ".cedarschema"
         ],
+        "filenames": ["cedarschema"],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "cedarschema-injection"
       }
     ],
     "commands": [
@@ -93,6 +99,11 @@
         "command": "cedar.schemavalidate",
         "category": "Cedar",
         "title": "Validate Cedar schema"
+      },
+      {
+        "command": "cedar.schematranslate",
+        "category": "Cedar",
+        "title": "Translate Cedar schema"
       },
       {
         "command": "cedar.schemaexport",
@@ -133,8 +144,13 @@
           "group": "navigation"
         },
         {
-          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
           "command": "cedar.schemavalidate",
+          "group": "1_modification"
+        },
+        {
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "command": "cedar.schematranslate",
           "group": "1_modification"
         },
         {
@@ -163,7 +179,11 @@
         },
         {
           "command": "cedar.schemavalidate",
-          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+        },
+        {
+          "command": "cedar.schematranslate",
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
         },
         {
           "command": "cedar.schemaexport",
@@ -196,6 +216,17 @@
         "language": "cedarschema",
         "scopeName": "source.cedarschema",
         "path": "./syntaxes/cedarschema.tmLanguage.json"
+      },
+      {
+        "language": "cedarschema-injection",
+        "scopeName": "markdown.cedarschema.codeblock",
+        "path": "./syntaxes/codeblock.json",
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.cedarschema": "cedarschema"
+        }
       }
     ],
     "configuration": {

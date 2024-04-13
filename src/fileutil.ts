@@ -20,6 +20,7 @@ export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
 
 export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
   const result =
+    doc.languageId === 'cedarschema' ||
     doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_FILE) ||
     doc.fileName.endsWith(CEDAR_SCHEMA_EXTENSION_JSON);
 

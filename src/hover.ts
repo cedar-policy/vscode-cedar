@@ -35,12 +35,13 @@ const getPrevNextCharacters = (
 
 const createVariableHover = async (
   document: vscode.TextDocument,
+  position: vscode.Position,
   word: string
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
   const schemaDoc = await getSchemaTextDocument(undefined, document);
   if (schemaDoc) {
-    let entities = narrowEntityTypes(schemaDoc, word);
+    let entities = narrowEntityTypes(schemaDoc, word, document, position);
     entities.forEach((entityType) => {
       const md = new vscode.MarkdownString();
       md.appendCodeblock(entityType, 'cedar');
@@ -58,13 +59,19 @@ const createVariableHover = async (
 
 const createPropertyHover = async (
   document: vscode.TextDocument,
+  position: vscode.Position,
   properties: string[],
   range: vscode.Range | undefined
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
   const schemaDoc = await getSchemaTextDocument(undefined, document);
   if (schemaDoc) {
-    let entities = narrowEntityTypes(schemaDoc, properties[0]);
+    let entities = narrowEntityTypes(
+      schemaDoc,
+      properties[0],
+      document,
+      position
+    );
     const completions = parseCedarSchemaDoc(schemaDoc).completions;
     let word = properties[properties.length - 1];
     entities.forEach((entityType) => {
@@ -106,7 +113,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
         ['principal', 'resource', 'context', 'action'].includes(word)
       ) {
         return new Promise(async (resolve) => {
-          let result = await createVariableHover(document, word);
+          let result = await createVariableHover(document, position, word);
           resolve(result);
         });
       }
@@ -177,7 +184,12 @@ export class CedarHoverProvider implements vscode.HoverProvider {
           const properties = splitPropertyChain(found[0]);
           return new Promise(async (resolve) => {
             let result = undefined;
-            result = await createPropertyHover(document, properties, range);
+            result = await createPropertyHover(
+              document,
+              position,
+              properties,
+              range
+            );
             resolve(result);
           });
         }

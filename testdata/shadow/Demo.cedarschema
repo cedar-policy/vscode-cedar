@@ -1,0 +1,30 @@
+namespace Demo {
+  entity Host {
+    // the type of attribute `ip` is common type `ipaddr`
+    // instead of extension type `__cedar::ipaddr`
+    // because the former has a higher priority
+    ip: ipaddr,
+    // the type of attribute `bandwidth` is extension type `decimal`
+    // because there is not any common type or entity type
+    // that shares the same name
+    bandwidth: decimal,
+  };
+  // An artificial entity type name that conflicts with
+  // primitive type `String`
+  entity String {
+    groups: Set<__cedar::String>,
+  };
+  // A common type name that conflicts with extension
+  // type `ipaddr`
+  type ipaddr = {
+    // The type of attribute `repr` is the entity type
+    // `String` declared above instead of primitive type
+    // `__cedar::String` because the former has a higher
+    // priority
+    repr: String,
+    // The type of attribute `isV4` is the primitive type
+    // `Bool` because there is not any common type or
+    // entity type that shares the same name
+    isV4: Bool,
+  };
+}

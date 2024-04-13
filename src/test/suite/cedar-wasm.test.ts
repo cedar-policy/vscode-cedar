@@ -238,6 +238,35 @@ suite('Cedar WASM validate Suite', () => {
     result.free();
   });
 
+  test('validate_schema_natural_passes', async () => {
+    const schema = `namespace Demo {
+  entity User in UserGroup = {
+    "department": String,
+    "jobLevel": Long,
+  };
+  entity UserGroup;
+}`;
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaNatural(schema);
+    assert.equal(result.success, true);
+    result.free();
+  });
+
+  test('validate_schema_natural_translate_passes', async () => {
+    const schema = `namespace Demo {
+  entity User in UserGroup = {
+    "department": String,
+    "jobLevel": Long,
+  };
+  entity UserGroup;
+}`;
+    const result: cedar.TranslateSchemaResult =
+      cedar.translateSchemaToJSON(schema);
+    assert.equal(result.success, true);
+
+    result.free();
+  });
+
   test('validate_policy_fails', async () => {
     const schema = '{ "entityTypes": [], "actions": [] }';
     const policy = 'permit(principal, action, resource);';

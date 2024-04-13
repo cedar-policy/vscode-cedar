@@ -6,6 +6,8 @@ import * as cedar from 'vscode-cedar-wasm';
 import {
   addPolicyResultErrors,
   addSyntaxDiagnosticErrors,
+  addValidationDiagnosticWarning,
+  determineRangeFromOffset,
   reportFormatterOff,
 } from './diagnostics';
 import {
@@ -125,17 +127,61 @@ class ValidationCache {
     }
   }
 }
+const HEAD_REGEX = /(?:(permit|forbid)\s*\((.|\n)*?\))(?<!\s*(;|when|unless))/;
+export const fetchEntityTypes = (
+  schemaDoc: vscode.TextDocument,
+  cedarDoc: vscode.TextDocument,
+  position: vscode.Position
+): {
+  principals: string[];
+  resources: string[];
+  actions: string[];
+} => {
+  let head: string | undefined = undefined;
+  for (let policy of parseCedarPoliciesDoc(cedarDoc).policies) {
+    if (policy.range.contains(position)) {
+      if (policy.entityTypes === undefined) {
+        const match = cedarDoc.getText(policy.range).match(HEAD_REGEX);
+        if (match) {
+          head = match[0];
+        }
+        const principalTypes = determineEntityTypes(
+          schemaDoc,
+          'principal',
+          head
+        );
+        const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
+        const actionIds = determineEntityTypes(schemaDoc, 'action', head);
+        policy.entityTypes = {
+          principals: principalTypes,
+          resources: resourceTypes,
+          actions: actionIds,
+        };
 
+        return policy.entityTypes;
+      } else {
+        return policy.entityTypes;
+      }
+    }
+  }
+
+  return validationCache.fetchEntityTypes(schemaDoc);
+};
 const validationCache = new ValidationCache();
 export const clearValidationCache = () => {
   validationCache.clear();
 };
 export const narrowEntityTypes = (
   schemaDoc: vscode.TextDocument,
-  scope: string
+  scope: string,
+  cedarDoc: vscode.TextDocument,
+  position: vscode.Position
 ): string[] => {
-  const { principals, resources, actions } =
-    validationCache.fetchEntityTypes(schemaDoc);
+  const { principals, resources, actions } = fetchEntityTypes(
+    schemaDoc,
+    cedarDoc,
+    position
+  );
   let entities: string[] = [];
   if (scope === 'principal') {
     entities = principals;
@@ -235,19 +281,33 @@ export const validateSchemaDoc = (
   }
   // console.log(`validateSchemaDoc ${schemaDoc.uri.toString()}`);
 
+  let schemaResult: cedar.ValidateSchemaResult;
   const schema = schemaDoc.getText();
-  const schemaResult: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
+  if (schemaDoc.languageId === 'cedarschema') {
+    schemaResult = cedar.validateSchemaNatural(schema);
+  } else {
+    schemaResult = cedar.validateSchema(schema);
+  }
   const success = schemaResult.success;
   if (schemaResult.success === false && schemaResult.errors) {
     let schemaDiagnostics: vscode.Diagnostic[] = [];
     let vse = schemaResult.errors.map((e) => {
-      return { message: e, offset: 0, length: 0 };
+      return { message: e.message, offset: e.offset, length: e.length };
     });
     addSyntaxDiagnosticErrors(schemaDiagnostics, vse, schemaDoc);
     diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
   } else {
     // reset any errors for the schema from a previous validateSchema
     diagnosticCollection.delete(schemaDoc.uri);
+
+    if (schemaResult.warnings) {
+      let schemaDiagnostics: vscode.Diagnostic[] = [];
+      schemaResult.warnings.map((w) => {
+        const range = determineRangeFromOffset(schemaDoc, w.offset, w.length);
+        addValidationDiagnosticWarning(schemaDiagnostics, w.message, range);
+      });
+      diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
+    }
 
     // determine applicable principal and resource types
     const principalTypes = determineEntityTypes(schemaDoc, 'principal');
@@ -278,14 +338,18 @@ const ATTRIBUTE_REGEX =
   /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
 export const determineEntityTypes = (
   schemaDoc: vscode.TextDocument,
-  scope: 'principal' | 'resource' | 'action'
+  scope: 'principal' | 'resource' | 'action',
+  head: string = 'permit (principal, action, resource)'
 ): string[] => {
   const types: string[] = [];
   const expr = scope === 'action' ? 'context.__vscode__' : scope;
-  const policyResult: cedar.ValidatePolicyResult = cedar.validatePolicy(
-    schemaDoc.getText(),
-    `permit (principal, action, resource) when { ${expr} };`
-  );
+  const tmpPolicy = `${head} when { ${expr} };`;
+  let policyResult: cedar.ValidatePolicyResult;
+  if (schemaDoc.languageId === 'cedarschema') {
+    policyResult = cedar.validatePolicyNatural(schemaDoc.getText(), tmpPolicy);
+  } else {
+    policyResult = cedar.validatePolicy(schemaDoc.getText(), tmpPolicy);
+  }
   if (policyResult.success === false && policyResult.errors) {
     policyResult.errors.forEach((e) => {
       let found =
@@ -299,7 +363,7 @@ export const determineEntityTypes = (
     });
   }
   policyResult.free();
-  return types;
+  return types.sort();
 };
 
 export const validateEntitiesDoc = async (

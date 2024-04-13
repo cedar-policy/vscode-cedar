@@ -8,3 +8,4 @@ mod policy_validator;
 mod schema_validator;
 mod entities_validator;
 mod policy;
+mod schema_translate;

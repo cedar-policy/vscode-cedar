@@ -40,14 +40,22 @@
 		},
 		"types": {
 			"patterns": [{
-				"name": "entity.name.type.cedarschema",
-				"match": "(Boolean|String|Set)"
+				"match": ": (Bool|Long|String|Set)\\b",
+				"captures": {
+					"1" : {
+						"name": "entity.name.type.cedarschema"
+					}
+				}
 			}]
 		},
 		"constants": {
 			"patterns": [{
-				"name": "variable.other.constant.cedarschema",
-				"match": "\\b(principal|resource)\\b"
+				"match": "\\b(principal|resource|context):",
+				"captures": {
+					"1" : {
+						"name": "variable.other.constant.cedarschema"
+					}
+				}
 			}]
 		},
 		"strings": {
