@@ -235,7 +235,7 @@ export const validateCedarDoc = async (
   if (syntaxResult.errors) {
     addSyntaxDiagnosticErrors(diagnostics, syntaxResult.errors, cedarDoc);
   } else {
-    const schemaDoc = await getSchemaTextDocument(diagnostics, cedarDoc);
+    const schemaDoc = await getSchemaTextDocument(cedarDoc);
     if (schemaDoc) {
       if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
         validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
@@ -384,10 +384,7 @@ export const validateEntitiesDoc = async (
   let entitiesDiagnostics: vscode.Diagnostic[] = [];
 
   const entities = entitiesDoc.getText();
-  const schemaDoc = await getSchemaTextDocument(
-    entitiesDiagnostics,
-    entitiesDoc
-  );
+  const schemaDoc = await getSchemaTextDocument(entitiesDoc);
   if (schemaDoc) {
     if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
       validationCache.associateSchemaWithDoc(schemaDoc, entitiesDoc);

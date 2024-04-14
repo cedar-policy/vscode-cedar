@@ -57,7 +57,7 @@ export class CedarEntitiesDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(undefined, cedarEntitiesDoc);
+    const schemaDoc = await getSchemaTextDocument(cedarEntitiesDoc);
     if (schemaDoc) {
       const referencedTypes =
         parseCedarEntitiesDoc(cedarEntitiesDoc).referencedTypes;
@@ -76,10 +76,7 @@ export class CedarTemplateLinksDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(
-      undefined,
-      cedarTemplateLinksDoc
-    );
+    const schemaDoc = await getSchemaTextDocument(cedarTemplateLinksDoc);
     if (schemaDoc) {
       const referencedTypes = parseCedarTemplateLinksDoc(
         cedarTemplateLinksDoc
@@ -97,7 +94,7 @@ export class CedarAuthDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(undefined, cedarAuthDoc);
+    const schemaDoc = await getSchemaTextDocument(cedarAuthDoc);
     if (schemaDoc) {
       const authItem = parseCedarAuthDoc(cedarAuthDoc);
       const referencedTypes = authItem.referencedTypes;
@@ -120,7 +117,7 @@ export class CedarJsonDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(undefined, cedarJsonDoc);
+    const schemaDoc = await getSchemaTextDocument(cedarJsonDoc);
     if (schemaDoc) {
       const policyItem = parseCedarJsonPolicyDoc(cedarJsonDoc);
       const referencedTypes = policyItem.referencedTypes;
@@ -163,7 +160,7 @@ export class CedarDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(undefined, cedarDoc);
+    const schemaDoc = await getSchemaTextDocument(cedarDoc);
     if (schemaDoc) {
       const policyItem = parseCedarPoliciesDoc(cedarDoc);
       const referencedTypes = policyItem.referencedTypes;

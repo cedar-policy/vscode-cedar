@@ -282,7 +282,7 @@ const provideCedarPeriodTriggerItems = async (
   let found = linePrefix.match(PROPERTY_CHAIN_REGEX);
   if (found?.groups) {
     const properties = splitPropertyChain(found[0]);
-    const schemaDoc = await getSchemaTextDocument(undefined, document);
+    const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
       let entities = narrowEntityTypes(
         schemaDoc,
@@ -356,7 +356,7 @@ const provideCedarTriggerCharacterCompletionItems = async (
       let found = linePrefix.match(ENTITY_REGEX);
       if (found?.groups) {
         const entity = found?.groups.entity;
-        const schemaDoc = await getSchemaTextDocument(undefined, document);
+        const schemaDoc = await getSchemaTextDocument(document);
         if (schemaDoc) {
           return createEntityItems(position, schemaDoc, '', entity);
         }
@@ -541,7 +541,7 @@ const provideCedarInvokeCompletionItems = async (
   if (found?.groups) {
     const element = found?.groups.element;
     const trigger = found?.groups.trigger;
-    const schemaDoc = await getSchemaTextDocument(undefined, document);
+    const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
       typeOnly = typeOnly || lineSuffix.startsWith('::"');
       return createEntityItems(position, schemaDoc, element, trigger, typeOnly);
