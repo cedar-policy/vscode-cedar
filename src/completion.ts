@@ -282,7 +282,12 @@ const provideCedarPeriodTriggerItems = async (
     const properties = splitPropertyChain(found[0]);
     const schemaDoc = await getSchemaTextDocument(undefined, document);
     if (schemaDoc) {
-      let entities = narrowEntityTypes(schemaDoc, properties[0]);
+      let entities = narrowEntityTypes(
+        schemaDoc,
+        properties[0],
+        document,
+        position
+      );
 
       if (properties.length === 1) {
         return createEntityTypesAttributeItems(position, schemaDoc, entities);

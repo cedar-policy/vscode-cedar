@@ -22,6 +22,7 @@ import {
 } from '../../regex';
 import * as fs from 'fs';
 import * as path from 'path';
+import { determineEntityTypes } from '../../validate';
 
 const readTestDataFile = (dirname: string, filename: string): string => {
   const filepath = path.join(process.cwd(), 'testdata', dirname, filename);
@@ -408,5 +409,61 @@ suite('Validation RegEx Test Suite', () => {
     }
 
     result.free();
+  });
+});
+
+suite('Validate Policy Entities Test Suite', () => {
+  const fetchEntityTypes = async (
+    head: string
+  ): Promise<{
+    principals: string[];
+    resources: string[];
+    actions: string[];
+  }> => {
+    const schemaDoc = await vscode.workspace.openTextDocument(
+      path.join(process.cwd(), 'testdata', 'narrow', 'cedarschema.json')
+    );
+
+    const principalTypes = determineEntityTypes(schemaDoc, 'principal', head);
+    const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
+    const actionIds = determineEntityTypes(schemaDoc, 'action', head);
+
+    return Promise.resolve({
+      principals: principalTypes,
+      resources: resourceTypes,
+      actions: actionIds,
+    });
+  };
+
+  test('validate unspecified', async () => {
+    const head = `permit(principal, action, resource)`;
+    const e = await fetchEntityTypes(head);
+
+    assert.equal(e.principals.length, 2);
+    assert.equal(e.principals[0], 'NS::E1');
+    assert.equal(e.principals[1], 'NS::E2');
+
+    assert.equal(e.actions.length, 3);
+    assert.equal(e.actions[0], `NS::Action::"a"`);
+    assert.equal(e.actions[1], `NS::Action::"a1"`);
+    assert.equal(e.actions[2], `NS::Action::"a2"`);
+
+    assert.equal(e.resources.length, 2);
+    assert.equal(e.resources[0], 'NS::R1');
+    assert.equal(e.resources[1], 'NS::R2');
+  });
+
+  test('validate E1 a1 R1', async () => {
+    const head = `permit (principal in NS::E::"id", action == NS::Action::"a1", resource)`;
+    const e = await fetchEntityTypes(head);
+
+    assert.equal(e.principals.length, 1);
+    assert.equal(e.principals[0], 'NS::E1');
+
+    assert.equal(e.actions.length, 1);
+    assert.equal(e.actions[0], `NS::Action::"a1"`);
+
+    assert.equal(e.resources.length, 1);
+    assert.equal(e.resources[0], 'NS::R1');
   });
 });
