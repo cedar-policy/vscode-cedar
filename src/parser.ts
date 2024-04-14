@@ -21,8 +21,9 @@ const tokenTypes = [
   'variable',
   'operator',
   'keyword',
+  'decorator',
 ];
-const tokenModifiers = ['declaration', 'deprecated'];
+const tokenModifiers = ['declaration', 'deprecated', 'readonly'];
 export const semanticTokensLegend = new vscode.SemanticTokensLegend(
   tokenTypes,
   tokenModifiers
@@ -277,8 +278,13 @@ export const parseCedarJsonPolicyDoc = (
       const jsonPathLen = pathSupplier().length;
       if (jsonPathLen === 0) {
         if (['principal', 'action', 'resource'].includes(property)) {
-          tokensBuilder.push(range, 'variable', []);
+          tokensBuilder.push(range, 'variable', ['readonly']);
         }
+      } else if (
+        jsonPathLen === 1 &&
+        pathSupplier()[jsonPathLen - 1] === 'annotations'
+      ) {
+        tokensBuilder.push(range, 'decorator', []);
       } else if (
         ['&&', '||', '==', '!=', '>=', '<=', '<', '>', '.'].includes(property)
       ) {
@@ -989,6 +995,10 @@ export const parseCedarSchemaDoc = (
     }
   }
 
+  if (schemaDoc.languageId === 'cedarschema') {
+    return parseCedarSchemaNaturalDoc(schemaDoc, visitSchema);
+  }
+
   const definitionRanges: SchemaRange[] = [];
   const referencedTypes: ReferencedRange[] = [];
   const actionIds: ReferencedRange[] = [];
@@ -1271,6 +1281,142 @@ export const parseCedarSchemaDoc = (
       }
     },
   });
+
+  const cachedItem = {
+    version: schemaDoc.version,
+    definitionRanges: definitionRanges,
+    tokens: tokensBuilder.build(),
+    referencedTypes: referencedTypes,
+    actionIds: actionIds,
+    completions: completions,
+  };
+  schemaCache[schemaDoc.uri.toString()] = cachedItem;
+
+  return cachedItem;
+};
+
+const parseCedarSchemaNaturalDoc = (
+  schemaDoc: vscode.TextDocument,
+  visitSchema?:
+    | undefined
+    | ((schemaRange: SchemaRange, schemaText: string) => void)
+): SchemaCacheItem => {
+  // schema text is not cached, so check for no visitSchema callback
+  if (visitSchema === undefined) {
+    const cachedItem = schemaCache[schemaDoc.uri.toString()];
+    if (cachedItem && cachedItem.version === schemaDoc.version) {
+      // console.log("parseCedarDocSchema (cached)");
+      return cachedItem;
+    }
+  }
+
+  const definitionRanges: SchemaRange[] = [];
+  const referencedTypes: ReferencedRange[] = [];
+  const actionIds: ReferencedRange[] = [];
+  const completions: Record<string, SchemaCompletionRecord> = {};
+
+  let symbol = vscode.SymbolKind.Class;
+  const tokensBuilder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
+
+  let etype: string = '';
+  let namespace: string = '';
+  let collection: 'commonTypes' | 'entityTypes' | 'actions' = 'entityTypes';
+  let etypeRange: vscode.Range | null = null;
+
+  function determineRange(
+    textLine: string,
+    i: number,
+    match: string,
+    margin: number = 0
+  ): vscode.Range | null {
+    let range = null;
+    const idx = textLine.indexOf(' ' + match);
+    if (idx > -1) {
+      range = new vscode.Range(
+        new vscode.Position(i, idx + 1 + margin),
+        new vscode.Position(i, idx + 1 + match.length - margin)
+      );
+    }
+    return range;
+  }
+
+  let startLine = 1;
+  for (let i = 0; i < schemaDoc.lineCount; i++) {
+    const textLine = schemaDoc.lineAt(i).text;
+    const commentPos = textLine.indexOf('//');
+    let linePreComment = textLine
+      .substring(0, commentPos > -1 ? commentPos : textLine.length)
+      .trim();
+    if (linePreComment.length > 0) {
+      if (linePreComment.startsWith('namespace')) {
+        const match = linePreComment.match(
+          /^namespace\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*{/
+        );
+        if (match) {
+          namespace = match[1] + '::';
+          linePreComment = linePreComment.substring(match[0].length).trim();
+        }
+      }
+      if (linePreComment.startsWith('type')) {
+        startLine = i;
+        symbol = vscode.SymbolKind.Struct;
+        collection = 'commonTypes';
+        const match = linePreComment.match(
+          /^type\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*=/
+        );
+        if (match) {
+          etype = namespace + match[1];
+          etypeRange = determineRange(textLine, i, match[1]);
+        }
+      }
+      if (linePreComment.startsWith('entity')) {
+        startLine = i;
+        symbol = vscode.SymbolKind.Class;
+        collection = 'entityTypes';
+        const match = linePreComment.match(
+          /^entity\s+([_a-zA-Z][_a-zA-Z0-9]*)( |;)/
+        );
+        if (match) {
+          etype = namespace + match[1];
+          etypeRange = determineRange(textLine, i, match[1]);
+        }
+      }
+      if (linePreComment.startsWith('action')) {
+        startLine = i;
+        symbol = vscode.SymbolKind.Function;
+        collection = 'actions';
+        let match = linePreComment.match(/^action\s+"(.+)"/);
+        if (match) {
+          etype = `${namespace}Action::"${match[1]}"`;
+          etypeRange = determineRange(textLine, i, `"${match[1]}"`, 1);
+        } else {
+          match = linePreComment.match(/^action\s+([_a-zA-Z][_a-zA-Z0-9]*)/);
+          if (match) {
+            etype = `${namespace}Action::"${match[1]}"`;
+            etypeRange = determineRange(textLine, i, match[1]);
+          }
+        }
+      }
+      if (
+        // end of policy or
+        linePreComment.trim().endsWith(';')
+      ) {
+        const range = new vscode.Range(
+          new vscode.Position(startLine, 0),
+          new vscode.Position(i, schemaDoc.lineAt(i).text.length)
+        );
+        const schemaRange: SchemaRange = {
+          collection: collection,
+          etype: etype,
+          range: range,
+          etypeRange: etypeRange || range,
+          symbol: symbol,
+        };
+        definitionRanges.push(schemaRange);
+        etypeRange = null;
+      }
+    }
+  }
 
   const cachedItem = {
     version: schemaDoc.version,

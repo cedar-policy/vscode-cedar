@@ -332,7 +332,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 (key, value) => {
                   if (
                     key === 'additionalAttributes' ||
-                    (key === 'required' && value === true)
+                    (key === 'required' && value === true) ||
+                    (key === 'memberOf' && value === null)
                   ) {
                     return undefined;
                   }
@@ -524,11 +525,23 @@ export async function activate(context: vscode.ExtensionContext) {
       schemaSymbolProvider
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSymbolProvider(
+      { language: 'cedarschema' },
+      schemaSymbolProvider
+    )
+  );
 
   const schemaDefinitionProvider = new CedarSchemaDefinitionProvider();
   context.subscriptions.push(
     vscode.languages.registerDefinitionProvider(
       schemaSelector,
+      schemaDefinitionProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      { language: 'cedarschema' },
       schemaDefinitionProvider
     )
   );
