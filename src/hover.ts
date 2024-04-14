@@ -39,7 +39,7 @@ const createVariableHover = async (
   word: string
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
-  const schemaDoc = await getSchemaTextDocument(undefined, document);
+  const schemaDoc = await getSchemaTextDocument(document);
   if (schemaDoc) {
     let entities = narrowEntityTypes(schemaDoc, word, document, position);
     entities.forEach((entityType) => {
@@ -64,7 +64,7 @@ const createPropertyHover = async (
   range: vscode.Range | undefined
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
-  const schemaDoc = await getSchemaTextDocument(undefined, document);
+  const schemaDoc = await getSchemaTextDocument(document);
   if (schemaDoc) {
     let entities = narrowEntityTypes(
       schemaDoc,

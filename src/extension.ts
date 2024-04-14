@@ -69,6 +69,7 @@ import { CedarCompletionItemProvider } from './completion';
 import { CedarHoverProvider } from './hover';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
+import { ValidateWithSchemaCodeLensProvider } from './codelens';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -133,6 +134,13 @@ export async function activate(context: vscode.ExtensionContext) {
       ':', // entities
       '@', // annotations
       '?' // templates
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'cedar' },
+      new ValidateWithSchemaCodeLensProvider()
     )
   );
 
@@ -358,7 +366,7 @@ export async function activate(context: vscode.ExtensionContext) {
         edit: vscode.TextEditorEdit,
         args: any[]
       ) => {
-        const fileUri = await getSchemaUri(undefined, textEditor.document);
+        const fileUri = await getSchemaUri(textEditor.document);
         if (fileUri) {
           try {
             await vscode.commands.executeCommand('vscode.open', fileUri);
@@ -488,6 +496,13 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerDefinitionProvider(
       entitiesSelector,
       entitiesDefinitionProvider
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      entitiesSelector,
+      new ValidateWithSchemaCodeLensProvider()
     )
   );
 
