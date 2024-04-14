@@ -1,10 +1,13 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as assert from 'assert';
 
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as cedar from '../../completion';
+import * as completion from '../../completion';
 
 suite('Cedar Completion Suite', () => {
   vscode.window.showInformationMessage('Start Cedar Completion tests.');
@@ -28,7 +31,7 @@ suite('Cedar Completion Suite', () => {
     lastCharacter: boolean = false
   ) => {
     await vscode.window.showTextDocument(doc);
-    const provider = new cedar.CedarCompletionItemProvider();
+    const provider = new completion.CedarCompletionItemProvider();
     const items = await provider.provideCompletionItems(
       doc,
       position,
@@ -59,7 +62,7 @@ suite('Cedar Completion Suite', () => {
     });
     await vscode.window.showTextDocument(doc);
 
-    const provider = new cedar.CedarCompletionItemProvider();
+    const provider = new completion.CedarCompletionItemProvider();
     const items = await provider.provideCompletionItems(
       doc,
       new vscode.Position(0, content.length),
