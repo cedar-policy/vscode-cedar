@@ -19,6 +19,7 @@ const tokenTypes = [
   'macro',
   'function',
   'variable',
+  'operator',
   'keyword',
 ];
 const tokenModifiers = ['declaration', 'deprecated'];
@@ -279,6 +280,15 @@ export const parseCedarJsonPolicyDoc = (
           tokensBuilder.push(range, 'variable', []);
         }
       } else if (
+        ['&&', '||', '==', '!=', '>=', '<=', '<', '>', '.'].includes(property)
+      ) {
+        tokensBuilder.push(range, 'operator', []);
+      } else if (
+        ['if', 'then', 'else'].includes(property) &&
+        pathSupplier()[jsonPathLen - 1] === 'if-then-else'
+      ) {
+        tokensBuilder.push(range, 'keyword', []);
+      } else if (
         property === '__entity' &&
         pathSupplier()[jsonPathLen - 1] === 'Value'
       ) {
@@ -301,6 +311,18 @@ export const parseCedarJsonPolicyDoc = (
       const property = pathSupplier()[0] as string;
       if (jsonPathLen === 1 && pathSupplier()[0] === 'effect') {
         tokensBuilder.push(range, 'keyword', []);
+      }
+
+      if (
+        jsonPathLen === 2 &&
+        pathSupplier()[jsonPathLen - 1] === 'slot' &&
+        ['?principal', '?resource'].includes(value)
+      ) {
+        tokensBuilder.push(range, 'variable', []);
+      }
+
+      if (jsonPathLen === 2 && pathSupplier()[jsonPathLen - 1] === 'op') {
+        tokensBuilder.push(range, 'operator', []);
       }
 
       if (jsonPathLen > 2 && pathSupplier()[jsonPathLen - 1] === 'type') {

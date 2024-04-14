@@ -37,9 +37,14 @@ export const exportCedarDocPolicyById = async (
   policyRanges.forEach((policyRange, index) => {
     if (policyRange.id === policyId) {
       const rawPolicy = cedarDoc.getText(policyRange.range);
-      const exportResult: cedar.ExportPolicyResult =
-        cedar.exportPolicy(rawPolicy);
-
+      const isTemplate =
+        rawPolicy.includes('?principal') || rawPolicy.includes('?resource');
+      let exportResult: cedar.ExportPolicyResult;
+      if (isTemplate) {
+        exportResult = cedar.exportPolicyTemplate(rawPolicy);
+      } else {
+        exportResult = cedar.exportPolicy(rawPolicy);
+      }
       let success = exportResult.success;
       if (success && exportResult.json) {
         exportJson = JSON.stringify(JSON.parse(exportResult.json), null, 2);
