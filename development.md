@@ -90,10 +90,10 @@ Then build and test the extension inside the container.  This will take several 
 
 ### Local Install
 
-This extension can locally be installed to `~/.vscode/extensions` using the command palette and selecting **Extensions: Install from VSIX...** or running the following [Visual Studio Code command-line interface](https://code.visualstudio.com/docs/editor/command-line) command (see link if `code` is not in your PATH):
+This extension can locally be installed to `~/.vscode/extensions` using the command palette and selecting **Extensions: Install from VSIX...** or running the following [Visual Studio Code command-line interface](https://code.visualstudio.com/docs/editor/command-line) command (see link if `code` is not in your PATH) replacing the `.vsix` filename:
 
 ```bash
-code --install-extension vscode-cedar-0.7.1.vsix
+code --install-extension vscode-cedar-{major}.{minor}.{patch}.vsix
 ```
 
 Note: Preview install may see a `[DEP0005] DeprecationWarning` tracked in GitHub issue [install-extension command throws Buffer deprecated warning #82524](https://github.com/microsoft/vscode/issues/82524)

@@ -1,3 +1,15 @@
+## v0.7.2 (Pre-release) 2024-04-15
+
+- Update to Cedar 3.1.2
+- Human-readable schema support
+- IntelliSense and hover help updates
+- Add JSON export of Cedar policy templates
+
+## v0.6.2 (Preview) 2024-04-15
+
+- Update to Cedar 2.4.5
+- IntelliSense and hover help updates
+
 ## v0.7.1 (Pre-release) 2024-02-19
 
 - Update to Cedar 3.0.1
