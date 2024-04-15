@@ -1,0 +1,105 @@
+{
+  "NS": {
+    "entityTypes": {
+      "E": {},
+      "E1": {
+        "memberOfTypes": ["E"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "p1": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "E2": {
+        "memberOfTypes": ["E"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "p1": {
+              "type": "Long"
+            }
+          }
+        }
+      },
+      "R": {},
+      "R1": {
+        "memberOfTypes": ["R"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "p1": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "R2": {
+        "memberOfTypes": ["R"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "p1": {
+              "type": "Long"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "as": {
+        "appliesTo": {
+          "principalTypes": [],
+          "resourceTypes": []
+        }
+      },
+      "a": {
+        "memberOf": [{ "id": "as" }],
+        "appliesTo": {
+          "principalTypes": ["E1", "E2"],
+          "resourceTypes": ["R1", "R2"],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "c1": {
+                "type": "Long"
+              }
+            }
+          }
+        }
+      },
+      "a1": {
+        "memberOf": [{ "id": "as" }],
+        "appliesTo": {
+          "principalTypes": ["E1"],
+          "resourceTypes": ["R1"],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "c1": {
+                "type": "Long"
+              }
+            }
+          }
+        }
+      },
+      "a2": {
+        "memberOf": [{ "id": "as" }],
+        "appliesTo": {
+          "principalTypes": ["E2"],
+          "resourceTypes": ["R2"],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "c1": {
+                "type": "Long"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

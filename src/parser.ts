@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -61,10 +61,17 @@ export type ReferencedRange = {
  * Cedar policies
  */
 
+type EntityTypes = {
+  principals: string[];
+  resources: string[];
+  actions: string[];
+};
+
 export type PolicyRange = {
   id: string;
   range: vscode.Range;
   effectRange: vscode.Range;
+  entityTypes: EntityTypes | undefined;
 };
 
 type PolicyCacheItem = {
@@ -176,7 +183,12 @@ export const parseCedarPoliciesDoc = (
       }
     });
 
-    if (linePreComment.trim().endsWith(';')) {
+    if (
+      // end of policy or
+      linePreComment.trim().endsWith(';') ||
+      // end of file
+      (i === cedarDoc.lineCount - 1 && !effectRange.isEqual(DEFAULT_RANGE))
+    ) {
       const policyRange = {
         id: id || `policy${count}`,
         range: new vscode.Range(
@@ -184,6 +196,7 @@ export const parseCedarPoliciesDoc = (
           new vscode.Position(i, textLine.length)
         ),
         effectRange: effectRange,
+        entityTypes: undefined,
       };
       policies.push(policyRange);
 

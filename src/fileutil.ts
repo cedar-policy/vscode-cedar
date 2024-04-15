@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -101,7 +101,6 @@ export const handleWillDeleteFiles = async (
 };
 
 export const getSchemaUri = async (
-  diagnostics: vscode.Diagnostic[] | undefined = undefined,
   doc: vscode.TextDocument | undefined = undefined
 ): Promise<vscode.Uri | undefined> => {
   let fileUri = undefined;
@@ -124,26 +123,12 @@ export const getSchemaUri = async (
     const files = await findSchemaFilesInFolder(cedarDocPath);
     if (files && files.length === 1) {
       fileUri = vscode.Uri.file(path.join(cedarDocPath, files[0]));
-
-      if (diagnostics) {
-        addValidationDiagnosticInfo(
-          diagnostics,
-          `Validated with folder Cedar schema: ${files[0]}`
-        );
-      }
     } else {
       const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
       if (workspace?.uri) {
         const files = await findSchemaFilesInFolder(workspace.uri.fsPath);
         if (files && files.length === 1) {
           fileUri = vscode.Uri.file(path.join(workspace.uri.fsPath, files[0]));
-
-          if (diagnostics) {
-            addValidationDiagnosticInfo(
-              diagnostics,
-              `Validated with workspace Cedar schema: ${files[0]}`
-            );
-          }
         }
       }
     }
@@ -153,11 +138,10 @@ export const getSchemaUri = async (
 };
 
 export const getSchemaTextDocument = async (
-  diagnostics: vscode.Diagnostic[] | undefined = undefined,
   doc: vscode.TextDocument | undefined = undefined
 ): Promise<vscode.TextDocument | undefined> => {
   let schemaDoc = undefined;
-  const fileUri = await getSchemaUri(diagnostics, doc);
+  const fileUri = await getSchemaUri(doc);
   if (fileUri) {
     try {
       schemaDoc = await vscode.workspace.openTextDocument(fileUri);
