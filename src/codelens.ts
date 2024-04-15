@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
-import { COMMAND_CEDAR_SCHEMAOPEN } from './commands';
 import { getSchemaTextDocument } from './fileutil';
 
 export class ValidateWithSchemaCodeLensProvider
@@ -13,8 +12,6 @@ export class ValidateWithSchemaCodeLensProvider
   ): Promise<vscode.CodeLens[]> {
     const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
-      let topOfDocument = new vscode.Range(0, 0, 0, 0);
-
       let schemaFileName = schemaDoc?.uri.fsPath;
       const workspace = vscode.workspace.getWorkspaceFolder(document.uri);
       if (workspace?.uri) {
@@ -23,13 +20,17 @@ export class ValidateWithSchemaCodeLensProvider
         );
       }
 
-      let c: vscode.Command = {
-        command: COMMAND_CEDAR_SCHEMAOPEN,
+      const openCommand: vscode.Command = {
+        command: 'vscode.open',
         title: `Validated using Cedar schema: ${schemaFileName}`,
-        tooltip: `Open Cedar schema ${schemaDoc?.uri.fsPath}`,
+        tooltip: `Open ${schemaDoc?.uri.fsPath}`,
+        arguments: [schemaDoc?.uri],
       };
 
-      let codeLens = new vscode.CodeLens(topOfDocument, c);
+      const codeLens = new vscode.CodeLens(
+        new vscode.Range(0, 0, 0, 0),
+        openCommand
+      );
 
       return Promise.resolve([codeLens]);
     }
