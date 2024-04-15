@@ -189,32 +189,34 @@ const createAttributeItems = (
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
 
-  Object.keys(attributes).forEach((key) => {
-    let item = new vscode.CompletionItem(
-      {
-        label: key,
-        detail: `: ${attributes[key].description}`,
-        description: entityType,
-      },
-      vscode.CompletionItemKind.Field
-    );
-    item.range = range;
-    let match = key.match(IDENT_REGEX);
-    if (match === null) {
-      // properties not matching IDENT need a different notation
-      item.insertText = new vscode.SnippetString(`["${key}"]`);
-      // and remove the preceding . that triggered the completion
-      item.additionalTextEdits = [
-        vscode.TextEdit.delete(
-          new vscode.Range(
-            new vscode.Position(position.line, position.character - 1),
-            position
-          )
-        ),
-      ];
-    }
-    items.push(item);
-  });
+  if (attributes) {
+    Object.keys(attributes).forEach((key) => {
+      let item = new vscode.CompletionItem(
+        {
+          label: key,
+          detail: `: ${attributes[key].description}`,
+          description: entityType,
+        },
+        vscode.CompletionItemKind.Field
+      );
+      item.range = range;
+      let match = key.match(IDENT_REGEX);
+      if (match === null) {
+        // properties not matching IDENT need a different notation
+        item.insertText = new vscode.SnippetString(`["${key}"]`);
+        // and remove the preceding . that triggered the completion
+        item.additionalTextEdits = [
+          vscode.TextEdit.delete(
+            new vscode.Range(
+              new vscode.Position(position.line, position.character - 1),
+              position
+            )
+          ),
+        ];
+      }
+      items.push(item);
+    });
+  }
 
   return items;
 };

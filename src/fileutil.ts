@@ -153,3 +153,22 @@ export const getSchemaTextDocument = async (
 
   return Promise.resolve(schemaDoc);
 };
+
+export const saveTextAndFormat = async (uri: vscode.Uri, text: string) => {
+  const saveUri = await vscode.window.showSaveDialog({
+    defaultUri: uri,
+  });
+  if (saveUri) {
+    vscode.workspace.fs.writeFile(saveUri, new Uint8Array(Buffer.from(text)));
+    await vscode.commands.executeCommand('vscode.open', saveUri);
+    const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
+      'vscode.executeFormatDocumentProvider',
+      saveUri
+    );
+    const workEdits = new vscode.WorkspaceEdit();
+    workEdits.set(saveUri, textEdits);
+    await vscode.workspace.applyEdit(workEdits);
+    const savedDoc = await vscode.workspace.openTextDocument(saveUri);
+    savedDoc.save();
+  }
+};

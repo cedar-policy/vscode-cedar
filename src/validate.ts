@@ -333,7 +333,7 @@ export const validateSchemaDoc = (
 // TODO: find a real API to call for determineEntityTypes
 // parsing errors from intentionally invalid policy is an ugly hack
 const UNEXPECTED_REGEX =
-  /unexpected type. expected {"type":"Boolean"} but saw {"type":"Entity","name":"(?<suggestion>.+)"}/;
+  /unexpected type: expected Bool but saw (?<suggestion>.+)/;
 const ATTRIBUTE_REGEX =
   /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
 export const determineEntityTypes = (
@@ -358,7 +358,9 @@ export const determineEntityTypes = (
           : e.match(UNEXPECTED_REGEX);
 
       if (found?.groups && found?.groups.suggestion) {
-        types.push(found.groups.suggestion);
+        if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
+          types.push(found.groups.suggestion);
+        }
       }
     });
   }

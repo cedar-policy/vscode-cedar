@@ -67,7 +67,9 @@
         "extensions": [
           ".cedarschema"
         ],
-        "filenames": ["cedarschema"],
+        "filenames": [
+          "cedarschema"
+        ],
         "configuration": "./language-configuration.json"
       },
       {
@@ -269,7 +271,7 @@
     "@typescript-eslint/parser": "^5.62.0",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.9",
-    "@vscode/vsce": "^2.24.0",
+    "@vscode/vsce": "^2.25.0",
     "eslint": "^8.57.0",
     "js-yaml": "^4.1.0",
     "mocha": "^10.4.0",
