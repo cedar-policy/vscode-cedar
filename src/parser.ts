@@ -1350,7 +1350,7 @@ const parseCedarSchemaNaturalDoc = (
     if (linePreComment.length > 0) {
       if (linePreComment.startsWith('namespace')) {
         const match = linePreComment.match(
-          /^namespace\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*{/
+          /^namespace\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*{/
         );
         if (match) {
           namespace = match[1] + '::';
@@ -1385,7 +1385,7 @@ const parseCedarSchemaNaturalDoc = (
         startLine = i;
         symbol = vscode.SymbolKind.Function;
         collection = 'actions';
-        let match = linePreComment.match(/^action\s+"(.+)"/);
+        let match = linePreComment.match(/^action\s+"(.+?)"/);
         if (match) {
           etype = `${namespace}Action::"${match[1]}"`;
           etypeRange = determineRange(textLine, i, `"${match[1]}"`, 1);

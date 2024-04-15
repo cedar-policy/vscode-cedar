@@ -20,7 +20,12 @@ import {
   CEDAR_JSON_GLOB,
 } from './fileutil';
 import { createDiagnosticCollection } from './diagnostics';
-import { formatCedarDoc } from './format';
+import {
+  fixCedarSchemaNaturalText,
+  fixCedarSchemaText,
+  formatCedarDoc,
+  formatCedarSchemaNaturalDoc,
+} from './format';
 import {
   clearValidationCache,
   validateCedarDoc,
@@ -335,19 +340,10 @@ export async function activate(context: vscode.ExtensionContext) {
           if (saveUri) {
             let schemaText = translateResult.schema || '';
             if (schemaDoc.languageId === 'cedarschema') {
-              schemaText = JSON.stringify(
-                JSON.parse(translateResult.schema as string),
-                (key, value) => {
-                  if (
-                    key === 'additionalAttributes' ||
-                    (key === 'required' && value === true) ||
-                    (key === 'memberOf' && value === null)
-                  ) {
-                    return undefined;
-                  }
-                  return value;
-                },
-                2
+              schemaText = fixCedarSchemaText(translateResult.schema as string);
+            } else {
+              schemaText = fixCedarSchemaNaturalText(
+                translateResult.schema as string
               );
             }
             vscode.workspace.fs.writeFile(
@@ -501,6 +497,33 @@ export async function activate(context: vscode.ExtensionContext) {
 
           return Promise.resolve([
             vscode.TextEdit.replace(policyRange, formattedPolicy),
+          ]);
+        }
+
+        return Promise.resolve(undefined); // no edits
+      },
+    })
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider('cedarschema', {
+      async provideDocumentFormattingEdits(
+        schemaDoc: vscode.TextDocument
+      ): Promise<vscode.TextEdit[] | undefined> {
+        // don't try and format if syntax doesn't validate
+        if (!(await validateSchemaDoc(schemaDoc, diagnosticCollection))) {
+          return Promise.resolve(undefined);
+        }
+
+        const formattedSchema = formatCedarSchemaNaturalDoc(schemaDoc);
+        if (formattedSchema) {
+          // use replacement Range of full document
+          const policyRange = new vscode.Range(
+            schemaDoc.lineAt(0).range.start,
+            schemaDoc.lineAt(schemaDoc.lineCount - 1).range.end
+          );
+
+          return Promise.resolve([
+            vscode.TextEdit.replace(policyRange, formattedSchema),
           ]);
         }
 
