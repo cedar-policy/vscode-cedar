@@ -15,9 +15,6 @@
 			"include": "#constants"
 		},
 		{
-			"include": "#types"
-		},
-		{
 			"include": "#strings"
 		}
 	],
@@ -38,16 +35,14 @@
 				"match": "\\b(in|appliesTo)\\b"
 			}]
 		},
-		"types": {
-			"patterns": [{
-				"name": "entity.name.type.cedarschema",
-				"match": "(Boolean|String|Set)"
-			}]
-		},
 		"constants": {
 			"patterns": [{
-				"name": "variable.other.constant.cedarschema",
-				"match": "\\b(principal|resource)\\b"
+				"match": "\\b(principal|resource|context):",
+				"captures": {
+					"1" : {
+						"name": "variable.other.constant.cedarschema"
+					}
+				}
 			}]
 		},
 		"strings": {

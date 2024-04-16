@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -189,32 +189,34 @@ const createAttributeItems = (
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
 
-  Object.keys(attributes).forEach((key) => {
-    let item = new vscode.CompletionItem(
-      {
-        label: key,
-        detail: `: ${attributes[key].description}`,
-        description: entityType,
-      },
-      vscode.CompletionItemKind.Field
-    );
-    item.range = range;
-    let match = key.match(IDENT_REGEX);
-    if (match === null) {
-      // properties not matching IDENT need a different notation
-      item.insertText = new vscode.SnippetString(`["${key}"]`);
-      // and remove the preceding . that triggered the completion
-      item.additionalTextEdits = [
-        vscode.TextEdit.delete(
-          new vscode.Range(
-            new vscode.Position(position.line, position.character - 1),
-            position
-          )
-        ),
-      ];
-    }
-    items.push(item);
-  });
+  if (attributes) {
+    Object.keys(attributes).forEach((key) => {
+      let item = new vscode.CompletionItem(
+        {
+          label: key,
+          detail: `: ${attributes[key].description}`,
+          description: entityType,
+        },
+        vscode.CompletionItemKind.Field
+      );
+      item.range = range;
+      let match = key.match(IDENT_REGEX);
+      if (match === null) {
+        // properties not matching IDENT need a different notation
+        item.insertText = new vscode.SnippetString(`["${key}"]`);
+        // and remove the preceding . that triggered the completion
+        item.additionalTextEdits = [
+          vscode.TextEdit.delete(
+            new vscode.Range(
+              new vscode.Position(position.line, position.character - 1),
+              position
+            )
+          ),
+        ];
+      }
+      items.push(item);
+    });
+  }
 
   return items;
 };
@@ -282,9 +284,14 @@ const provideCedarPeriodTriggerItems = async (
   let found = linePrefix.match(PROPERTY_CHAIN_REGEX);
   if (found?.groups) {
     const properties = splitPropertyChain(found[0]);
-    const schemaDoc = await getSchemaTextDocument(undefined, document);
+    const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
-      let entities = narrowEntityTypes(schemaDoc, properties[0]);
+      let entities = narrowEntityTypes(
+        schemaDoc,
+        properties[0],
+        document,
+        position
+      );
 
       if (properties.length === 1) {
         return createEntityTypesAttributeItems(position, schemaDoc, entities);
@@ -351,7 +358,7 @@ const provideCedarTriggerCharacterCompletionItems = async (
       let found = linePrefix.match(ENTITY_REGEX);
       if (found?.groups) {
         const entity = found?.groups.entity;
-        const schemaDoc = await getSchemaTextDocument(undefined, document);
+        const schemaDoc = await getSchemaTextDocument(document);
         if (schemaDoc) {
           return createEntityItems(position, schemaDoc, '', entity);
         }
@@ -536,7 +543,7 @@ const provideCedarInvokeCompletionItems = async (
   if (found?.groups) {
     const element = found?.groups.element;
     const trigger = found?.groups.trigger;
-    const schemaDoc = await getSchemaTextDocument(undefined, document);
+    const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
       typeOnly = typeOnly || lineSuffix.startsWith('::"');
       return createEntityItems(position, schemaDoc, element, trigger, typeOnly);

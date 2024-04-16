@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as assert from 'assert';
@@ -162,10 +162,10 @@ suite('Cedar WASM validate Suite', () => {
     assert.equal(result.errors?.length, 1);
     assert.equal(
       result.errors?.[0].message,
-      'not a valid policy condition: `whenless`. Condition must be either `when` or `unless`'
+      'not a valid policy condition: `whenless`'
     );
-    assert.equal(result.errors?.[0].offset, 0);
-    assert.equal(result.errors?.[0].length, 0);
+    assert.equal(result.errors?.[0].offset, 37);
+    assert.equal(result.errors?.[0].length, 8);
     result.free();
   });
 
@@ -235,6 +235,35 @@ suite('Cedar WASM validate Suite', () => {
     }`;
     const result: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
     assert.equal(result.success, false);
+    result.free();
+  });
+
+  test('validate_schema_natural_passes', async () => {
+    const schema = `namespace Demo {
+  entity User in UserGroup = {
+    "department": String,
+    "jobLevel": Long,
+  };
+  entity UserGroup;
+}`;
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaNatural(schema);
+    assert.equal(result.success, true);
+    result.free();
+  });
+
+  test('validate_schema_natural_translate_passes', async () => {
+    const schema = `namespace Demo {
+  entity User in UserGroup = {
+    "department": String,
+    "jobLevel": Long,
+  };
+  entity UserGroup;
+}`;
+    const result: cedar.TranslateSchemaResult =
+      cedar.translateSchemaToJSON(schema);
+    assert.equal(result.success, true);
+
     result.free();
   });
 

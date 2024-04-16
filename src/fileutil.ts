@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -20,6 +20,7 @@ export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
 
 export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
   const result =
+    doc.languageId === 'cedarschema' ||
     doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_FILE) ||
     doc.fileName.endsWith(CEDAR_SCHEMA_EXTENSION_JSON);
 
@@ -101,7 +102,6 @@ export const handleWillDeleteFiles = async (
 };
 
 export const getSchemaUri = async (
-  diagnostics: vscode.Diagnostic[] | undefined = undefined,
   doc: vscode.TextDocument | undefined = undefined
 ): Promise<vscode.Uri | undefined> => {
   let fileUri = undefined;
@@ -124,26 +124,12 @@ export const getSchemaUri = async (
     const files = await findSchemaFilesInFolder(cedarDocPath);
     if (files && files.length === 1) {
       fileUri = vscode.Uri.file(path.join(cedarDocPath, files[0]));
-
-      if (diagnostics) {
-        addValidationDiagnosticInfo(
-          diagnostics,
-          `Validated with folder Cedar schema: ${files[0]}`
-        );
-      }
     } else {
       const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
       if (workspace?.uri) {
         const files = await findSchemaFilesInFolder(workspace.uri.fsPath);
         if (files && files.length === 1) {
           fileUri = vscode.Uri.file(path.join(workspace.uri.fsPath, files[0]));
-
-          if (diagnostics) {
-            addValidationDiagnosticInfo(
-              diagnostics,
-              `Validated with workspace Cedar schema: ${files[0]}`
-            );
-          }
         }
       }
     }
@@ -153,11 +139,10 @@ export const getSchemaUri = async (
 };
 
 export const getSchemaTextDocument = async (
-  diagnostics: vscode.Diagnostic[] | undefined = undefined,
   doc: vscode.TextDocument | undefined = undefined
 ): Promise<vscode.TextDocument | undefined> => {
   let schemaDoc = undefined;
-  const fileUri = await getSchemaUri(diagnostics, doc);
+  const fileUri = await getSchemaUri(doc);
   if (fileUri) {
     try {
       schemaDoc = await vscode.workspace.openTextDocument(fileUri);
@@ -167,4 +152,23 @@ export const getSchemaTextDocument = async (
   }
 
   return Promise.resolve(schemaDoc);
+};
+
+export const saveTextAndFormat = async (uri: vscode.Uri, text: string) => {
+  const saveUri = await vscode.window.showSaveDialog({
+    defaultUri: uri,
+  });
+  if (saveUri) {
+    vscode.workspace.fs.writeFile(saveUri, new Uint8Array(Buffer.from(text)));
+    await vscode.commands.executeCommand('vscode.open', saveUri);
+    const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
+      'vscode.executeFormatDocumentProvider',
+      saveUri
+    );
+    const workEdits = new vscode.WorkspaceEdit();
+    workEdits.set(saveUri, textEdits);
+    await vscode.workspace.applyEdit(workEdits);
+    const savedDoc = await vscode.workspace.openTextDocument(saveUri);
+    savedDoc.save();
+  }
 };

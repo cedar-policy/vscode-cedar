@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -30,6 +30,8 @@
   "activationEvents": [
     "workspaceContains:**/*.cedar",
     "workspaceContains:**/*.cedar.json",
+    "workspaceContains:**/cedarschema",
+    "workspaceContains:**/*.cedarschema",
     "workspaceContains:**/*.cedarschema.json",
     "workspaceContains:**/cedarschema.json",
     "workspaceContains:**/*.cedarentities.json",
@@ -65,7 +67,13 @@
         "extensions": [
           ".cedarschema"
         ],
+        "filenames": [
+          "cedarschema"
+        ],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "cedarschema-injection"
       }
     ],
     "commands": [
@@ -93,6 +101,11 @@
         "command": "cedar.schemavalidate",
         "category": "Cedar",
         "title": "Validate Cedar schema"
+      },
+      {
+        "command": "cedar.schematranslate",
+        "category": "Cedar",
+        "title": "Translate Cedar schema"
       },
       {
         "command": "cedar.schemaexport",
@@ -133,8 +146,13 @@
           "group": "navigation"
         },
         {
-          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
           "command": "cedar.schemavalidate",
+          "group": "1_modification"
+        },
+        {
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "command": "cedar.schematranslate",
           "group": "1_modification"
         },
         {
@@ -163,7 +181,11 @@
         },
         {
           "command": "cedar.schemavalidate",
-          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+        },
+        {
+          "command": "cedar.schematranslate",
+          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
         },
         {
           "command": "cedar.schemaexport",
@@ -196,6 +218,17 @@
         "language": "cedarschema",
         "scopeName": "source.cedarschema",
         "path": "./syntaxes/cedarschema.tmLanguage.json"
+      },
+      {
+        "language": "cedarschema-injection",
+        "scopeName": "markdown.cedarschema.codeblock",
+        "path": "./syntaxes/codeblock.json",
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.cedarschema": "cedarschema"
+        }
       }
     ],
     "configuration": {
@@ -238,10 +271,10 @@
     "@typescript-eslint/parser": "^5.62.0",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.9",
-    "@vscode/vsce": "^2.24.0",
+    "@vscode/vsce": "^2.25.0",
     "eslint": "^8.57.0",
     "js-yaml": "^4.1.0",
-    "mocha": "^10.3.0",
+    "mocha": "^10.4.0",
     "typescript": "^4.9.5"
   }
 }

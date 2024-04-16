@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 use cedar_policy::{Validator, ValidationMode, Schema, PolicySet};
@@ -51,6 +51,24 @@ pub fn validate_policy(input_schema_str: &str, input_policies_str: &str) -> Vali
       }
     }
   };
+  return validate_policy_schema(schema, input_policies_str);
+}
+
+#[wasm_bindgen(js_name = validatePolicyNatural)]
+pub fn validate_policy_natural(input_schema_str: &str, input_policies_str: &str) -> ValidatePolicyResult {
+  let schema_tuple = match Schema::from_str_natural(&input_schema_str) {
+    Ok(schema_tuple) => schema_tuple,
+    Err(e) => {
+      return ValidatePolicyResult {
+        success: false,
+        errors: Some(vec![String::from(&format!("{e}"))]),
+      }
+    }
+  };
+  return validate_policy_schema(schema_tuple.0, input_policies_str);
+}
+
+fn validate_policy_schema(schema: Schema, input_policies_str: &str) -> ValidatePolicyResult {
   let validator = Validator::new(schema);
   let pset = match PolicySet::from_str(&input_policies_str) {
     Ok(pset) => pset,

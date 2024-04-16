@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -18,9 +18,10 @@ import {
   CEDAR_TEMPLATELINKS_GLOB,
   CEDAR_AUTH_GLOB,
   CEDAR_JSON_GLOB,
+  saveTextAndFormat,
 } from './fileutil';
 import { createDiagnosticCollection } from './diagnostics';
-import { formatCedarDoc } from './format';
+import { formatCedarDoc, formatCedarSchemaNaturalDoc } from './format';
 import {
   clearValidationCache,
   validateCedarDoc,
@@ -37,6 +38,7 @@ import {
   COMMAND_CEDAR_EXPORT,
   COMMAND_CEDAR_SCHEMAEXPORT,
   COMMAND_CEDAR_SCHEMAOPEN,
+  COMMAND_CEDAR_SCHEMATRANSLATE,
   COMMAND_CEDAR_SCHEMAVALIDATE,
   COMMAND_CEDAR_VALIDATE,
 } from './commands';
@@ -69,6 +71,10 @@ import { CedarCompletionItemProvider } from './completion';
 import { CedarHoverProvider } from './hover';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
+import {
+  TranslateSchemaCodeLensProvider,
+  ValidateWithSchemaCodeLensProvider,
+} from './codelens';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -133,6 +139,13 @@ export async function activate(context: vscode.ExtensionContext) {
       ':', // entities
       '@', // annotations
       '?' // templates
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'cedar' },
+      new ValidateWithSchemaCodeLensProvider()
     )
   );
 
@@ -283,6 +296,56 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(
+      COMMAND_CEDAR_SCHEMATRANSLATE,
+      async (
+        textEditor: vscode.TextEditor,
+        edit: vscode.TextEditorEdit,
+        args: any[]
+      ) => {
+        const uri = textEditor.document.uri;
+        if (uri.scheme !== 'file') {
+          vscode.window.showErrorMessage(
+            `Cedar schema translate only supported for local files`
+          );
+          return;
+        }
+
+        if (
+          !validateSchemaDoc(textEditor.document, diagnosticCollection, true)
+        ) {
+          vscode.window.showErrorMessage(
+            `Cedar schema translate requires a valid Cedar schema file`
+          );
+          return;
+        }
+
+        const schemaDoc = textEditor.document;
+        let translateResult: cedar.TranslateSchemaResult;
+        const schemaText = schemaDoc.getText();
+        if (schemaDoc.languageId === 'cedarschema') {
+          translateResult = cedar.translateSchemaToJSON(schemaText);
+        } else {
+          translateResult = cedar.translateSchemaToHuman(schemaText);
+        }
+        if (translateResult.success && translateResult.schema) {
+          const translateUri = uri.with({
+            path:
+              schemaDoc.languageId === 'cedarschema'
+                ? uri.path + '.json'
+                : uri.path.substring(0, uri.path.length - 5),
+          });
+          saveTextAndFormat(translateUri, translateResult.schema);
+        } else {
+          vscode.window.showErrorMessage(
+            translateResult.error || 'Error translating Cedar Schema'
+          );
+        }
+        translateResult.free();
+      }
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
       COMMAND_CEDAR_SCHEMAEXPORT,
       async (
         textEditor: vscode.TextEditor,
@@ -358,7 +421,7 @@ export async function activate(context: vscode.ExtensionContext) {
         edit: vscode.TextEditorEdit,
         args: any[]
       ) => {
-        const fileUri = await getSchemaUri(undefined, textEditor.document);
+        const fileUri = await getSchemaUri(textEditor.document);
         if (fileUri) {
           try {
             await vscode.commands.executeCommand('vscode.open', fileUri);
@@ -424,6 +487,33 @@ export async function activate(context: vscode.ExtensionContext) {
       },
     })
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider('cedarschema', {
+      async provideDocumentFormattingEdits(
+        schemaDoc: vscode.TextDocument
+      ): Promise<vscode.TextEdit[] | undefined> {
+        // don't try and format if syntax doesn't validate
+        if (!(await validateSchemaDoc(schemaDoc, diagnosticCollection))) {
+          return Promise.resolve(undefined);
+        }
+
+        const formattedSchema = formatCedarSchemaNaturalDoc(schemaDoc);
+        if (formattedSchema) {
+          // use replacement Range of full document
+          const policyRange = new vscode.Range(
+            schemaDoc.lineAt(0).range.start,
+            schemaDoc.lineAt(schemaDoc.lineCount - 1).range.end
+          );
+
+          return Promise.resolve([
+            vscode.TextEdit.replace(policyRange, formattedSchema),
+          ]);
+        }
+
+        return Promise.resolve(undefined); // no edits
+      },
+    })
+  );
 
   /*
    * Cedar schema (JSON) file providers
@@ -440,6 +530,13 @@ export async function activate(context: vscode.ExtensionContext) {
       semanticTokensLegend
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: 'cedarschema' },
+      schemaTokensProvider,
+      semanticTokensLegend
+    )
+  );
 
   // display uid strings in outline and breadcrumb
   const schemaSymbolProvider = new CedarSchemaDocumentSymbolProvider();
@@ -449,12 +546,31 @@ export async function activate(context: vscode.ExtensionContext) {
       schemaSymbolProvider
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSymbolProvider(
+      { language: 'cedarschema' },
+      schemaSymbolProvider
+    )
+  );
 
   const schemaDefinitionProvider = new CedarSchemaDefinitionProvider();
   context.subscriptions.push(
     vscode.languages.registerDefinitionProvider(
       schemaSelector,
       schemaDefinitionProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      { language: 'cedarschema' },
+      schemaDefinitionProvider
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'cedarschema' },
+      new TranslateSchemaCodeLensProvider()
     )
   );
 
@@ -488,6 +604,13 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerDefinitionProvider(
       entitiesSelector,
       entitiesDefinitionProvider
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      entitiesSelector,
+      new ValidateWithSchemaCodeLensProvider()
     )
   );
 

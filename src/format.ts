@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -30,4 +30,12 @@ export const formatCedarDoc = (
   }
 
   return formattedPolicy;
+};
+
+export const formatCedarSchemaNaturalDoc = (
+  schemaDoc: vscode.TextDocument
+): string | null => {
+  // TODO: implement after https://github.com/cedar-policy/cedar/issues/682
+
+  return null;
 };

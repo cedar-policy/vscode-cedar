@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 mod utils;
@@ -8,3 +8,4 @@ mod policy_validator;
 mod schema_validator;
 mod entities_validator;
 mod policy;
+mod schema_translate;

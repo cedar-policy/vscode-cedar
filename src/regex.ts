@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 export const IDENT_REGEX = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
@@ -13,14 +13,14 @@ export const PARSE_ERROR_SCHEMA_REGEX =
 export const AT_LINE_SCHEMA_REGEX =
   / at line (?<line>(\d)+)? column (?<column>(\d)+)?/;
 export const OFFSET_POLICY_REGEX =
-  / at offset (?<start>(\d)+)(-)?(?<end>(\d)+)?`: /;
+  / at offset (?<start>(\d)+)(-)?(?<end>(\d)+)?: /;
 export const UNRECOGNIZED_REGEX =
-  /unrecognized (action|entity type) `(?<unrecognized>.+)`, did you mean `(?<suggestion>.+)`\?/;
+  /unrecognized (action|entity type) `(?<unrecognized>.+)`(, did you mean `(?<suggestion>.+)`\?)?/;
 export const UNDECLARED_REGEX =
   /(U|u)ndeclared (?<type>(entity type\(s\)|common type\(s\)|action\(s\))): {(?<undeclared>.+)}/;
 // Cedar entities errors
 export const NOTDECLARED_TYPE_REGEX =
-  /entity `(?<type>.+)::"(?<id>.+)"` has type `(.+)` which is not declared in the schema. Did you mean `(?<suggestion>.+)`\?/;
+  /entity `(?<type>.+)::"(?<id>.+)"` has type `(.+)` which is not declared in the schema(. Did you mean `(?<suggestion>.+)`\?)?/;
 export const EXPECTED_ATTR_REGEX =
   /expected entity `(?<type>.+)::"(?<id>.+)"` to have attribute `(?<suggestion>.+)`, but it does not/;
 export const EXPECTED_ATTR2_REGEX =

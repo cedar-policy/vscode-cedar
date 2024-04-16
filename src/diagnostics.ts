@@ -1,4 +1,4 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
@@ -77,6 +77,34 @@ const determineRangeFromPolicyError = (
   return range;
 };
 
+export const determineRangeFromOffset = (
+  document: vscode.TextDocument,
+  offset: number,
+  length: number
+): vscode.Range => {
+  let range = DEFAULT_RANGE;
+  const startCharacter = offset;
+  // "invalid token" is 0 length, make range at least 1 character
+  const endCharacter = offset + Math.max(length, 1);
+  let lineStart = 0;
+  // not efficient, but Cedar documents are small
+  for (let i = 0; i < document.lineCount; i++) {
+    const lineEnd = document.lineAt(i).text.length;
+    if (
+      lineStart + 1 <= startCharacter &&
+      lineStart + 1 + lineEnd >= endCharacter
+    ) {
+      range = new vscode.Range(
+        new vscode.Position(i, startCharacter - lineStart),
+        new vscode.Position(i, endCharacter - lineStart)
+      );
+      break;
+    }
+    lineStart += lineEnd + 1;
+  }
+  return range;
+};
+
 const determineRangeFromError = (
   vse: {
     message: string;
@@ -88,25 +116,7 @@ const determineRangeFromError = (
   let error = vse.message;
   let range = DEFAULT_RANGE;
   if (vse.offset > 0) {
-    const startCharacter = vse.offset;
-    // "invalid token" is 0 length, make range at least 1 character
-    const endCharacter = vse.offset + Math.max(vse.length, 1);
-    let lineStart = 0;
-    // not efficient, but Cedar policies are small
-    for (let i = 0; i < document.lineCount; i++) {
-      const lineEnd = document.lineAt(i).text.length;
-      if (
-        lineStart + 1 <= startCharacter &&
-        lineStart + 1 + lineEnd >= endCharacter
-      ) {
-        range = new vscode.Range(
-          new vscode.Position(i, startCharacter - lineStart),
-          new vscode.Position(i, endCharacter - lineStart)
-        );
-        break;
-      }
-      lineStart += lineEnd + 1;
-    }
+    range = determineRangeFromOffset(document, vse.offset, vse.length);
   } else {
     const found = error.match(AT_LINE_SCHEMA_REGEX);
     if (found) {
@@ -377,8 +387,8 @@ export const addSyntaxDiagnosticErrors = (
   errors.forEach((vse) => {
     let e = vse.message;
     if (
-      e.startsWith('entity does not conform to the schema') ||
-      e.startsWith('error during entity deserialization')
+      e.startsWith('entity does not conform to the schema: ') ||
+      e.startsWith('error during entity deserialization: ')
     ) {
       e = e.substring(e.indexOf(': ') + 2);
 
@@ -434,6 +444,20 @@ export const addValidationDiagnosticInfo = (
   diagnostics.push(diagnostic);
 };
 
+export const addValidationDiagnosticWarning = (
+  diagnostics: vscode.Diagnostic[],
+  message: string,
+  range: vscode.Range = DEFAULT_RANGE
+) => {
+  const diagnostic = new vscode.Diagnostic(
+    range,
+    message,
+    vscode.DiagnosticSeverity.Warning
+  );
+  diagnostic.source = SOURCE_CEDAR;
+  diagnostics.push(diagnostic);
+};
+
 export const addPolicyResultErrors = (
   diagnostics: vscode.Diagnostic[],
   errors: string[],
@@ -450,7 +474,12 @@ export const addPolicyResultErrors = (
       effectRange,
       startLine
     );
-    if (e.startsWith('Validation error on policy')) {
+    if (
+      e.startsWith('validation error on policy `policy0`') ||
+      e.startsWith('validation error on `policy `policy0`')
+    ) {
+      // validation error on `policy `policy0``: unable to find an applicable action given the policy head constraints
+      // validation error on `policy `policy0` at offset 267-285`: attribute `a` for entity type NS::e not found, did you mean `b`?
       e = e.substring(e.indexOf(': ') + 2);
     }
 

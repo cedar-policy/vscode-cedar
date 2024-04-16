@@ -1,13 +1,11 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import * as assert from 'assert';
-
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
 import * as vscode from 'vscode';
-// import * as myExtension from '../../extension';
 import * as cedar from 'vscode-cedar-wasm';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   AT_LINE_SCHEMA_REGEX,
   EXIST_ATTR_REGEX,
@@ -20,13 +18,25 @@ import {
   UNDECLARED_REGEX,
   UNRECOGNIZED_REGEX,
 } from '../../regex';
-import * as fs from 'fs';
-import * as path from 'path';
+
+import { determineEntityTypes } from '../../validate';
 
 const readTestDataFile = (dirname: string, filename: string): string => {
   const filepath = path.join(process.cwd(), 'testdata', dirname, filename);
   return fs.readFileSync(filepath, 'utf8');
 };
+
+suite('Validation Schema Natural Test Suite', () => {
+  test('validate shadow warnings', async () => {
+    const schema = readTestDataFile('shadow', 'Demo.cedarschema');
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaNatural(schema);
+    assert.equal(result.success, true);
+    // The name `ipaddr` shadows a builtin Cedar name. You'll have to refer to the builtin as `__cedar::ipaddr`.
+    // The name `String` shadows a builtin Cedar name. You'll have to refer to the builtin as `__cedar::String`.
+    assert.equal(result.warnings?.length, 2);
+  });
+});
 
 suite('Validation RegEx Test Suite', () => {
   test('validate policy error "found at"', async () => {
@@ -66,7 +76,7 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // Validation error on policy policy0 at offset 44-53: Types of operands in this expression are not equal: [{"type":"Boolean"},{"type":"Long"}]
+      // validation error on policy `policy0` at offset 44-53: unable to find upper bound for types: [{"type":"True"},{"type":"Long"}]
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(OFFSET_POLICY_REGEX);
       assert(found?.groups);
@@ -90,13 +100,16 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
+      // validation error on policy `policy0`: unrecognized entity type `Tst`
       // Validation error on policy policy0: Unrecognized entity type Tst, did you mean Test?
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(UNRECOGNIZED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Tst');
-        assert.equal(found?.groups.suggestion, 'Test');
+        if (found?.groups.suggestion) {
+          assert.equal(found?.groups.suggestion, 'Test');
+        }
       }
 
       errorMsg = result.errors[1];
@@ -104,7 +117,9 @@ suite('Validation RegEx Test Suite', () => {
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Action::"doTst"');
-        assert.equal(found?.groups.suggestion, 'Action::"doTest"');
+        if (found?.groups.suggestion) {
+          assert.equal(found?.groups.suggestion, 'Action::"doTest"');
+        }
       }
     }
 
@@ -119,7 +134,7 @@ suite('Validation RegEx Test Suite', () => {
 
     if (result.errors) {
       // JSON Schema file could not be parsed: missing field `entityTypes` at line 2 column 9
-      let errorMsg: string = result.errors[0];
+      let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(AT_LINE_SCHEMA_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -142,7 +157,7 @@ suite('Validation RegEx Test Suite', () => {
 
     if (result.errors) {
       // undeclared entity type(s): {"Test"}
-      let errorMsg: string = result.errors[0];
+      let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -162,7 +177,7 @@ suite('Validation RegEx Test Suite', () => {
 
     if (result.errors) {
       // Undeclared actions: {"Action::\"test1\"", "Action::\"test2\""}
-      let errorMsg: string = result.errors[0];
+      let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -192,7 +207,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: expected entity `Test::"expected"` to have attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -226,7 +241,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // error during entity deserialization: in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error during entity deserialization'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -261,7 +276,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but actually has type long: `1`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -295,7 +310,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but actually has type `Tst`: `Tst::"mismatchtype"`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -326,7 +341,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // error during entity deserialization: attribute `tst` on `Test::"exist"` should not exist according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error during entity deserialization'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -358,13 +373,13 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // error during entity deserialization: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema. Did you mean `XYZCorp::Employee`?
+      // error during entity deserialization: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema`?
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('error during entity deserialization'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema. Did you mean `XYZCorp::Employee`?'
+        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema'
       );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert(found?.groups);
@@ -393,7 +408,7 @@ suite('Validation RegEx Test Suite', () => {
     if (result.errors) {
       // entity does not conform to the schema: `XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entity does not conform to the schema'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
@@ -408,5 +423,61 @@ suite('Validation RegEx Test Suite', () => {
     }
 
     result.free();
+  });
+});
+
+suite('Validate Policy Entities Test Suite', () => {
+  const fetchEntityTypes = async (
+    head: string
+  ): Promise<{
+    principals: string[];
+    resources: string[];
+    actions: string[];
+  }> => {
+    const schemaDoc = await vscode.workspace.openTextDocument(
+      path.join(process.cwd(), 'testdata', 'narrow', 'cedarschema.json')
+    );
+
+    const principalTypes = determineEntityTypes(schemaDoc, 'principal', head);
+    const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
+    const actionIds = determineEntityTypes(schemaDoc, 'action', head);
+
+    return Promise.resolve({
+      principals: principalTypes,
+      resources: resourceTypes,
+      actions: actionIds,
+    });
+  };
+
+  test('validate unspecified', async () => {
+    const head = `permit(principal, action, resource)`;
+    const e = await fetchEntityTypes(head);
+
+    assert.equal(e.principals.length, 2);
+    assert.equal(e.principals[0], 'NS::E1');
+    assert.equal(e.principals[1], 'NS::E2');
+
+    assert.equal(e.actions.length, 3);
+    assert.equal(e.actions[0], `NS::Action::"a"`);
+    assert.equal(e.actions[1], `NS::Action::"a1"`);
+    assert.equal(e.actions[2], `NS::Action::"a2"`);
+
+    assert.equal(e.resources.length, 2);
+    assert.equal(e.resources[0], 'NS::R1');
+    assert.equal(e.resources[1], 'NS::R2');
+  });
+
+  test('validate E1 a1 R1', async () => {
+    const head = `permit (principal in NS::E::"id", action == NS::Action::"a1", resource)`;
+    const e = await fetchEntityTypes(head);
+
+    assert.equal(e.principals.length, 1);
+    assert.equal(e.principals[0], 'NS::E1');
+
+    assert.equal(e.actions.length, 1);
+    assert.equal(e.actions[0], `NS::Action::"a1"`);
+
+    assert.equal(e.resources.length, 1);
+    assert.equal(e.resources[0], 'NS::R1');
   });
 });
