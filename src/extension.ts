@@ -71,7 +71,10 @@ import { CedarCompletionItemProvider } from './completion';
 import { CedarHoverProvider } from './hover';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
-import { ValidateWithSchemaCodeLensProvider } from './codelens';
+import {
+  TranslateSchemaCodeLensProvider,
+  ValidateWithSchemaCodeLensProvider,
+} from './codelens';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -527,6 +530,13 @@ export async function activate(context: vscode.ExtensionContext) {
       semanticTokensLegend
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: 'cedarschema' },
+      schemaTokensProvider,
+      semanticTokensLegend
+    )
+  );
 
   // display uid strings in outline and breadcrumb
   const schemaSymbolProvider = new CedarSchemaDocumentSymbolProvider();
@@ -554,6 +564,13 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerDefinitionProvider(
       { language: 'cedarschema' },
       schemaDefinitionProvider
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'cedarschema' },
+      new TranslateSchemaCodeLensProvider()
     )
   );
 

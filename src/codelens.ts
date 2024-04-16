@@ -3,6 +3,7 @@
 
 import * as vscode from 'vscode';
 import { getSchemaTextDocument } from './fileutil';
+import { COMMAND_CEDAR_SCHEMATRANSLATE } from './commands';
 
 export class ValidateWithSchemaCodeLensProvider
   implements vscode.CodeLensProvider
@@ -36,5 +37,26 @@ export class ValidateWithSchemaCodeLensProvider
     }
 
     return Promise.resolve([]);
+  }
+}
+
+export class TranslateSchemaCodeLensProvider
+  implements vscode.CodeLensProvider
+{
+  async provideCodeLenses(
+    document: vscode.TextDocument
+  ): Promise<vscode.CodeLens[]> {
+    const translateCommand: vscode.Command = {
+      command: COMMAND_CEDAR_SCHEMATRANSLATE,
+      title: `IntelliSense requires Cedar schema (JSON)`,
+      tooltip: 'Translate Cedar schema',
+    };
+
+    const codeLens = new vscode.CodeLens(
+      new vscode.Range(0, 0, 0, 0),
+      translateCommand
+    );
+
+    return Promise.resolve([codeLens]);
   }
 }

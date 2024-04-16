@@ -1318,10 +1318,9 @@ const parseCedarSchemaNaturalDoc = (
   let symbol = vscode.SymbolKind.Class;
   const tokensBuilder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
 
-  let etype: string = '';
+  let entities: Record<string, vscode.Range | null> = {};
   let namespace: string = '';
   let collection: 'commonTypes' | 'entityTypes' | 'actions' = 'entityTypes';
-  let etypeRange: vscode.Range | null = null;
 
   function determineRange(
     textLine: string,
@@ -1365,8 +1364,11 @@ const parseCedarSchemaNaturalDoc = (
           /^type\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*=/
         );
         if (match) {
-          etype = namespace + match[1];
-          etypeRange = determineRange(textLine, i, match[1]);
+          const range = determineRange(textLine, i, match[1]);
+          if (range) {
+            tokensBuilder.push(range, 'struct', ['declaration']);
+          }
+          entities[namespace + match[1]] = range;
         }
       }
       if (linePreComment.startsWith('entity')) {
@@ -1374,26 +1376,51 @@ const parseCedarSchemaNaturalDoc = (
         symbol = vscode.SymbolKind.Class;
         collection = 'entityTypes';
         const match = linePreComment.match(
-          /^entity\s+([_a-zA-Z][_a-zA-Z0-9]*)( |;)/
+          /^entity\s+(([_a-zA-Z][_a-zA-Z0-9]*,\s*)*[_a-zA-Z][_a-zA-Z0-9]*)\s*( in|=|{|;|$)/
         );
         if (match) {
-          etype = namespace + match[1];
-          etypeRange = determineRange(textLine, i, match[1]);
+          const types = match[1].split(',');
+          types.forEach((type) => {
+            const range = determineRange(textLine, i, type.trim());
+            if (range) {
+              tokensBuilder.push(range, 'type', ['declaration']);
+            }
+            entities[namespace + type.trim()] = range;
+          });
         }
       }
       if (linePreComment.startsWith('action')) {
         startLine = i;
         symbol = vscode.SymbolKind.Function;
         collection = 'actions';
-        let match = linePreComment.match(/^action\s+"(.+?)"/);
+        let match = linePreComment.match(/^action\s+(("(.+?)",\s*)*"(.+?)")/);
         if (match) {
-          etype = `${namespace}Action::"${match[1]}"`;
-          etypeRange = determineRange(textLine, i, `"${match[1]}"`, 1);
+          const ids = match[1].split(',');
+          ids.forEach((id) => {
+            const range = determineRange(textLine, i, id.trim());
+            if (range) {
+              tokensBuilder.push(range.with(), 'type', ['declaration']);
+            }
+            entities[`${namespace}Action::${id.trim()}`] = determineRange(
+              textLine,
+              i,
+              id.trim(),
+              1
+            );
+          });
         } else {
-          match = linePreComment.match(/^action\s+([_a-zA-Z][_a-zA-Z0-9]*)/);
+          match = linePreComment.match(
+            /^action\s+([_a-zA-Z0-9, ]*)( in| appliesTo|;|$)/
+          );
           if (match) {
-            etype = `${namespace}Action::"${match[1]}"`;
-            etypeRange = determineRange(textLine, i, match[1]);
+            const ids = match[1].split(',');
+            ids.forEach((id) => {
+              const range = determineRange(textLine, i, id.trim());
+              if (range) {
+                tokensBuilder.push(range, 'type', ['declaration']);
+              }
+              entities[`${namespace}Action::"${id.trim()}"`] = range;
+            });
           }
         }
       }
@@ -1405,15 +1432,18 @@ const parseCedarSchemaNaturalDoc = (
           new vscode.Position(startLine, 0),
           new vscode.Position(i, schemaDoc.lineAt(i).text.length)
         );
-        const schemaRange: SchemaRange = {
-          collection: collection,
-          etype: etype,
-          range: range,
-          etypeRange: etypeRange || range,
-          symbol: symbol,
-        };
-        definitionRanges.push(schemaRange);
-        etypeRange = null;
+        Object.entries(entities).forEach(([key, value]) => {
+          const schemaRange: SchemaRange = {
+            collection: collection,
+            etype: key,
+            range: range,
+            etypeRange: value || range,
+            symbol: symbol,
+          };
+          definitionRanges.push(schemaRange);
+        });
+
+        entities = {};
       }
     }
   }
