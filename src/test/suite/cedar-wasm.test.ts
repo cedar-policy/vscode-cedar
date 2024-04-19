@@ -316,19 +316,63 @@ suite('Cedar WASM validate Suite', () => {
     }`;
     const entities = `[
       {
+        "uid": { "type": "User", "id": "JaneDoe" },
+        "parents": [],
+        "attrs": {}
+      }
+    ]`;
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
+      schema,
+      entities
+    );
+    assert.equal(result.success, true);
+
+    result.free();
+  });
+
+  test('validate_entity_fails', async () => {
+    const schema = `{
+      "" : {
+        "entityTypes": {
+          "User": {}
+        },
+        "actions": {}
+      }
+    }`;
+    const entities = `[
+      {
         "uid": "User::\\"JaneDoe\\"",
         "parents": [],
         "attrs": {}
       }
     ]`;
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
-    // assert.equal(result.success, true);
-    // now get error
-    // error during entity deserialization: in uid field of <unknown entity>, expected a literal entity reference, but got `"User::\"JaneDoe\""`
+    assert.equal(
+      result.errors?.[0],
+      'error during entity deserialization: in uid field of <unknown entity>, expected a literal entity reference, but got `"User::\\"JaneDoe\\""`'
+    );
+
+    result.free();
+  });
+
+  test('validate_entity_natural_passes', async () => {
+    const schema = `entity User;`;
+    const entities = `[
+      {
+        "uid": { "type": "User", "id": "JaneDoe" },
+        "parents": [],
+        "attrs": {}
+      }
+    ]`;
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntitiesNatural(
+      schema,
+      entities
+    );
+    assert.equal(result.success, true);
 
     result.free();
   });
@@ -344,7 +388,7 @@ suite('Cedar WASM validate Suite', () => {
     }`;
     const entities = `[
       {
-        "uid": "User::\\"JaneDoe\\"",
+        "uid": { "type": "User", "id": "JaneDoe" },
         "parents": [],
         "attrs": {
           "tags": ["private"]
@@ -352,11 +396,14 @@ suite('Cedar WASM validate Suite', () => {
       }
     ]`;
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
-    // `entities deserialization error: Attribute "tags" on User::"JaneDoe" shouldn't exist according to the schema`
+    assert.equal(
+      result.errors?.[0],
+      'error during entity deserialization: attribute `tags` on `User::"JaneDoe"` should not exist according to the schema'
+    );
 
     result.free();
   });

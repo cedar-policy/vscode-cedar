@@ -199,8 +199,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
@@ -233,8 +233,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
@@ -268,8 +268,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
@@ -302,8 +302,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
@@ -333,8 +333,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
@@ -367,8 +367,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entitytype', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
@@ -400,8 +400,8 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entitytype', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 

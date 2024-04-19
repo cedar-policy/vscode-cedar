@@ -241,10 +241,18 @@ export const validateCedarDoc = async (
         validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
 
         parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
-          const policyResult: cedar.ValidatePolicyResult = cedar.validatePolicy(
-            schemaDoc.getText(),
-            policyText
-          );
+          let policyResult: cedar.ValidatePolicyResult;
+          if (schemaDoc.languageId === 'cedarschema') {
+            policyResult = cedar.validatePolicyNatural(
+              schemaDoc.getText(),
+              policyText
+            );
+          } else {
+            policyResult = cedar.validatePolicy(
+              schemaDoc.getText(),
+              policyText
+            );
+          }
           if (policyResult.success === false && policyResult.errors) {
             addPolicyResultErrors(
               diagnostics,
@@ -391,8 +399,15 @@ export const validateEntitiesDoc = async (
     if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
       validationCache.associateSchemaWithDoc(schemaDoc, entitiesDoc);
 
-      const entitiesResult: cedar.ValidateEntitiesResult =
-        cedar.validateEntities(entities, schemaDoc.getText());
+      let entitiesResult: cedar.ValidateEntitiesResult;
+      if (schemaDoc.languageId === 'cedarschema') {
+        entitiesResult = cedar.validateEntitiesNatural(
+          schemaDoc.getText(),
+          entities
+        );
+      } else {
+        entitiesResult = cedar.validateEntities(schemaDoc.getText(), entities);
+      }
       success = entitiesResult.success;
       if (entitiesResult.success === false && entitiesResult.errors) {
         let vse = entitiesResult.errors.map((e) => {

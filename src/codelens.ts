@@ -48,8 +48,7 @@ export class TranslateSchemaCodeLensProvider
   ): Promise<vscode.CodeLens[]> {
     const translateCommand: vscode.Command = {
       command: COMMAND_CEDAR_SCHEMATRANSLATE,
-      title: `IntelliSense requires Cedar schema (JSON)`,
-      tooltip: 'Translate Cedar schema',
+      title: `Translate Cedar schema`,
     };
 
     const codeLens = new vscode.CodeLens(

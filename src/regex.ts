@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const IDENT_REGEX = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
+export const PATH_REGEX = /^([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*$/;
 export const ENTITY_REGEXG =
-  /(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)::"(?<id>([^"]*))"/g;
+  /(?<type>(?:[_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)(?:::"(?<id>(?:[^"]*))")?/g;
 export const PROPERTY_CHAIN_REGEX =
   /\b(?<!\.)(?<element>(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*::"(?<id>([^"]*))"|principal|resource|context))((\.[_a-zA-Z][_a-zA-Z0-9]*|\["([^"]*)"\]))*(?<trigger>.?)$/;
 
@@ -31,3 +32,5 @@ export const EXIST_ATTR_REGEX =
   /attribute `(?<attribute>.+)` on `(?<type>.+)::"(?<id>.+)"` should not exist according to the schema/;
 export const NOTALLOWED_PARENT_REGEX =
   /`(?<type>.+)::"(?<id>.+)"` is not allowed to have an ancestor of type `(?<undeclared>.+)` according to the schema/;
+export const UNKNOWN_ENTITY_REGEX =
+  /in uid field of <unknown entity>, expected a literal entity reference, but got `"(?<unknown>.+)"`/;

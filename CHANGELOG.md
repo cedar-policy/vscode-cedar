@@ -1,3 +1,7 @@
+## v0.7.3 (Pre-release) 2024-04-19
+
+- IntelliSense and validation using human-readable schema
+
 ## v0.7.2 (Pre-release) 2024-04-16
 
 - Update to Cedar 3.1.3
