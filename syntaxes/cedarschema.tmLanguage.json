@@ -6,13 +6,16 @@
 			"include": "#comment"
 		},
 		{
+			"include": "#namespace"
+		},
+		{
 			"include": "#keywords"
 		},	
 		{
 			"include": "#sections"
 		},
 		{
-			"include": "#constants"
+			"include": "#properties"
 		},
 		{
 			"include": "#strings"
@@ -23,10 +26,23 @@
 			"name": "comment.line.double-slash.cedarschema",
 			"match": "//.*(?=$)"
 		},
+		"namespace": {
+			"patterns": [{
+				"match": "\\b(namespace)\\s+([_a-zA-Z][_a-zA-Z0-9]*)",
+				"captures": {
+					"1" : {
+						"name": "keyword.cedarschema"
+					},
+					"2" : {
+						"name": "entity.name.namespace.cedarschema"
+					}
+				}
+			}]
+		},
 		"sections": {
 			"patterns": [{
 				"name": "keyword.cedarschema",
-				"match": "^\\s*(namespace|type|entity|action)\\b"
+				"match": "^\\s*(type|entity|action)(?=\\s+)"
 			}]
 		},
 		"keywords": {
@@ -35,12 +51,12 @@
 				"match": "\\b(in|appliesTo)\\b"
 			}]
 		},
-		"constants": {
+		"properties": {
 			"patterns": [{
-				"match": "\\b(principal|resource|context):",
+				"match": "\\b([_a-zA-Z][_a-zA-Z0-9]*)(?=[?]?:(?!:))",
 				"captures": {
 					"1" : {
-						"name": "variable.other.constant.cedarschema"
+						"name": "variable.other.property.cedarschema"
 					}
 				}
 			}]

@@ -567,12 +567,12 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { language: 'cedarschema' },
-      new TranslateSchemaCodeLensProvider()
-    )
-  );
+  // context.subscriptions.push(
+  //   vscode.languages.registerCodeLensProvider(
+  //     { language: 'cedarschema' },
+  //     new TranslateSchemaCodeLensProvider()
+  //   )
+  // );
 
   /*
    * Cedar entities (JSON) file providers

@@ -21,6 +21,7 @@ import {
   NOTDECLARED_TYPE_REGEX,
   NOTALLOWED_PARENT_REGEX,
   PARSE_ERROR_SCHEMA_REGEX,
+  UNKNOWN_ENTITY_REGEX,
 } from './regex';
 
 export const createDiagnosticCollection = () => {
@@ -336,10 +337,16 @@ const handleEntitiesDiagnosticError = (
             uid = `${found.groups.type}::"${found.groups.id}"`;
             uidTypeError = true;
           } else {
-            found = error.match(NOTALLOWED_PARENT_REGEX);
+            found = error.match(UNKNOWN_ENTITY_REGEX);
             if (found?.groups) {
-              uid = `${found.groups.type}::"${found.groups.id}"`;
-              parentsError = true;
+              uid = found.groups.unknown.replaceAll('\\"', '"');
+              uidTypeError = true;
+            } else {
+              found = error.match(NOTALLOWED_PARENT_REGEX);
+              if (found?.groups) {
+                uid = `${found.groups.type}::"${found.groups.id}"`;
+                parentsError = true;
+              }
             }
           }
         }
