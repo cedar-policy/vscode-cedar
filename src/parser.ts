@@ -1359,7 +1359,11 @@ const parseCedarSchemaNaturalDoc = (
       });
       actionIds.push({
         name: trimmed,
-        range: makeRange(line, offset + quotePosition, trimmed.length - 1),
+        range: makeRange(
+          line,
+          offset + quotePosition,
+          trimmed.length - quotePosition
+        ),
       });
     } else {
       const range = makeRange(line, offset, item.length);
@@ -1481,6 +1485,20 @@ const parseCedarSchemaNaturalDoc = (
             }
           }
         });
+      } else {
+        const inIndex = linePreComment.indexOf(' in ');
+        if (inIndex > -1) {
+          const match = linePreComment.match(
+            / in\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)/
+          );
+          if (match) {
+            parseCedarSchemaEntityItem(
+              match[1],
+              i,
+              textLine.indexOf(match[1], textLine.indexOf(' in '))
+            );
+          }
+        }
       }
       const colonIndex = textLine.indexOf(':');
       if (declarationStartLine !== -1 && colonIndex > -1) {
