@@ -1,3 +1,8 @@
+## v0.7.4 (Pre-release) 2024-04-26
+
+- Problems contain additional help text
+- Fix human-readable schema display bugs
+
 ## v0.7.3 (Pre-release) 2024-04-21
 
 - IntelliSense and validation using human-readable schema

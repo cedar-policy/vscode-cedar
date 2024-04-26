@@ -16,7 +16,7 @@ export const AT_LINE_SCHEMA_REGEX =
 export const OFFSET_POLICY_REGEX =
   / at offset (?<start>(\d)+)(-)?(?<end>(\d)+)?: /;
 export const UNRECOGNIZED_REGEX =
-  /unrecognized (action|entity type) `(?<unrecognized>.+)`(, did you mean `(?<suggestion>.+)`\?)?/;
+  /unrecognized (action|entity type) `(?<unrecognized>.+)`(\ndid you mean `(?<suggestion>.+)`\?)?/m;
 export const UNDECLARED_REGEX =
   /(U|u)ndeclared (?<type>(entity type\(s\)|common type\(s\)|action\(s\))): {(?<undeclared>.+)}/;
 // Cedar entities errors

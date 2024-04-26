@@ -100,6 +100,8 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
+      assert.equal(result.errors.length, 4);
+
       // validation error on policy `policy0`: unrecognized entity type `Tst`
       // Validation error on policy policy0: Unrecognized entity type Tst, did you mean Test?
       let errorMsg: string = result.errors[0];
@@ -107,9 +109,7 @@ suite('Validation RegEx Test Suite', () => {
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Tst');
-        if (found?.groups.suggestion) {
-          assert.equal(found?.groups.suggestion, 'Test');
-        }
+        assert.equal(found?.groups.suggestion, 'Test');
       }
 
       errorMsg = result.errors[1];
@@ -117,9 +117,7 @@ suite('Validation RegEx Test Suite', () => {
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Action::"doTst"');
-        if (found?.groups.suggestion) {
-          assert.equal(found?.groups.suggestion, 'Action::"doTest"');
-        }
+        assert.equal(found?.groups.suggestion, 'Action::"doTest"');
       }
     }
 
