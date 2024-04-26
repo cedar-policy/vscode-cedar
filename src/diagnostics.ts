@@ -160,9 +160,30 @@ const addUndeclaredDiagnosticErrors = (
 ): vscode.Range => {
   let parentRange = DEFAULT_RANGE;
   const undeclaredTypes = found.groups?.undeclared.split(', ');
-  const undeclaredType = found.groups?.type;
+  const undeclaredType = found.groups?.type.replace('(s)', 's') || '';
 
   let namespace = '';
+
+  if (document.languageId === 'cedarschema') {
+    if (['entity types', 'common types'].includes(undeclaredType)) {
+      const referencedTypes = parseCedarSchemaDoc(document).referencedTypes;
+      undeclaredTypes?.forEach((t) => {
+        for (let referencedType of referencedTypes) {
+          if (`"${referencedType.name}"` === t) {
+            addDiagnosticsError(
+              diagnostics,
+              referencedType.range,
+              `undeclared ${undeclaredType.replace(' types', ' type')}: ${t}`,
+              'undeclared'
+            );
+          }
+        }
+      });
+    }
+
+    const lastLine = document.lineAt(document.lineCount - 1);
+    return new vscode.Range(lastLine.range.end, lastLine.range.end);
+  }
 
   jsonc.visit(document.getText(), {
     onObjectProperty(

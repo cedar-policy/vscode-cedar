@@ -28,7 +28,7 @@
 		},
 		"namespace": {
 			"patterns": [{
-				"match": "\\b(namespace)\\s+([_a-zA-Z][_a-zA-Z0-9]*)",
+				"match": "\\b(namespace)\\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)",
 				"captures": {
 					"1" : {
 						"name": "keyword.cedarschema"

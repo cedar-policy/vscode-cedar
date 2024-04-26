@@ -43,6 +43,15 @@ const makeRange = (
   );
 };
 
+const indexOfNonSpace = (s: string) => {
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== ' ') {
+      return i;
+    }
+  }
+  return -1;
+};
+
 const ensureNamespace = (type: string, namespace: string) => {
   const pos = type.indexOf('::');
   if (pos === -1) {
@@ -61,8 +70,8 @@ const determineReferenceRange = (
   const pos = type.lastIndexOf('::');
   const typePos = pos === -1 ? 0 : pos + 2;
   const defRange = new vscode.Range(
-    new vscode.Position(line, start + 1 + typePos),
-    new vscode.Position(line, start + length)
+    new vscode.Position(line, start + typePos),
+    new vscode.Position(line, start + length - 1)
   );
 
   return defRange;
@@ -91,7 +100,7 @@ const determineEntitiesInString = (
         range: determineReferenceRange(
           type,
           startLine,
-          startCharacter,
+          startCharacter + 1,
           type.length + 1
         ),
       });
@@ -214,7 +223,7 @@ export const parseCedarPoliciesDoc = (
             range: determineReferenceRange(
               type,
               i,
-              (found.index as number) - 1,
+              found.index as number,
               type.length + 1
             ),
           });
@@ -374,7 +383,7 @@ export const parseCedarJsonPolicyDoc = (
             range: determineReferenceRange(
               value,
               startLine,
-              startCharacter,
+              startCharacter + 1,
               length - 1
             ),
           });
@@ -651,7 +660,7 @@ export const parseCedarEntitiesDoc = (
           range: determineReferenceRange(
             value,
             startLine,
-            startCharacter,
+            startCharacter + 1,
             length - 1
           ),
         });
@@ -880,7 +889,7 @@ export const parseCedarAuthDoc = (
                 range: determineReferenceRange(
                   type,
                   startLine,
-                  startCharacter,
+                  startCharacter + 1,
                   type.length + 1
                 ),
               });
@@ -1168,7 +1177,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             range: determineReferenceRange(
               value,
               startLine,
-              startCharacter,
+              startCharacter + 1,
               length - 1
             ),
           });
@@ -1186,7 +1195,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
           range: determineReferenceRange(
             value,
             startLine,
-            startCharacter,
+            startCharacter + 1,
             length - 1
           ),
         });
@@ -1216,7 +1225,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             range: determineReferenceRange(
               value,
               startLine,
-              startCharacter,
+              startCharacter + 1,
               length - 1
             ),
           });
@@ -1253,7 +1262,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             range: determineReferenceRange(
               value,
               startLine,
-              startCharacter,
+              startCharacter + 1,
               length - 1
             ),
           });
@@ -1316,10 +1325,11 @@ const parseCedarSchemaNaturalDoc = (
     textLine: string,
     i: number,
     match: string,
+    offset: number = 0,
     margin: number = 0
   ): vscode.Range | null {
     let range = null;
-    const idx = textLine.indexOf(' ' + match);
+    const idx = textLine.indexOf(' ' + match, offset);
     if (idx > -1) {
       range = new vscode.Range(
         new vscode.Position(i, idx + 1 + margin),
@@ -1334,11 +1344,13 @@ const parseCedarSchemaNaturalDoc = (
     line: number,
     offset: number
   ) {
+    offset += indexOfNonSpace(item);
+    item = item.trim();
     const range = new vscode.Range(line, offset, line, offset + item.length);
     tokensBuilder.push(range, 'type', []);
     referencedTypes.push({
-      name: ensureNamespace(item.trim(), namespace),
-      range: determineReferenceRange(item.trim(), line, offset, item.length),
+      name: ensureNamespace(item, namespace),
+      range: determineReferenceRange(item, line, offset, item.length + 1),
     });
   }
   function parseCedarSchemaActionItem(
@@ -1432,6 +1444,7 @@ const parseCedarSchemaNaturalDoc = (
       }
       // https://docs.cedarpolicy.com/schema/human-readable-schema.html#schema-actions
       if (linePreComment.startsWith('action')) {
+        let padding = textLine.indexOf('action') + 6;
         declarationStartLine = i;
         symbol = vscode.SymbolKind.Function;
         collection = 'actions';
@@ -1443,6 +1456,7 @@ const parseCedarSchemaNaturalDoc = (
               textLine,
               i,
               id.trim(),
+              padding,
               1
             );
           });
@@ -1453,11 +1467,12 @@ const parseCedarSchemaNaturalDoc = (
           if (match) {
             const ids = match[1].split(',');
             ids.forEach((id) => {
-              const range = determineRange(textLine, i, id.trim());
+              id = id.trim().split(' ')[0];
+              const range = determineRange(textLine, i, id, padding);
               if (range) {
                 tokensBuilder.push(range, 'string', []);
               }
-              declarations[`${namespace}Action::"${id.trim()}"`] = range;
+              declarations[`${namespace}Action::"${id}"`] = range;
             });
           }
         }
@@ -1492,11 +1507,15 @@ const parseCedarSchemaNaturalDoc = (
             / in\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)/
           );
           if (match) {
-            parseCedarSchemaEntityItem(
+            const matchIndex = textLine.indexOf(
               match[1],
-              i,
-              textLine.indexOf(match[1], textLine.indexOf(' in '))
+              textLine.indexOf(' in ')
             );
+            if (linePreComment.startsWith('action')) {
+              parseCedarSchemaActionItem(match[1], i, matchIndex);
+            } else {
+              parseCedarSchemaEntityItem(match[1], i, matchIndex);
+            }
           }
         }
       }
@@ -1507,7 +1526,6 @@ const parseCedarSchemaNaturalDoc = (
           /^\s*(?:("[^"]+"|[_a-zA-Z][_a-zA-Z0-9]*))[?]?\s*:\s*(?:Set\s*<\s*)?(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*(?:\s*>\s*)?,?$/
         );
         if (match && match.groups?.type) {
-          console.log(match.groups?.type);
           let type = match.groups?.type;
           if (
             !(
