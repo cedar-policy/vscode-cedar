@@ -31,26 +31,21 @@ pub fn translate_schema_to_human(json_src: &str) -> TranslateSchemaResult {
                 Ok(human) => TranslateSchemaResult {
                     success: true,
                     schema: Some(human),
-                    error: None
+                    error: None,
                 },
                 Err(err) => TranslateSchemaResult {
                     success: false,
                     schema: None,
                     error: Some(String::from(&format!("Translate error: {err}"))),
-                }
+                },
             }
-        },
+        }
         Err(err) => TranslateSchemaResult {
             success: false,
             schema: None,
             error: Some(String::from(&format!("Translate error: {err}"))),
         },
-    }
-    // TranslateSchemaResult {
-    //     success: false,
-    //     schema: None,
-    //     error: Some(String::from("Translate error")),
-    // }
+    };
 }
 
 #[wasm_bindgen(js_name = translateSchemaToJSON)]
@@ -75,6 +70,5 @@ pub fn translate_schema_to_json(natural_src: &str) -> TranslateSchemaResult {
             schema: None,
             error: Some(String::from(&format!("Translate error: {err}"))),
         },
-    }
-
+    };
 }

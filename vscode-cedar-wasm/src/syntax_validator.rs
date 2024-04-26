@@ -121,8 +121,14 @@ pub fn validate_syntax(input_policies_str: &str) -> ValidateSyntaxResult {
                         parse_err.labels().into_iter().for_each(|labels| {
                             labels.into_iter().for_each(|labeled_span| {
                                 let message = match labeled_span.label() {
-                                    None => parse_err.to_string(),
-                                    Some(msg) => format!("{}\n{}", parse_err, msg),
+                                    None => match parse_err.help() {
+                                        None => parse_err.to_string(),
+                                        Some(help) => format!("{}\n{}", parse_err, help),
+                                    },
+                                    Some(msg) => match parse_err.help() {
+                                        None => format!("{}\n{}", parse_err, msg),
+                                        Some(help) => format!("{}\n{}\n{}", parse_err, msg, help),
+                                    },
                                 };
                                 syntax_errs.push(ValidateSyntaxError {
                                     message: message,

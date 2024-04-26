@@ -1,8 +1,11 @@
 // Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use cedar_policy::{HumanSchemaError, Schema, SchemaWarning};
+use cedar_policy::extensions::Extensions;
+use cedar_policy::SchemaWarning;
 use cedar_policy_validator::human_schema::parser::HumanSyntaxParseErrors;
+use cedar_policy_validator::{HumanSchemaError, ValidatorSchema};
+use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
@@ -87,7 +90,7 @@ impl ValidateSchemaResult {
 
 #[wasm_bindgen(js_name = validateSchema)]
 pub fn validate_schema(input_schema_str: &str) -> ValidateSchemaResult {
-    let result = match Schema::from_str(&input_schema_str) {
+    let result = match ValidatorSchema::from_str(&input_schema_str) {
         Ok(_schema) => ValidateSchemaResult {
             success: true,
             warnings: None,
@@ -97,7 +100,10 @@ pub fn validate_schema(input_schema_str: &str) -> ValidateSchemaResult {
             success: false,
             warnings: None,
             errors: Some(vec![ValidateSchemaMessage {
-                message: String::from(&format!("{e}")),
+                message: match e.help() {
+                    None => String::from(&format!("{e}")),
+                    Some(help) => String::from(&format!("{e}\n{help}")),
+                },
                 offset: 0,
                 length: 0,
             }]),
@@ -108,39 +114,40 @@ pub fn validate_schema(input_schema_str: &str) -> ValidateSchemaResult {
 
 #[wasm_bindgen(js_name = validateSchemaNatural)]
 pub fn validate_schema_natural(input_schema_str: &str) -> ValidateSchemaResult {
-    let result = match Schema::from_str_natural(&input_schema_str) {
-        Ok(_schema) => {
-            let mut warnings_vec = Vec::new();
-            for warning in _schema.1.into_iter() {
-                match HasOffsetLength::offset_length(&warning) {
-                    offset_length => warnings_vec.push(ValidateSchemaMessage {
-                        message: String::from(&format!("{warning}")),
+    let result =
+        match ValidatorSchema::from_str_natural(&input_schema_str, Extensions::all_available()) {
+            Ok(_schema) => {
+                let mut warnings_vec = Vec::new();
+                for warning in _schema.1.into_iter() {
+                    match HasOffsetLength::offset_length(&warning) {
+                        offset_length => warnings_vec.push(ValidateSchemaMessage {
+                            message: String::from(&format!("{warning}")),
+                            offset: offset_length.offset,
+                            length: offset_length.length,
+                        }),
+                    };
+                }
+                ValidateSchemaResult {
+                    success: true,
+                    warnings: Some(warnings_vec),
+                    errors: None,
+                }
+            }
+            Err(e) => {
+                let error = match HasOffsetLength::offset_length(&e) {
+                    offset_length => ValidateSchemaMessage {
+                        message: String::from(&format!("{e}")),
                         offset: offset_length.offset,
                         length: offset_length.length,
-                    }),
+                    },
                 };
+                ValidateSchemaResult {
+                    success: false,
+                    warnings: None,
+                    errors: Some(vec![error]),
+                }
             }
-            ValidateSchemaResult {
-                success: true,
-                warnings: Some(warnings_vec),
-                errors: None,
-            }
-        }
-        Err(e) => {
-            let error = match HasOffsetLength::offset_length(&e) {
-                offset_length => ValidateSchemaMessage {
-                    message: String::from(&format!("{e}")),
-                    offset: offset_length.offset,
-                    length: offset_length.length,
-                },
-            };
-            ValidateSchemaResult {
-                success: false,
-                warnings: None,
-                errors: Some(vec![error]),
-            }
-        }
-    };
+        };
     result
 }
 
@@ -179,7 +186,7 @@ impl HasOffsetLength for HumanSchemaError {
             length: 0,
         };
         match self {
-            HumanSchemaError::ParseError(parse_error) => match parse_error {
+            HumanSchemaError::Parsing(parse_error) => match parse_error {
                 HumanSyntaxParseErrors::NaturalSyntaxError(nse) => {
                     let first = nse.iter().into_iter().next();
                     match first {
@@ -193,7 +200,7 @@ impl HasOffsetLength for HumanSchemaError {
                 HumanSyntaxParseErrors::JsonError(_) => zero_offset,
             },
             HumanSchemaError::Core(_) => zero_offset,
-            HumanSchemaError::Io(_) => zero_offset,
+            HumanSchemaError::IO(_) => zero_offset,
         }
     }
 }

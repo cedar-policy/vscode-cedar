@@ -1,9 +1,9 @@
 // Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use std::str::FromStr;
 use cedar_policy::{Entities, Schema};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(typescript_custom_section)]
