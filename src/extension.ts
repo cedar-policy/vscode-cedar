@@ -33,6 +33,7 @@ import {
   COMMAND_CEDAR_ABOUT,
   COMMAND_CEDAR_ACTIVATE,
   COMMAND_CEDAR_CLEARPROBLEMS,
+  COMMAND_CEDAR_DOCUMENTATION,
   COMMAND_CEDAR_ENTITIESVALIDATE,
   COMMAND_CEDAR_EXPORT,
   COMMAND_CEDAR_SCHEMAEXPORT,
@@ -207,6 +208,16 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(COMMAND_CEDAR_ABOUT, (args: any[]) => {
       aboutExtension();
     })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      COMMAND_CEDAR_DOCUMENTATION,
+      (args: any[]) => {
+        vscode.env.openExternal(
+          vscode.Uri.parse('https://docs.cedarpolicy.com/', true)
+        );
+      }
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(

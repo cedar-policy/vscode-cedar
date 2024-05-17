@@ -4,6 +4,7 @@
 // strings need to match commands in package.json
 export const COMMAND_CEDAR_ACTIVATE = 'cedar.activate';
 export const COMMAND_CEDAR_ABOUT = 'cedar.about';
+export const COMMAND_CEDAR_DOCUMENTATION = 'cedar.documentation';
 export const COMMAND_CEDAR_VALIDATE = 'cedar.validate';
 export const COMMAND_CEDAR_EXPORT = 'cedar.export';
 export const COMMAND_CEDAR_SCHEMAVALIDATE = 'cedar.schemavalidate';

@@ -93,6 +93,11 @@
         "title": "About Cedar extension"
       },
       {
+        "command": "cedar.documentation",
+        "category": "Cedar",
+        "title": "Open docs.cedarpolicy.com"
+      },
+      {
         "command": "cedar.export",
         "category": "Cedar",
         "title": "Export Cedar policy as JSON"
