@@ -23,22 +23,26 @@ pub struct FormatPoliciesResult {
 }
 
 #[wasm_bindgen(js_name = formatPolicies)]
-pub fn format_policies(policies_str: &str, line_width: usize, indent_width: isize) -> FormatPoliciesResult {
+pub fn format_policies(
+    policies_str: &str,
+    line_width: usize,
+    indent_width: isize,
+) -> FormatPoliciesResult {
     let config = Config {
-      line_width: line_width,
-      indent_width: indent_width,
+        line_width: line_width,
+        indent_width: indent_width,
     };
     match policies_str_to_pretty(policies_str, &config) {
         Ok(prettified_policy) => FormatPoliciesResult {
-          success: true,
-          policy: Some(prettified_policy),
-          error: None,
+            success: true,
+            policy: Some(prettified_policy),
+            error: None,
         },
         Err(err) => FormatPoliciesResult {
-          success: false,
-          policy: None,
-          error: Some(String::from(&format!("Format error: {err}"))),
-      }
+            success: false,
+            policy: None,
+            error: Some(String::from(&format!("Format error: {err}"))),
+        },
     }
 }
 
@@ -50,6 +54,9 @@ mod test {
     fn test_format_policies() {
         let policy = r#"permit(principal, action == Action::"view", resource in Albums::"gangsta rap") when {principal.is_gangsta == true};"#;
         let expected = "permit (\n    principal,\n    action == Action::\"view\",\n    resource in Albums::\"gangsta rap\"\n)\nwhen { principal.is_gangsta == true };";
-        assert_eq!(format_policies(policy, 80, 4).policy, Some(expected.to_string()));
+        assert_eq!(
+            format_policies(policy, 80, 4).policy,
+            Some(expected.to_string())
+        );
     }
 }
