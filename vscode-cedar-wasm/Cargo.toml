@@ -1,8 +1,8 @@
 [package]
 name = "vscode-cedar-wasm"
-version = "0.7.4"
+version = "0.7.5"
 edition = "2021"
-description = "WASM bindgen bindings for cedar-policy 3.1.3"
+description = "WASM bindgen bindings for cedar-policy 3.1.4"
 license-file = "LICENSE"
 homepage = "https://cedarpolicy.com"
 repository = "https://github.com/cedar-policy/vscode-cedar"
@@ -29,10 +29,10 @@ serde_json = "1.0.96"
 console_error_panic_hook = { version = "0.1.6", optional = true }
 
 # cedar
-cedar-policy = { version = "=3.1.3" }
-cedar-policy-core = { version = "=3.1.3" }
-cedar-policy-formatter = { version = "=3.1.3" }
-cedar-policy-validator = { version = "=3.1.3" }
+cedar-policy = { version = "=3.1.4" }
+cedar-policy-core = { version = "=3.1.4" }
+cedar-policy-formatter = { version = "=3.1.4" }
+cedar-policy-validator = { version = "=3.1.4" }
 miette = "7.2.0"
 
 [dev-dependencies]

@@ -34,6 +34,7 @@ import {
   COMMAND_CEDAR_ABOUT,
   COMMAND_CEDAR_ACTIVATE,
   COMMAND_CEDAR_CLEARPROBLEMS,
+  COMMAND_CEDAR_DOCUMENTATION,
   COMMAND_CEDAR_ENTITIESVALIDATE,
   COMMAND_CEDAR_EXPORT,
   COMMAND_CEDAR_SCHEMAEXPORT,
@@ -67,7 +68,10 @@ import {
   cedarJsonTokensProvider,
 } from './parser';
 import { exportCedarDocPolicyById, getPolicyQuickPickItems } from './policy';
-import { CedarCompletionItemProvider } from './completion';
+import {
+  CedarCompletionItemProvider,
+  CedarSchemaCompletionItemProvider,
+} from './completion';
 import { CedarHoverProvider } from './hover';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
@@ -212,6 +216,16 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(COMMAND_CEDAR_ABOUT, (args: any[]) => {
       aboutExtension();
     })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      COMMAND_CEDAR_DOCUMENTATION,
+      (args: any[]) => {
+        vscode.env.openExternal(
+          vscode.Uri.parse('https://docs.cedarpolicy.com/', true)
+        );
+      }
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(
@@ -564,6 +578,12 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerDefinitionProvider(
       { language: 'cedarschema' },
       schemaDefinitionProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      { language: 'cedarschema' },
+      new CedarSchemaCompletionItemProvider()
     )
   );
 

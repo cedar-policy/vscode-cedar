@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -91,6 +91,11 @@
         "command": "cedar.about",
         "category": "Cedar",
         "title": "About Cedar extension"
+      },
+      {
+        "command": "cedar.documentation",
+        "category": "Cedar",
+        "title": "Open docs.cedarpolicy.com"
       },
       {
         "command": "cedar.export",
@@ -270,8 +275,8 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.9",
-    "@vscode/vsce": "^2.26.0",
+    "@vscode/test-electron": "^2.3.10",
+    "@vscode/vsce": "^2.26.1",
     "eslint": "^8.57.0",
     "js-yaml": "^4.1.0",
     "mocha": "^10.4.0",

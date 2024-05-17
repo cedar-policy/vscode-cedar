@@ -32,5 +32,6 @@
     "PATH": "/usr/local/opt/llvm/bin/:$PATH",
     "CC": "/usr/local/opt/llvm/bin/clang",
     "AR": "/usr/local/opt/llvm/bin/llvm-ar"
-  }
+  },
+  "git.alwaysSignOff": true
 }
