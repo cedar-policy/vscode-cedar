@@ -3,11 +3,11 @@
 
 import * as vscode from 'vscode';
 import * as path from 'node:path';
-import { addValidationDiagnosticInfo } from './diagnostics';
 
 const CEDAR_SCHEMA_FILE = `cedarschema.json`;
 const CEDAR_SCHEMA_EXTENSION_JSON = `.cedarschema.json`;
-const CEDAR_SCHEMA_EXTENSION = `.cedarschema`; // https://github.com/cedar-policy/rfcs/blob/schema-syntax/text/0024-schema-syntax.md
+const CEDAR_SCHEMANATURAL_FILE = `cedarschema`;
+const CEDAR_SCHEMANATURAL_EXTENSION = `.cedarschema`;
 export const CEDAR_SCHEMA_GLOB = `{**/cedarschema.json,**/*.cedarschema.json}`;
 
 const CEDAR_ENTITIES_FILE = `cedarentities.json`;
