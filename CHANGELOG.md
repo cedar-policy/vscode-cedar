@@ -1,3 +1,8 @@
+## v0.7.5 (Pre-release) 2024-05-17
+
+- Update to Cedar 3.1.4
+- Fix human-readable schema display bugs
+
 ## v0.7.4 (Pre-release) 2024-04-26
 
 - Problems contain additional help text

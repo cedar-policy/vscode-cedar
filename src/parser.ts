@@ -1325,15 +1325,15 @@ const parseCedarSchemaNaturalDoc = (
     textLine: string,
     i: number,
     match: string,
-    offset: number = 0,
+    startPos: number = 0,
     margin: number = 0
   ): vscode.Range | null {
     let range = null;
-    const idx = textLine.indexOf(' ' + match, offset);
+    const idx = textLine.indexOf(match, startPos);
     if (idx > -1) {
       range = new vscode.Range(
-        new vscode.Position(i, idx + 1 + margin),
-        new vscode.Position(i, idx + 1 + match.length - margin)
+        new vscode.Position(i, idx + margin),
+        new vscode.Position(i, idx + match.length - margin)
       );
     }
     return range;
@@ -1416,7 +1416,7 @@ const parseCedarSchemaNaturalDoc = (
           /^type\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*=/
         );
         if (match) {
-          const range = determineRange(textLine, i, match[1]);
+          const range = determineRange(textLine, i, match[1], match.index || 0);
           if (range) {
             tokensBuilder.push(range, 'struct', ['declaration']);
           }
@@ -1432,49 +1432,45 @@ const parseCedarSchemaNaturalDoc = (
           /^entity\s+(([_a-zA-Z][_a-zA-Z0-9]*,\s*)*[_a-zA-Z][_a-zA-Z0-9]*)\s*( in|=|{|;|$)/
         );
         if (match) {
+          let startPos = match.index || 0;
           const types = match[1].split(',');
           types.forEach((type) => {
-            const range = determineRange(textLine, i, type.trim());
+            const range = determineRange(textLine, i, type.trim(), startPos);
             if (range) {
               tokensBuilder.push(range, 'type', ['declaration']);
             }
             declarations[namespace + type.trim()] = range;
+            startPos = startPos + type.length + 1;
           });
         }
       }
       // https://docs.cedarpolicy.com/schema/human-readable-schema.html#schema-actions
       if (linePreComment.startsWith('action')) {
-        let padding = textLine.indexOf('action') + 6;
         declarationStartLine = i;
         symbol = vscode.SymbolKind.Function;
         collection = 'actions';
         let match = linePreComment.match(/^action\s+(("(.+?)",\s*)*"(.+?)")/);
+        match = linePreComment.match(
+          /^action\s+([_a-zA-Z0-9, "]*)( in| appliesTo|;|$)/
+        );
         if (match) {
+          let startPos = match.index || textLine.indexOf('action') + 6;
           const ids = match[1].split(',');
           ids.forEach((id) => {
-            declarations[`${namespace}Action::${id.trim()}`] = determineRange(
-              textLine,
-              i,
-              id.trim(),
-              padding,
-              1
-            );
-          });
-        } else {
-          match = linePreComment.match(
-            /^action\s+([_a-zA-Z0-9, ]*)( in| appliesTo|;|$)/
-          );
-          if (match) {
-            const ids = match[1].split(',');
-            ids.forEach((id) => {
-              id = id.trim().split(' ')[0];
-              const range = determineRange(textLine, i, id, padding);
-              if (range) {
-                tokensBuilder.push(range, 'string', []);
-              }
+            id = id.trim();
+            const isQuoted = id.startsWith('"') && id.endsWith('"');
+            if (isQuoted) {
+              var range = determineRange(textLine, i, id, startPos, 1);
+              id = id.substring(1, id.length - 1);
+            } else {
+              var range = determineRange(textLine, i, id, startPos);
+            }
+            if (range) {
+              tokensBuilder.push(range, 'string', []);
               declarations[`${namespace}Action::"${id}"`] = range;
-            });
-          }
+            }
+            startPos = startPos + id.length + (isQuoted ? 3 : 1);
+          });
         }
       }
       const leftBracketIndex = linePreComment.indexOf('[');
@@ -1523,14 +1519,14 @@ const parseCedarSchemaNaturalDoc = (
       if (declarationStartLine !== -1 && colonIndex > -1) {
         // inside a declaration
         const match = textLine.match(
-          /^\s*(?:("[^"]+"|[_a-zA-Z][_a-zA-Z0-9]*))[?]?\s*:\s*(?:Set\s*<\s*)?(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*(?:\s*>\s*)?,?$/
+          /^\s*(?:("[^"]+"|[_a-zA-Z][_a-zA-Z0-9]*))[?]?\s*:\s*(?:Set\s*<\s*)?(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*(?:\s*>\s*)?/
         );
         if (match && match.groups?.type) {
           let type = match.groups?.type;
           if (
             !(
               type.startsWith('__cedar::') ||
-              ['Long', 'String', 'Bool'].includes(type)
+              ['Long', 'String', 'Bool', 'Set'].includes(type)
             )
           ) {
             const idx = textLine.indexOf(type, colonIndex);
@@ -1541,7 +1537,6 @@ const parseCedarSchemaNaturalDoc = (
               } else {
                 tokensBuilder.push(range, 'type', []);
 
-                declarations[namespace + match.groups.type] = range;
                 referencedTypes.push({
                   name: ensureNamespace(type, namespace),
                   range: range,
