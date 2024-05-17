@@ -448,6 +448,13 @@ export async function activate(context: vscode.ExtensionContext) {
       semanticTokensLegend
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: 'cedarschema' },
+      schemaTokensProvider,
+      semanticTokensLegend
+    )
+  );
 
   // display uid strings in outline and breadcrumb
   const schemaSymbolProvider = new CedarSchemaDocumentSymbolProvider();
@@ -457,11 +464,23 @@ export async function activate(context: vscode.ExtensionContext) {
       schemaSymbolProvider
     )
   );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSymbolProvider(
+      { language: 'cedarschema' },
+      schemaSymbolProvider
+    )
+  );
 
   const schemaDefinitionProvider = new CedarSchemaDefinitionProvider();
   context.subscriptions.push(
     vscode.languages.registerDefinitionProvider(
       schemaSelector,
+      schemaDefinitionProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      { language: 'cedarschema' },
       schemaDefinitionProvider
     )
   );

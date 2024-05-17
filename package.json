@@ -30,6 +30,8 @@
   "activationEvents": [
     "workspaceContains:**/*.cedar",
     "workspaceContains:**/*.cedar.json",
+    "workspaceContains:**/cedarschema",
+    "workspaceContains:**/*.cedarschema",
     "workspaceContains:**/*.cedarschema.json",
     "workspaceContains:**/cedarschema.json",
     "workspaceContains:**/*.cedarentities.json",
@@ -65,7 +67,13 @@
         "extensions": [
           ".cedarschema"
         ],
+        "filenames": [
+          "cedarschema"
+        ],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "cedarschema-injection"
       }
     ],
     "commands": [
@@ -196,6 +204,17 @@
         "language": "cedarschema",
         "scopeName": "source.cedarschema",
         "path": "./syntaxes/cedarschema.tmLanguage.json"
+      },
+      {
+        "language": "cedarschema-injection",
+        "scopeName": "markdown.cedarschema.codeblock",
+        "path": "./syntaxes/codeblock.json",
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.cedarschema": "cedarschema"
+        }
       }
     ],
     "configuration": {
