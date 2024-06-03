@@ -100,15 +100,15 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.97"
+version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "099a5357d84c4c61eb35fc8eafa9a79a902c2f76911e5747ced4e032edd8d9b4"
+checksum = "41c270e7540d725e65ac7f1b212ac8ce349719624d7bcff99f8e2e488e8cf03f"
 
 [[package]]
 name = "cedar-policy"
-version = "2.4.6"
+version = "2.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36b3fdb6b453fb87663fd70536a5397c430117b550576313ff28e9d62f6d89ad"
+checksum = "bbdd63f519f69e938ec9364d7dec3991834647af4e367c1b59a3c5fa82872394"
 dependencies = [
  "cedar-policy-core",
  "cedar-policy-validator",
@@ -123,9 +123,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy-core"
-version = "2.4.6"
+version = "2.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10aaf1c889ce4c2a43d67f8296d205e8cee346492bfd717f3eb003c06ab428cc"
+checksum = "67ce19dfed3fea6affa7ab02686a17e2ba7d7d7d502222d79110bc0895f60ed3"
 dependencies = [
  "either",
  "ipnet",
@@ -146,9 +146,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy-formatter"
-version = "2.4.6"
+version = "2.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df367925f7fa82e15ab00f91b9090f0cd257549ac8836d53e5e20c352cfc31e0"
+checksum = "8ecf358402950abb35efedd629eb03affb8623fda5cbd8e871ca72408ea066f7"
 dependencies = [
  "cedar-policy-core",
  "itertools 0.10.5",
@@ -161,9 +161,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy-validator"
-version = "2.4.6"
+version = "2.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dbeb64e580024e151f2cf7120c2ebf8ef0e060437f3126ea868ae255f790ea9"
+checksum = "639c8090d9b50fb23d3607e5d87359dd1f6c3dafae1e1ad10a63207f96741ddf"
 dependencies = [
  "cedar-policy-core",
  "itertools 0.10.5",
@@ -327,9 +327,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94b22e06ecb0110981051723910cbf0b5f5e09a2062dd7663334ee79a9d1286c"
+checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
 dependencies = [
  "cfg-if",
  "libc",
@@ -493,9 +493,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.153"
+version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
+checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "libredox"
@@ -613,9 +613,9 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "parking_lot"
-version = "0.12.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e4af0ca4f6caed20e900d564c242b8e5d4903fdacf31d3daf527b66fe6f42fb"
+checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
 dependencies = [
  "lock_api",
  "parking_lot_core",
@@ -690,9 +690,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.82"
+version = "1.0.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad3d49ab951a01fbaafe34f2ec74122942fe18a3f9814c3268f1bb72042131b"
+checksum = "22244ce15aa966053a896d1accb3a6e68469b97c7f33f284b99f0d576879fc23"
 dependencies = [
  "unicode-ident",
 ]
@@ -957,9 +957,9 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "syn"
-version = "2.0.64"
+version = "2.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ad3dee41f36859875573074334c200d1add8e4a87bb37113ebd31d926b7b11f"
+checksum = "c42f3f41a2de00b01c0aaad383c5a45241efc8b2d1eda5661812fda5f3cdcff5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1129,7 +1129,7 @@ dependencies = [
 
 [[package]]
 name = "vscode-cedar-wasm"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "cargo-lock",
  "cedar-policy",
