@@ -1,3 +1,12 @@
+## v0.7.6 (Pre-release) 2024-06-03
+
+- Update to Cedar 3.2.1
+
+## v0.6.3 (Pre-release) 2024-05-17
+
+- Update to Cedar 2.4.6
+- Human-readable schema syntax highlighting
+
 ## v0.7.5 (Pre-release) 2024-05-17
 
 - Update to Cedar 3.1.4

@@ -100,7 +100,7 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      assert.equal(result.errors.length, 4);
+      assert.equal(result.errors.length, 3);
 
       // validation error on policy `policy0`: unrecognized entity type `Tst`
       // Validation error on policy policy0: Unrecognized entity type Tst, did you mean Test?
