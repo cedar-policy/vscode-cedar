@@ -60,7 +60,7 @@ pub fn validate_policy_natural(
     input_schema_str: &str,
     input_policies_str: &str,
 ) -> ValidatePolicyResult {
-    let schema_tuple = match Schema::from_str_natural(&input_schema_str) {
+    let schema_tuple = match Schema::from_cedarschema_str(&input_schema_str) {
         Ok(schema_tuple) => schema_tuple,
         Err(e) => {
             return ValidatePolicyResult {

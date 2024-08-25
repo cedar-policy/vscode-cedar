@@ -70,7 +70,7 @@ pub fn validate_entities_natural(
     input_schema_str: &str,
     input_entities_str: &str,
 ) -> ValidateEntitiesResult {
-    let schema = match Schema::from_str_natural(&input_schema_str) {
+    let schema = match Schema::from_cedarschema_str(&input_schema_str) {
         Ok(schema) => Some(schema),
         Err(e) => {
             return ValidateEntitiesResult {

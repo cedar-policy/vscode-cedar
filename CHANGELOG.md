@@ -1,3 +1,11 @@
+## v0.7.7 (Pre-release) 2024-08-26
+
+- Update to Cedar 3.3.0
+
+## v0.6.4 (Pre-release) 2024-06-03
+
+- Update to Cedar 2.4.7
+
 ## v0.7.6 (Pre-release) 2024-06-03
 
 - Update to Cedar 3.2.1

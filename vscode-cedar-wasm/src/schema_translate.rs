@@ -27,7 +27,7 @@ pub struct TranslateSchemaResult {
 pub fn translate_schema_to_human(json_src: &str) -> TranslateSchemaResult {
     return match SchemaFragment::from_str(json_src.as_ref()) {
         Ok(fragment) => {
-            return match fragment.as_natural() {
+            return match fragment.to_cedarschema() {
                 Ok(human) => TranslateSchemaResult {
                     success: true,
                     schema: Some(human),
@@ -50,9 +50,9 @@ pub fn translate_schema_to_human(json_src: &str) -> TranslateSchemaResult {
 
 #[wasm_bindgen(js_name = translateSchemaToJSON)]
 pub fn translate_schema_to_json(natural_src: &str) -> TranslateSchemaResult {
-    return match SchemaFragment::from_str_natural(natural_src.as_ref()) {
+    return match SchemaFragment::from_cedarschema_str(natural_src.as_ref()) {
         Ok((fragment, _)) => {
-            return match fragment.as_json_string() {
+            return match fragment.to_json_string() {
                 Ok(json) => TranslateSchemaResult {
                     success: true,
                     schema: Some(json),
