@@ -991,6 +991,15 @@ export const parseCedarSchemaDoc = (
 
   if (schemaDoc.languageId === 'cedarschema') {
     cachedItem = parseCedarSchemaNaturalDoc(schemaDoc, visitSchema);
+
+    // get JSON
+    const translateResult = cedar.translateSchemaToJSON(schemaDoc.getText());
+    if (translateResult.success && translateResult.schema) {
+      // update cachedItem
+      const tmpCachedItem = parseCedarSchemaJSONText(translateResult.schema);
+      cachedItem.completions = tmpCachedItem.completions;
+    }
+    translateResult.free();
   } else {
     cachedItem = parseCedarSchemaJSONText(schemaDoc.getText());
   }
