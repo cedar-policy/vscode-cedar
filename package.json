@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.7.8",
+  "version": "0.7.7",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {

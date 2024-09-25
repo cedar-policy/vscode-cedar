@@ -109,9 +109,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy"
-version = "3.4.0"
+version = "3.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7abbf49bf31242efada88ca5069aafbbb343a8c88c0f103ff84302df2e7a0ac"
+checksum = "52f64f2fe68128bd57a9ec43d8e78a174194112fc15e633bc2c466b41f15cd71"
 dependencies = [
  "cedar-policy-core",
  "cedar-policy-validator",
@@ -129,9 +129,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy-core"
-version = "3.4.0"
+version = "3.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa1de8483043ca8205e6ee8d3773cf18b03e92ee2c34cf4f91c22113d95f0e0b"
+checksum = "cecb593c2e9d7f92e5eb55a80713c2c483dc9eecb389b3f09b8f0349806f2ba5"
 dependencies = [
  "either",
  "itertools 0.12.1",
@@ -152,9 +152,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy-formatter"
-version = "3.4.0"
+version = "3.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e7e7f7a2fa89842408ba6f9a6efa7726e3c6ef117cc4290978b0b2c9505bdb"
+checksum = "e2eba94b05654b243e0e45532683e44ee8104e12415206ddc171c9831bb78cdb"
 dependencies = [
  "cedar-policy-core",
  "itertools 0.12.1",
@@ -167,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "cedar-policy-validator"
-version = "3.4.0"
+version = "3.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1efd641d755d6290cc546bd4bc3ada68fdf9c1f646b87f470e64aac9eeecef0d"
+checksum = "3efdd198425a3ce874d4af801eb7af048cbf4bcb48f23339320df78642770636"
 dependencies = [
  "cedar-policy-core",
  "itertools 0.12.1",
@@ -1154,7 +1154,7 @@ dependencies = [
 
 [[package]]
 name = "vscode-cedar-wasm"
-version = "0.7.8"
+version = "0.7.7"
 dependencies = [
  "cargo-lock",
  "cedar-policy",
