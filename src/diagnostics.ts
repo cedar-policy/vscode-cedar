@@ -21,6 +21,7 @@ import {
   NOTDECLARED_TYPE_REGEX,
   NOTALLOWED_PARENT_REGEX,
   PARSE_ERROR_SCHEMA_REGEX,
+  UNKNOWN_ENTITY_REGEX,
 } from './regex';
 
 export const createDiagnosticCollection = () => {
@@ -77,6 +78,34 @@ const determineRangeFromPolicyError = (
   return range;
 };
 
+export const determineRangeFromOffset = (
+  document: vscode.TextDocument,
+  offset: number,
+  length: number
+): vscode.Range => {
+  let range = DEFAULT_RANGE;
+  const startCharacter = offset;
+  // "invalid token" is 0 length, make range at least 1 character
+  const endCharacter = offset + Math.max(length, 1);
+  let lineStart = 0;
+  // not efficient, but Cedar documents are small
+  for (let i = 0; i < document.lineCount; i++) {
+    const lineEnd = document.lineAt(i).text.length;
+    if (
+      lineStart + 1 <= startCharacter &&
+      lineStart + 1 + lineEnd >= endCharacter
+    ) {
+      range = new vscode.Range(
+        new vscode.Position(i, startCharacter - lineStart),
+        new vscode.Position(i, endCharacter - lineStart)
+      );
+      break;
+    }
+    lineStart += lineEnd + 1;
+  }
+  return range;
+};
+
 const determineRangeFromError = (
   vse: {
     message: string;
@@ -88,25 +117,7 @@ const determineRangeFromError = (
   let error = vse.message;
   let range = DEFAULT_RANGE;
   if (vse.offset > 0) {
-    const startCharacter = vse.offset;
-    // "invalid token" is 0 length, make range at least 1 character
-    const endCharacter = vse.offset + Math.max(vse.length, 1);
-    let lineStart = 0;
-    // not efficient, but Cedar policies are small
-    for (let i = 0; i < document.lineCount; i++) {
-      const lineEnd = document.lineAt(i).text.length;
-      if (
-        lineStart + 1 <= startCharacter &&
-        lineStart + 1 + lineEnd >= endCharacter
-      ) {
-        range = new vscode.Range(
-          new vscode.Position(i, startCharacter - lineStart),
-          new vscode.Position(i, endCharacter - lineStart)
-        );
-        break;
-      }
-      lineStart += lineEnd + 1;
-    }
+    range = determineRangeFromOffset(document, vse.offset, vse.length);
   } else {
     const found = error.match(AT_LINE_SCHEMA_REGEX);
     if (found) {
@@ -149,9 +160,30 @@ const addUndeclaredDiagnosticErrors = (
 ): vscode.Range => {
   let parentRange = DEFAULT_RANGE;
   const undeclaredTypes = found.groups?.undeclared.split(', ');
-  const undeclaredType = found.groups?.type;
+  const undeclaredType = found.groups?.type.replace('(s)', 's') || '';
 
   let namespace = '';
+
+  if (document.languageId === 'cedarschema') {
+    if (['entity types', 'common types'].includes(undeclaredType)) {
+      const referencedTypes = parseCedarSchemaDoc(document).referencedTypes;
+      undeclaredTypes?.forEach((t) => {
+        for (let referencedType of referencedTypes) {
+          if (`"${referencedType.name}"` === t) {
+            addDiagnosticsError(
+              diagnostics,
+              referencedType.range,
+              `undeclared ${undeclaredType.replace(' types', ' type')}: ${t}`,
+              'undeclared'
+            );
+          }
+        }
+      });
+    }
+
+    const lastLine = document.lineAt(document.lineCount - 1);
+    return new vscode.Range(lastLine.range.end, lastLine.range.end);
+  }
 
   jsonc.visit(document.getText(), {
     onObjectProperty(
@@ -326,10 +358,16 @@ const handleEntitiesDiagnosticError = (
             uid = `${found.groups.type}::"${found.groups.id}"`;
             uidTypeError = true;
           } else {
-            found = error.match(NOTALLOWED_PARENT_REGEX);
+            found = error.match(UNKNOWN_ENTITY_REGEX);
             if (found?.groups) {
-              uid = `${found.groups.type}::"${found.groups.id}"`;
-              parentsError = true;
+              uid = found.groups.unknown.replaceAll('\\"', '"');
+              uidTypeError = true;
+            } else {
+              found = error.match(NOTALLOWED_PARENT_REGEX);
+              if (found?.groups) {
+                uid = `${found.groups.type}::"${found.groups.id}"`;
+                parentsError = true;
+              }
             }
           }
         }
@@ -376,8 +414,10 @@ export const addSyntaxDiagnosticErrors = (
   // create an error for each of the syntax validator errors
   errors.forEach((vse) => {
     let e = vse.message;
-    // entities deserialization error: Attribute "subjects" on PhotoApp::Photo2::"Judges.jpg" shouldn't exist according to the schema
-    if (e.startsWith('entities deserialization error')) {
+    if (
+      e.startsWith('entity does not conform to the schema: ') ||
+      e.startsWith('error during entity deserialization: ')
+    ) {
       e = e.substring(e.indexOf(': ') + 2);
 
       if (handleEntitiesDiagnosticError(diagnostics, document, e)) {
@@ -432,6 +472,20 @@ export const addValidationDiagnosticInfo = (
   diagnostics.push(diagnostic);
 };
 
+export const addValidationDiagnosticWarning = (
+  diagnostics: vscode.Diagnostic[],
+  message: string,
+  range: vscode.Range = DEFAULT_RANGE
+) => {
+  const diagnostic = new vscode.Diagnostic(
+    range,
+    message,
+    vscode.DiagnosticSeverity.Warning
+  );
+  diagnostic.source = SOURCE_CEDAR;
+  diagnostics.push(diagnostic);
+};
+
 export const addPolicyResultErrors = (
   diagnostics: vscode.Diagnostic[],
   errors: string[],
@@ -448,7 +502,12 @@ export const addPolicyResultErrors = (
       effectRange,
       startLine
     );
-    if (e.startsWith('Validation error on policy')) {
+    if (
+      e.startsWith('validation error on policy `policy0`') ||
+      e.startsWith('validation error on `policy `policy0`')
+    ) {
+      // validation error on `policy `policy0``: unable to find an applicable action given the policy head constraints
+      // validation error on `policy `policy0` at offset 267-285`: attribute `a` for entity type NS::e not found, did you mean `b`?
       e = e.substring(e.indexOf(': ') + 2);
     }
 

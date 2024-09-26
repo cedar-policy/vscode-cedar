@@ -162,10 +162,10 @@ suite('Cedar WASM validate Suite', () => {
     assert.equal(result.errors?.length, 1);
     assert.equal(
       result.errors?.[0].message,
-      'poorly formed: not a valid policy condition: whenless'
+      'not a valid policy condition: `whenless`\ncondition must be either `when` or `unless`'
     );
-    assert.equal(result.errors?.[0].offset, 0);
-    assert.equal(result.errors?.[0].length, 0);
+    assert.equal(result.errors?.[0].offset, 37);
+    assert.equal(result.errors?.[0].length, 8);
     result.free();
   });
 
@@ -238,6 +238,35 @@ suite('Cedar WASM validate Suite', () => {
     result.free();
   });
 
+  test('validate_schema_natural_passes', async () => {
+    const schema = `namespace Demo {
+  entity User in UserGroup = {
+    "department": String,
+    "jobLevel": Long,
+  };
+  entity UserGroup;
+}`;
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaNatural(schema);
+    assert.equal(result.success, true);
+    result.free();
+  });
+
+  test('validate_schema_natural_translate_passes', async () => {
+    const schema = `namespace Demo {
+  entity User in UserGroup = {
+    "department": String,
+    "jobLevel": Long,
+  };
+  entity UserGroup;
+}`;
+    const result: cedar.TranslateSchemaResult =
+      cedar.translateSchemaToJSON(schema);
+    assert.equal(result.success, true);
+
+    result.free();
+  });
+
   test('validate_policy_fails', async () => {
     const schema = '{ "entityTypes": [], "actions": [] }';
     const policy = 'permit(principal, action, resource);';
@@ -287,14 +316,61 @@ suite('Cedar WASM validate Suite', () => {
     }`;
     const entities = `[
       {
+        "uid": { "type": "User", "id": "JaneDoe" },
+        "parents": [],
+        "attrs": {}
+      }
+    ]`;
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
+      schema,
+      entities
+    );
+    assert.equal(result.success, true);
+
+    result.free();
+  });
+
+  test('validate_entity_fails', async () => {
+    const schema = `{
+      "" : {
+        "entityTypes": {
+          "User": {}
+        },
+        "actions": {}
+      }
+    }`;
+    const entities = `[
+      {
         "uid": "User::\\"JaneDoe\\"",
         "parents": [],
         "attrs": {}
       }
     ]`;
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
+    );
+    assert.equal(result.success, false);
+    assert.equal(
+      result.errors?.[0],
+      'error during entity deserialization: in uid field of <unknown entity>, expected a literal entity reference, but got `"User::\\"JaneDoe\\""`'
+    );
+
+    result.free();
+  });
+
+  test('validate_entity_natural_passes', async () => {
+    const schema = `entity User;`;
+    const entities = `[
+      {
+        "uid": { "type": "User", "id": "JaneDoe" },
+        "parents": [],
+        "attrs": {}
+      }
+    ]`;
+    const result: cedar.ValidateEntitiesResult = cedar.validateEntitiesNatural(
+      schema,
+      entities
     );
     assert.equal(result.success, true);
 
@@ -312,7 +388,7 @@ suite('Cedar WASM validate Suite', () => {
     }`;
     const entities = `[
       {
-        "uid": "User::\\"JaneDoe\\"",
+        "uid": { "type": "User", "id": "JaneDoe" },
         "parents": [],
         "attrs": {
           "tags": ["private"]
@@ -320,11 +396,14 @@ suite('Cedar WASM validate Suite', () => {
       }
     ]`;
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
-    // `entities deserialization error: Attribute "tags" on User::"JaneDoe" shouldn't exist according to the schema`
+    assert.equal(
+      result.errors?.[0],
+      'error during entity deserialization: attribute `tags` on `User::"JaneDoe"` should not exist according to the schema'
+    );
 
     result.free();
   });

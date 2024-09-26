@@ -40,8 +40,8 @@ impl ValidateEntitiesResult {
 
 #[wasm_bindgen(js_name = validateEntities)]
 pub fn validate_entities(
-    input_entities_str: &str,
     input_schema_str: &str,
+    input_entities_str: &str,
 ) -> ValidateEntitiesResult {
     let schema = match Schema::from_str(&input_schema_str) {
         Ok(schema) => Some(schema),
@@ -53,6 +53,33 @@ pub fn validate_entities(
         }
     };
     let result = match Entities::from_json_str(input_entities_str, schema.as_ref()) {
+        Ok(_entities) => ValidateEntitiesResult {
+            success: true,
+            errors: None,
+        },
+        Err(e) => ValidateEntitiesResult {
+            success: false,
+            errors: Some(vec![String::from(&format!("{e}"))]),
+        },
+    };
+    result
+}
+
+#[wasm_bindgen(js_name = validateEntitiesNatural)]
+pub fn validate_entities_natural(
+    input_schema_str: &str,
+    input_entities_str: &str,
+) -> ValidateEntitiesResult {
+    let schema = match Schema::from_cedarschema_str(&input_schema_str) {
+        Ok(schema) => Some(schema),
+        Err(e) => {
+            return ValidateEntitiesResult {
+                success: false,
+                errors: Some(vec![String::from(&format!("{e}"))]),
+            }
+        }
+    };
+    let result = match Entities::from_json_str(input_entities_str, Some(&schema.unwrap().0)) {
         Ok(_entities) => ValidateEntitiesResult {
             success: true,
             errors: None,

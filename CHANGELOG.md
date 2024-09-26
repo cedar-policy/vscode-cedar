@@ -1,8 +1,13 @@
-## v0.6.4 (Pre-release) 2024-06-03
+## v0.8.0 (Preview) 2024-09-26
+
+- Update to Cedar 3.4.1
+- Human-readable schema IntelliSense, validation, and translation
+
+## v0.6.4 (Preview) 2024-06-03
 
 - Update to Cedar 2.4.7
 
-## v0.6.3 (Pre-release) 2024-05-17
+## v0.6.3 (Preview) 2024-05-17
 
 - Update to Cedar 2.4.6
 - Human-readable schema syntax highlighting

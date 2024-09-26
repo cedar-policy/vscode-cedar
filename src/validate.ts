@@ -6,6 +6,8 @@ import * as cedar from 'vscode-cedar-wasm';
 import {
   addPolicyResultErrors,
   addSyntaxDiagnosticErrors,
+  addValidationDiagnosticWarning,
+  determineRangeFromOffset,
   reportFormatterOff,
 } from './diagnostics';
 import {
@@ -239,10 +241,18 @@ export const validateCedarDoc = async (
         validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
 
         parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
-          const policyResult: cedar.ValidatePolicyResult = cedar.validatePolicy(
-            schemaDoc.getText(),
-            policyText
-          );
+          let policyResult: cedar.ValidatePolicyResult;
+          if (schemaDoc.languageId === 'cedarschema') {
+            policyResult = cedar.validatePolicyNatural(
+              schemaDoc.getText(),
+              policyText
+            );
+          } else {
+            policyResult = cedar.validatePolicy(
+              schemaDoc.getText(),
+              policyText
+            );
+          }
           if (policyResult.success === false && policyResult.errors) {
             addPolicyResultErrors(
               diagnostics,
@@ -279,19 +289,33 @@ export const validateSchemaDoc = (
   }
   // console.log(`validateSchemaDoc ${schemaDoc.uri.toString()}`);
 
+  let schemaResult: cedar.ValidateSchemaResult;
   const schema = schemaDoc.getText();
-  const schemaResult: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
+  if (schemaDoc.languageId === 'cedarschema') {
+    schemaResult = cedar.validateSchemaNatural(schema);
+  } else {
+    schemaResult = cedar.validateSchema(schema);
+  }
   const success = schemaResult.success;
   if (schemaResult.success === false && schemaResult.errors) {
     let schemaDiagnostics: vscode.Diagnostic[] = [];
     let vse = schemaResult.errors.map((e) => {
-      return { message: e, offset: 0, length: 0 };
+      return { message: e.message, offset: e.offset, length: e.length };
     });
     addSyntaxDiagnosticErrors(schemaDiagnostics, vse, schemaDoc);
     diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
   } else {
     // reset any errors for the schema from a previous validateSchema
     diagnosticCollection.delete(schemaDoc.uri);
+
+    if (schemaResult.warnings) {
+      let schemaDiagnostics: vscode.Diagnostic[] = [];
+      schemaResult.warnings.map((w) => {
+        const range = determineRangeFromOffset(schemaDoc, w.offset, w.length);
+        addValidationDiagnosticWarning(schemaDiagnostics, w.message, range);
+      });
+      diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
+    }
 
     // determine applicable principal and resource types
     const principalTypes = determineEntityTypes(schemaDoc, 'principal');
@@ -317,7 +341,7 @@ export const validateSchemaDoc = (
 // TODO: find a real API to call for determineEntityTypes
 // parsing errors from intentionally invalid policy is an ugly hack
 const UNEXPECTED_REGEX =
-  /Unexpected type. Expected {"type":"Boolean"} but saw {"type":"Entity","name":"(?<suggestion>.+)"}/;
+  /unexpected type: expected Bool but saw (?<suggestion>.+)/;
 const ATTRIBUTE_REGEX =
   /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
 export const determineEntityTypes = (
@@ -329,7 +353,11 @@ export const determineEntityTypes = (
   const expr = scope === 'action' ? 'context.__vscode__' : scope;
   const tmpPolicy = `${head} when { ${expr} };`;
   let policyResult: cedar.ValidatePolicyResult;
-  policyResult = cedar.validatePolicy(schemaDoc.getText(), tmpPolicy);
+  if (schemaDoc.languageId === 'cedarschema') {
+    policyResult = cedar.validatePolicyNatural(schemaDoc.getText(), tmpPolicy);
+  } else {
+    policyResult = cedar.validatePolicy(schemaDoc.getText(), tmpPolicy);
+  }
   if (policyResult.success === false && policyResult.errors) {
     policyResult.errors.forEach((e) => {
       let found =
@@ -338,7 +366,9 @@ export const determineEntityTypes = (
           : e.match(UNEXPECTED_REGEX);
 
       if (found?.groups && found?.groups.suggestion) {
-        types.push(found.groups.suggestion);
+        if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
+          types.push(found.groups.suggestion);
+        }
       }
     });
   }
@@ -369,8 +399,15 @@ export const validateEntitiesDoc = async (
     if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
       validationCache.associateSchemaWithDoc(schemaDoc, entitiesDoc);
 
-      const entitiesResult: cedar.ValidateEntitiesResult =
-        cedar.validateEntities(entities, schemaDoc.getText());
+      let entitiesResult: cedar.ValidateEntitiesResult;
+      if (schemaDoc.languageId === 'cedarschema') {
+        entitiesResult = cedar.validateEntitiesNatural(
+          schemaDoc.getText(),
+          entities
+        );
+      } else {
+        entitiesResult = cedar.validateEntities(schemaDoc.getText(), entities);
+      }
       success = entitiesResult.success;
       if (entitiesResult.success === false && entitiesResult.errors) {
         let vse = entitiesResult.errors.map((e) => {

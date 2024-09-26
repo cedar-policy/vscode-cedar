@@ -100,7 +100,9 @@ const createDecimalItems = (
 
 const ENTITY_REGEX = /(?:\s|=|\[|\()(?<entity>(?:[_a-zA-Z][_a-zA-Z0-9]*::)+)$/;
 const SCOPE_REGEX =
-  /(?<element>(principal|action|resource))(\s*==\s*|\s+in\s+\[?)(?<trigger>.?)$/;
+  /(?<element>(principal|action|resource))(\s*==\s*|(\s+is\s+([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)?\s+in\s+\[?)(?<trigger>.?)$/;
+const IS_REGEX =
+  /\b(?<!\.)(?<element>(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*::"(?<id>([^"]*))"|principal|resource))\s+is\s+(?<trigger>.?)$/;
 
 export const splitPropertyChain = (property: string) => {
   const parts: string[] = [];
@@ -531,13 +533,19 @@ const provideCedarInvokeCompletionItems = async (
     }
   }
 
-  let found = linePrefix.match(SCOPE_REGEX);
+  let typeOnly = false;
+  let found = linePrefix.match(IS_REGEX);
+  if (found) {
+    typeOnly = true;
+  } else {
+    found = linePrefix.match(SCOPE_REGEX);
+  }
   if (found?.groups) {
     const element = found?.groups.element;
     const trigger = found?.groups.trigger;
     const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
-      const typeOnly = lineSuffix.startsWith('::"');
+      typeOnly = typeOnly || lineSuffix.startsWith('::"');
       return createEntityItems(position, schemaDoc, element, trigger, typeOnly);
     }
   }
@@ -618,3 +626,183 @@ export class CedarCompletionItemProvider
     return undefined;
   }
 }
+
+// Cedar schema
+export class CedarSchemaCompletionItemProvider
+  implements vscode.CompletionItemProvider
+{
+  async provideCompletionItems(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+    context: vscode.CompletionContext
+  ) {
+    if (context.triggerKind === vscode.CompletionTriggerKind.TriggerCharacter) {
+      return await this.provideTriggerCharacterCompletionItems(
+        document,
+        position,
+        token,
+        context
+      );
+    } else if (context.triggerKind === vscode.CompletionTriggerKind.Invoke) {
+      return await this.provideInvokeCompletionItems(
+        document,
+        position,
+        token,
+        context
+      );
+    }
+
+    return undefined;
+  }
+
+  async provideTriggerCharacterCompletionItems(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+    context: vscode.CompletionContext
+  ) {
+    return undefined;
+  }
+
+  async provideInvokeCompletionItems(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+    context: vscode.CompletionContext
+  ) {
+    const lineText = document.lineAt(position).text;
+    const linePrefix = lineText.substring(0, position.character);
+    const lineSuffix = lineText.substring(position.character);
+    const range = new vscode.Range(
+      new vscode.Position(position.line, position.character - 1),
+      position
+    );
+
+    // some completion items are only suggests at beginning of line
+    if (position.line === document.lineCount - 1 && linePrefix.length === 1) {
+      switch (linePrefix) {
+        case 'n':
+          return createNamespaceSnippetItems(range);
+        default:
+          break;
+      }
+    }
+
+    if (linePrefix.trim().length === 1) {
+      const definitionRanges = parseCedarSchemaDoc(document).definitionRanges;
+      for (let i = 0; i < definitionRanges.length; i++) {
+        const definitionRange = definitionRanges[i];
+        if (definitionRange.range.contains(position)) {
+          return undefined;
+        }
+      }
+      switch (linePrefix.trim()) {
+        case 'a':
+          return createActionSnippetItems(
+            range,
+            linePrefix.substring(0, linePrefix.length - 1)
+          );
+        case 'e':
+          return createEntitySnippetItems(
+            range,
+            linePrefix.substring(0, linePrefix.length - 1)
+          );
+        case 't':
+          return createTypeSnippetItems(
+            range,
+            linePrefix.substring(0, linePrefix.length - 1)
+          );
+        default:
+          break;
+      }
+    }
+
+    return undefined;
+  }
+}
+
+const createNamespaceSnippetItems = (
+  range: vscode.Range
+): vscode.CompletionItem[] => {
+  const item1 = createSnippetItem(
+    'namespace',
+    'namespace',
+    new vscode.SnippetString('namespace ${1:NS} {\n' + '  $0' + '\n}'),
+    range
+  );
+  return [item1];
+};
+
+const createTypeSnippetItems = (
+  range: vscode.Range,
+  prefix = '  '
+): vscode.CompletionItem[] => {
+  const item1 = createSnippetItem(
+    'type',
+    'type',
+    new vscode.SnippetString(
+      ['type ${1:T} = {', '  $0', '};'].join(prefix + '\n')
+    ),
+    range
+  );
+  return [item1];
+};
+
+const createEntitySnippetItems = (
+  range: vscode.Range,
+  prefix = '  '
+): vscode.CompletionItem[] => {
+  const item1 = createSnippetItem(
+    'entity',
+    'entity',
+    new vscode.SnippetString(
+      ['entity ${1:E} {', '  $0', '};'].join(prefix + '\n')
+    ),
+    range
+  );
+  const item2 = createSnippetItem(
+    'entity',
+    'entity in',
+    new vscode.SnippetString(
+      ['entity ${1:E} in [${2:E}] {', '  $0', '};'].join(prefix + '\n')
+    ),
+    range
+  );
+  return [item1, item2];
+};
+
+const createActionSnippetItems = (
+  range: vscode.Range,
+  prefix = '  '
+): vscode.CompletionItem[] => {
+  const item1 = createSnippetItem(
+    'action',
+    'action',
+    new vscode.SnippetString(
+      [
+        'action "${1:a}" appliesTo {',
+        '  principal: [${3:P}],',
+        '  resource: [${4:R}],',
+        '  context: {$0}',
+        '};',
+      ].join(prefix + '\n')
+    ),
+    range
+  );
+  const item2 = createSnippetItem(
+    'action',
+    'action in',
+    new vscode.SnippetString(
+      [
+        'action "${1:a}" in [${2:a}] appliesTo {',
+        '  principal: [${3:P}],',
+        '  resource: [${4:R}],',
+        '  context: {$0}',
+        '};',
+      ].join(prefix + '\n')
+    ),
+    range
+  );
+  return [item1, item2];
+};

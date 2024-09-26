@@ -26,6 +26,18 @@ const readTestDataFile = (dirname: string, filename: string): string => {
   return fs.readFileSync(filepath, 'utf8');
 };
 
+suite('Validation Schema Natural Test Suite', () => {
+  test('validate shadow warnings', async () => {
+    const schema = readTestDataFile('shadow', 'Demo.cedarschema');
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaNatural(schema);
+    assert.equal(result.success, true);
+    // The name `ipaddr` shadows a builtin Cedar name. You'll have to refer to the builtin as `__cedar::ipaddr`.
+    // The name `String` shadows a builtin Cedar name. You'll have to refer to the builtin as `__cedar::String`.
+    assert.equal(result.warnings?.length, 2);
+  });
+});
+
 suite('Validation RegEx Test Suite', () => {
   test('validate policy error "found at"', async () => {
     const policy = readTestDataFile('notfound', 'policy.cedar');
@@ -64,7 +76,7 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // Validation error on policy policy0 at offset 44-53: Types of operands in this expression are not equal: [{"type":"Boolean"},{"type":"Long"}]
+      // validation error on policy `policy0` at offset 44-53: unable to find upper bound for types: [{"type":"True"},{"type":"Long"}]
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(OFFSET_POLICY_REGEX);
       assert(found?.groups);
@@ -88,6 +100,9 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
+      assert.equal(result.errors.length, 3);
+
+      // validation error on policy `policy0`: unrecognized entity type `Tst`
       // Validation error on policy policy0: Unrecognized entity type Tst, did you mean Test?
       let errorMsg: string = result.errors[0];
       let found = errorMsg.match(UNRECOGNIZED_REGEX);
@@ -117,7 +132,7 @@ suite('Validation RegEx Test Suite', () => {
 
     if (result.errors) {
       // JSON Schema file could not be parsed: missing field `entityTypes` at line 2 column 9
-      let errorMsg: string = result.errors[0];
+      let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(AT_LINE_SCHEMA_REGEX);
       assert(found?.groups);
       if (found?.groups) {
@@ -139,12 +154,12 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // Undeclared entity types: {"Test"}
-      let errorMsg: string = result.errors[0];
+      // undeclared entity type(s): {"Test"}
+      let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
-        assert.equal(found?.groups.type, 'entity types');
+        assert.equal(found?.groups.type, 'entity type(s)');
         assert.equal(found?.groups.undeclared, '"Test"');
       }
     }
@@ -160,11 +175,11 @@ suite('Validation RegEx Test Suite', () => {
 
     if (result.errors) {
       // Undeclared actions: {"Action::\"test1\"", "Action::\"test2\""}
-      let errorMsg: string = result.errors[0];
+      let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_REGEX);
       assert(found?.groups);
       if (found?.groups) {
-        assert.equal(found?.groups.type, 'actions');
+        assert.equal(found?.groups.type, 'action(s)');
         const actions = found?.groups.undeclared.split(', ');
         assert.equal(actions.includes('"Action::\\"test1\\""'), true);
         assert.equal(actions.includes('"Action::\\"test2\\""'), true);
@@ -182,19 +197,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: expected entity `Test::"expected"` to have an attribute "test", but it doesn't
+      // entity does not conform to the schema: expected entity `Test::"expected"` to have attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'expected entity `Test::"expected"` to have an attribute "test", but it doesn\'t'
+        'expected entity `Test::"expected"` to have attribute `test`, but it does not'
       );
       let found = errorMsg.match(EXPECTED_ATTR_REGEX);
       assert(found?.groups);
@@ -216,19 +231,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it doesn't
+      // error during entity deserialization: in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute "nested" on Test::"expected", expected the record to have an attribute "test", but it doesn\'t'
+        'in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not'
       );
       let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
       assert(found?.groups);
@@ -251,19 +266,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long
+      // entity does not conform to the schema: in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but actually has type long: `1`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute "test" on Test::"mismatch", type mismatch: attribute was expected to have type string, but actually has type long'
+        'in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but actually has type long: `1`'
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
@@ -285,19 +300,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)
+      // entity does not conform to the schema: in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but actually has type `Tst`: `Tst::"mismatchtype"`
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute "self" on Test::"mismatchentity", type mismatch: attribute was expected to have type (entity of type Test), but actually has type (entity of type Tst)'
+        'in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but actually has type `Tst`: `Tst::"mismatchtype"`'
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert(found?.groups);
@@ -316,19 +331,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: attribute "tst" on `Test::"exist"` shouldn't exist according to the schema
+      // error during entity deserialization: attribute `tst` on `Test::"exist"` should not exist according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'attribute "tst" on `Test::"exist"` shouldn\'t exist according to the schema'
+        'attribute `tst` on `Test::"exist"` should not exist according to the schema'
       );
       let found = errorMsg.match(EXIST_ATTR_REGEX);
       assert(found?.groups);
@@ -350,19 +365,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entitytype', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema; did you mean XYZCorp::Employee?
+      // error during entity deserialization: entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema`?
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('error during entity deserialization: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema; did you mean XYZCorp::Employee?'
+        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema'
       );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert(found?.groups);
@@ -383,19 +398,19 @@ suite('Validation RegEx Test Suite', () => {
     const schema = readTestDataFile('entitytype', 'cedarschema.json');
 
     const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      entities,
-      schema
+      schema,
+      entities
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // entities deserialization error: in parents field of XYZCorp::Employee::"12UA45", `XYZCorp::Employee::"12UA45"` is not allowed to have a parent of type `XYZCorp::Employee` according to the schema
+      // entity does not conform to the schema: `XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema
       let errorMsg: string = result.errors[0];
-      assert.ok(errorMsg.startsWith('entities deserialization error'));
+      assert.ok(errorMsg.startsWith('entity does not conform to the schema: '));
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in parents field of XYZCorp::Employee::"12UA45", `XYZCorp::Employee::"12UA45"` is not allowed to have a parent of type `XYZCorp::Employee` according to the schema'
+        '`XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema'
       );
       let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
       assert(found?.groups);

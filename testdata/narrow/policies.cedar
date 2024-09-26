@@ -21,3 +21,9 @@ permit (
   action in NS::Action::"as",
   resource in NS::R::"id"
 );
+
+@id("E1 a R2")
+permit (principal is NS::E1, action, resource is NS::R2);
+
+@id("E1,E2 a,a2 R2")
+permit (principal, action, resource is NS::R2);
