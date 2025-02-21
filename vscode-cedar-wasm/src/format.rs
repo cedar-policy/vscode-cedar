@@ -53,7 +53,7 @@ mod test {
     #[test]
     fn test_format_policies() {
         let policy = r#"permit(principal, action == Action::"view", resource in Albums::"gangsta rap") when {principal.is_gangsta == true};"#;
-        let expected = "permit (\n    principal,\n    action == Action::\"view\",\n    resource in Albums::\"gangsta rap\"\n)\nwhen { principal.is_gangsta == true };";
+        let expected = "permit (\n    principal,\n    action == Action::\"view\",\n    resource in Albums::\"gangsta rap\"\n)\nwhen { principal.is_gangsta == true };\n";
         assert_eq!(
             format_policies(policy, 80, 4).policy,
             Some(expected.to_string())

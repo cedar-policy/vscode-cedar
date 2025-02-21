@@ -3,7 +3,6 @@
 
 use cedar_policy::SchemaFragment;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -23,52 +22,48 @@ pub struct TranslateSchemaResult {
     pub error: Option<String>,
 }
 
-#[wasm_bindgen(js_name = translateSchemaToHuman)]
-pub fn translate_schema_to_human(json_src: &str) -> TranslateSchemaResult {
-    return match SchemaFragment::from_str(json_src.as_ref()) {
-        Ok(fragment) => {
-            return match fragment.to_cedarschema() {
-                Ok(human) => TranslateSchemaResult {
-                    success: true,
-                    schema: Some(human),
-                    error: None,
-                },
-                Err(err) => TranslateSchemaResult {
-                    success: false,
-                    schema: None,
-                    error: Some(String::from(&format!("Translate error: {err}"))),
-                },
-            }
-        }
+#[wasm_bindgen(js_name = translateSchemaFromJSON)]
+pub fn translate_schema_from_json(json_src: &str) -> TranslateSchemaResult {
+    match SchemaFragment::from_json_str(json_src) {
+        Ok(fragment) => match fragment.to_cedarschema() {
+            Ok(human) => TranslateSchemaResult {
+                success: true,
+                schema: Some(human),
+                error: None,
+            },
+            Err(err) => TranslateSchemaResult {
+                success: false,
+                schema: None,
+                error: Some(format!("Translate error: {err}")),
+            },
+        },
         Err(err) => TranslateSchemaResult {
             success: false,
             schema: None,
-            error: Some(String::from(&format!("Translate error: {err}"))),
+            error: Some(format!("Translate error: {err}")),
         },
-    };
+    }
 }
 
 #[wasm_bindgen(js_name = translateSchemaToJSON)]
-pub fn translate_schema_to_json(natural_src: &str) -> TranslateSchemaResult {
-    return match SchemaFragment::from_cedarschema_str(natural_src.as_ref()) {
-        Ok((fragment, _)) => {
-            return match fragment.to_json_string() {
-                Ok(json) => TranslateSchemaResult {
-                    success: true,
-                    schema: Some(json),
-                    error: None,
-                },
-                Err(err) => TranslateSchemaResult {
-                    success: false,
-                    schema: None,
-                    error: Some(String::from(&format!("Translate error: {err}"))),
-                },
-            };
-        }
+pub fn translate_schema_to_json(cedar_src: &str) -> TranslateSchemaResult {
+    match SchemaFragment::from_cedarschema_str(cedar_src) {
+        Ok((fragment, _)) => match fragment.to_json_string() {
+            Ok(json) => TranslateSchemaResult {
+                success: true,
+                schema: Some(json),
+                error: None,
+            },
+            Err(err) => TranslateSchemaResult {
+                success: false,
+                schema: None,
+                error: Some(format!("Translate error: {err}")),
+            },
+        },
         Err(err) => TranslateSchemaResult {
             success: false,
             schema: None,
-            error: Some(String::from(&format!("Translate error: {err}"))),
+            error: Some(format!("Translate error: {err}")),
         },
-    };
+    }
 }
