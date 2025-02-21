@@ -21,7 +21,7 @@ import {
   saveTextAndFormat,
 } from './fileutil';
 import { createDiagnosticCollection } from './diagnostics';
-import { formatCedarDoc, formatCedarSchemaNaturalDoc } from './format';
+import { formatCedarDoc, formatCedarSchemaDoc } from './format';
 import {
   clearValidationCache,
   validateCedarDoc,
@@ -339,7 +339,7 @@ export async function activate(context: vscode.ExtensionContext) {
         if (schemaDoc.languageId === 'cedarschema') {
           translateResult = cedar.translateSchemaToJSON(schemaText);
         } else {
-          translateResult = cedar.translateSchemaToHuman(schemaText);
+          translateResult = cedar.translateSchemaFromJSON(schemaText);
         }
         if (translateResult.success && translateResult.schema) {
           const translateUri = uri.with({
@@ -511,7 +511,7 @@ export async function activate(context: vscode.ExtensionContext) {
           return Promise.resolve(undefined);
         }
 
-        const formattedSchema = formatCedarSchemaNaturalDoc(schemaDoc);
+        const formattedSchema = formatCedarSchemaDoc(schemaDoc);
         if (formattedSchema) {
           // use replacement Range of full document
           const policyRange = new vscode.Range(

@@ -32,7 +32,7 @@ export const formatCedarDoc = (
   return formattedPolicy;
 };
 
-export const formatCedarSchemaNaturalDoc = (
+export const formatCedarSchemaDoc = (
   schemaDoc: vscode.TextDocument
 ): string | null => {
   // TODO: implement after https://github.com/cedar-policy/cedar/issues/682

@@ -17,7 +17,7 @@ const nodeVersion = process.versions.node
 export async function aboutExtension(): Promise<void> {
   const extensionDetails =
     packageVersion +
-    `Cedar: ${cedar.getCedarVersion()}\n` +
+    `Cedar SDK: ${cedar.getCedarSDKVersion()}\n` +
     vsCodeVersion +
     nodeVersion;
 

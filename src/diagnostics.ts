@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
+import * as cedar from 'vscode-cedar-wasm';
 import * as jsonc from 'jsonc-parser';
 import { parseCedarEntitiesDoc, parseCedarSchemaDoc } from './parser';
 const SOURCE_CEDAR = 'Cedar';
@@ -15,13 +16,15 @@ import {
   MISMATCH_ATTR_REGEX,
   OFFSET_POLICY_REGEX,
   AT_LINE_SCHEMA_REGEX,
-  UNDECLARED_REGEX,
   UNRECOGNIZED_REGEX,
   EXPECTED_ATTR2_REGEX,
   NOTDECLARED_TYPE_REGEX,
   NOTALLOWED_PARENT_REGEX,
   PARSE_ERROR_SCHEMA_REGEX,
   UNKNOWN_ENTITY_REGEX,
+  UNDECLARED_ACTION_REGEX,
+  UNDECLARED_REGEX,
+  UNDECLAREDS_REGEX,
 } from './regex';
 
 export const createDiagnosticCollection = () => {
@@ -47,16 +50,23 @@ const addDiagnosticsError = (
 };
 
 const determineRangeFromPolicyError = (
-  e: string,
+  vpm: cedar.ValidateMessage,
   policy: string,
   defaultErrorRange: vscode.Range,
   startLine: number
 ): vscode.Range => {
   let range = defaultErrorRange;
-  let found = e.match(OFFSET_POLICY_REGEX);
+  let startCharacter = vpm.offset;
+  let endCharacter = vpm.offset + vpm.length;
+
+  // TODO: investigate if this still is a valid path
+  let found = vpm.message.match(OFFSET_POLICY_REGEX);
   if (found?.groups) {
-    const startCharacter = parseInt(found?.groups.start);
-    const endCharacter = parseInt(found?.groups.end) || startCharacter;
+    startCharacter = parseInt(found?.groups.start);
+    endCharacter = parseInt(found?.groups.end) || startCharacter;
+  }
+
+  if (startCharacter > 0 && endCharacter > 0) {
     const lines = policy.split('\n');
     let lineStart = 0;
     // not efficient, but Cedar policies are small
@@ -156,24 +166,24 @@ const determineRangeFromError = (
 const addUndeclaredDiagnosticErrors = (
   diagnostics: vscode.Diagnostic[],
   document: vscode.TextDocument,
-  found: RegExpMatchArray
+  undeclaredName: string,
+  undeclaredType: string
 ): vscode.Range => {
   let parentRange = DEFAULT_RANGE;
-  const undeclaredTypes = found.groups?.undeclared.split(', ');
-  const undeclaredType = found.groups?.type.replace('(s)', 's') || '';
+  const undeclaredNames = [undeclaredName];
 
   let namespace = '';
 
   if (document.languageId === 'cedarschema') {
-    if (['entity types', 'common types'].includes(undeclaredType)) {
+    if (['entityTypes', 'commonTypes'].includes(undeclaredType)) {
       const referencedTypes = parseCedarSchemaDoc(document).referencedTypes;
-      undeclaredTypes?.forEach((t) => {
+      undeclaredNames?.forEach((t) => {
         for (let referencedType of referencedTypes) {
-          if (`"${referencedType.name}"` === t) {
+          if (referencedType.name === t) {
             addDiagnosticsError(
               diagnostics,
               referencedType.range,
-              `undeclared ${undeclaredType.replace(' types', ' type')}: ${t}`,
+              `undeclared ${undeclaredType.replace('Types', ' type')}: ${t}`,
               'undeclared'
             );
           }
@@ -197,15 +207,7 @@ const addUndeclaredDiagnosticErrors = (
       const len = pathSupplier().length;
       if (len === 0 && property) {
         namespace = property + '::';
-      } else if (
-        (len === 1 &&
-          property === 'entityTypes' &&
-          undeclaredType === 'entity types') ||
-        (len === 1 && property === 'actions' && undeclaredType === 'actions') ||
-        (len === 1 &&
-          property === 'commonTypes' &&
-          undeclaredType === 'common types')
-      ) {
+      } else if (len === 1 && property === undeclaredType) {
         parentRange = new vscode.Range(
           new vscode.Position(startLine, startCharacter + 1),
           new vscode.Position(startLine, startCharacter + length - 1)
@@ -235,10 +237,9 @@ const addUndeclaredDiagnosticErrors = (
             pathSupplier()[4] === 'resourceTypes')) ||
         pathSupplier()[jsonPathLen - 1] === 'name'
       ) {
-        if (undeclaredType === 'entity types') {
-          undeclaredTypes?.forEach((t) => {
-            const currentType = `"${namespace}${value}"`;
-            if (t === currentType) {
+        if (undeclaredType === 'entityTypes') {
+          undeclaredNames?.forEach((t) => {
+            if (t === value) {
               addDiagnosticsError(
                 diagnostics,
                 range,
@@ -255,8 +256,8 @@ const addUndeclaredDiagnosticErrors = (
         pathSupplier()[3] === 'memberOf' &&
         pathSupplier()[5] === 'id'
       ) {
-        undeclaredTypes?.forEach((t) => {
-          const currentType = `"${namespace}Action::\\"${value}\\""`;
+        undeclaredNames?.forEach((t) => {
+          const currentType = `${namespace}Action::"${value}"`;
           if (t === currentType) {
             addDiagnosticsError(
               diagnostics,
@@ -267,12 +268,11 @@ const addUndeclaredDiagnosticErrors = (
           }
         });
       } else if (
-        undeclaredType === 'common types' &&
+        undeclaredType === 'commonTypes' &&
         pathSupplier()[jsonPathLen - 1] === 'type'
       ) {
-        undeclaredTypes?.forEach((t) => {
-          const currentType = `"${value}"`;
-          if (t === currentType) {
+        undeclaredNames?.forEach((t) => {
+          if (t === value) {
             addDiagnosticsError(
               diagnostics,
               range,
@@ -290,10 +290,9 @@ const addUndeclaredDiagnosticErrors = (
 
 const rangeFromParseError = (
   document: vscode.TextDocument,
-  found: RegExpMatchArray
+  undeclaredType: string
 ): vscode.Range => {
   let parentRange = DEFAULT_RANGE;
-  const parseErrorType = found.groups?.type;
 
   jsonc.visit(document.getText(), {
     onObjectProperty(
@@ -306,13 +305,13 @@ const rangeFromParseError = (
     ) {
       const len = pathSupplier().length;
       if (
-        (len === 0 && parseErrorType === 'namespace') ||
+        (len === 0 && undeclaredType === 'namespace') ||
         (len === 1 &&
           property === 'entityTypes' &&
-          parseErrorType === 'entity type') ||
+          undeclaredType === 'entity type') ||
         (len === 1 &&
           property === 'commonTypes' &&
-          parseErrorType === 'common type')
+          undeclaredType === 'common type')
       ) {
         parentRange = new vscode.Range(
           new vscode.Position(startLine, startCharacter + 1),
@@ -428,9 +427,33 @@ export const addSyntaxDiagnosticErrors = (
     }
 
     let found = e.match(UNDECLARED_REGEX);
+    if (!found) {
+      found = e.match(UNDECLAREDS_REGEX);
+    }
+    if (!found) {
+      found = e.match(UNDECLARED_ACTION_REGEX);
+    }
     if (found?.groups && found?.groups.undeclared) {
-      let range = addUndeclaredDiagnosticErrors(diagnostics, document, found);
-      addDiagnosticsError(diagnostics, range, e);
+      const undeclaredName = found.groups.undeclared;
+      const mappings = {
+        action: 'actions',
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        'an action': 'actions',
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        'an entity type': 'entityTypes',
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        'a common type': 'commonTypes',
+      };
+      const undeclaredType =
+        mappings[found.groups.type as keyof typeof mappings];
+      // let range = determineRangeFromOffset(document, vse.offset, vse.length);
+      let endOfDocRange = addUndeclaredDiagnosticErrors(
+        diagnostics,
+        document,
+        undeclaredName,
+        undeclaredType
+      );
+      addDiagnosticsError(diagnostics, endOfDocRange, e);
       return;
     }
 
@@ -438,7 +461,7 @@ export const addSyntaxDiagnosticErrors = (
     if (vse.offset === 0 && vse.length === 0) {
       found = e.match(PARSE_ERROR_SCHEMA_REGEX);
       if (found?.groups && found?.groups.type) {
-        let range = rangeFromParseError(document, found);
+        let range = rangeFromParseError(document, found?.groups.type);
         addDiagnosticsError(diagnostics, range, e);
         return;
       }
@@ -488,16 +511,17 @@ export const addValidationDiagnosticWarning = (
 
 export const addPolicyResultErrors = (
   diagnostics: vscode.Diagnostic[],
-  errors: string[],
+  errors: cedar.ValidateMessage[],
   policy: string,
   effectRange: vscode.Range,
   startLine: number
 ) => {
   // create an error for each of the errors
-  errors.forEach((e) => {
+  errors.forEach((vpm) => {
+    let e = vpm.message;
     let diagnosticCode = undefined;
     let range = determineRangeFromPolicyError(
-      e,
+      vpm,
       policy,
       effectRange,
       startLine
@@ -509,6 +533,8 @@ export const addPolicyResultErrors = (
       // validation error on `policy `policy0``: unable to find an applicable action given the policy head constraints
       // validation error on `policy `policy0` at offset 267-285`: attribute `a` for entity type NS::e not found, did you mean `b`?
       e = e.substring(e.indexOf(': ') + 2);
+    } else if (e.startsWith('for policy `policy0`, ')) {
+      e = e.substring(e.indexOf(', ') + 2);
     }
 
     let found = e.match(UNRECOGNIZED_REGEX);
