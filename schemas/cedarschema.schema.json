@@ -12,9 +12,10 @@
         "description": "Each JSON object within commonTypes consists of the name of a type being defined and its associated definition.",
         "markdownDescription": "Each JSON object within `commonTypes` consists of the name of a type being defined and its associated definition.",
         "additionalProperties": {
-          "$ref": "#/$defs/shapeDef",
-          "description": "Specifies the shape of the data of this type. Must have type Record, and be accompanied by a description of the common type's attributes.",
-          "markdownDescription": "Specifies the shape of the data of this type.\n\nMust have type `Record`, and be accompanied by a description of the common type's attributes."
+          "oneOf": [
+            { "$ref": "#/$defs/extendedShapeDef" },
+            { "$ref": "#/$defs/extendedSetTypeDef" }
+          ]
         }
       },
       "entityTypes": {
@@ -40,7 +41,9 @@
               ],
               "description": "Specifies the shape of the data stored in entities of this type. The shape element, if present, must have type Record, and be accompanied by a description of the entity's attributes.",
               "markdownDescription": "Specifies the shape of the data stored in entities of this type.\n\nThe `shape` element, if present, must have type `Record`, and be accompanied by a description of the entity's attributes."
-            }
+            },
+            "tags": { "$ref": "#/$defs/attributesTypeDef" },
+            "annotations": { "$ref": "#/$defs/annotationsDef" }
           },
           "additionalProperties": false,
           "defaultSnippets": [
@@ -133,7 +136,8 @@
             }
           }
         ]
-      }
+      },
+      "annotations": { "$ref": "#/$defs/annotationsDef" }
     },
     "required": ["entityTypes", "actions"],
     "additionalProperties": false
@@ -148,6 +152,20 @@
           "description": "A Record is collection of attributes. Each attribute consists of a name and an associated value. Names are simple strings. Values can be of any type."
         },
         "attributes": { "$ref": "#/$defs/attributesDef" }
+      },
+      "required": ["type", "attributes"],
+      "additionalProperties": false
+    },
+    "extendedShapeDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^Record$",
+          "description": "A Record is collection of attributes. Each attribute consists of a name and an associated value. Names are simple strings. Values can be of any type."
+        },
+        "attributes": { "$ref": "#/$defs/attributesDef" },
+        "annotations": { "$ref": "#/$defs/annotationsDef" }
       },
       "required": ["type", "attributes"],
       "additionalProperties": false
@@ -178,11 +196,17 @@
       "oneOf": [
         { "$ref": "#/$defs/primitiveTypeDef" },
         { "$ref": "#/$defs/extensionTypeDef" },
+        { "$ref": "#/$defs/entityOrCommonTypeDef" },
         { "$ref": "#/$defs/entityTypeDef" },
         { "$ref": "#/$defs/setTypeDef" },
         { "$ref": "#/$defs/recordTypeDef" },
         { "$ref": "#/$defs/commonShapeDef" }
       ]
+    },
+    "annotationsDef": {
+      "patternProperties": {
+        "[_a-zA-Z][_a-zA-Z0-9]*": { "type": "string" }
+      }
     },
     "primitiveTypeDef": {
       "type": "object",
@@ -225,7 +249,25 @@
         "name": {
           "type": "string",
           "description": "The entity type must be defined in the schema."
-        }
+        },
+        "annotations": { "$ref": "#/$defs/annotationsDef" }
+      },
+      "required": ["type", "name"],
+      "additionalProperties": false
+    },
+    "entityOrCommonTypeDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^EntityOrCommon$"
+        },
+        "required": { "$ref": "#/$defs/requiredDef" },
+        "name": {
+          "type": "string",
+          "pattern": "[_a-zA-Z][_a-zA-Z0-9]*"
+        },
+        "annotations": { "$ref": "#/$defs/annotationsDef" }
       },
       "required": ["type", "name"],
       "additionalProperties": false
@@ -242,7 +284,7 @@
         "required": { "$ref": "#/$defs/requiredDef" },
         "name": {
           "type": "string",
-          "pattern": "^(ipaddr|decimal)$",
+          "pattern": "^(ipaddr|decimal|datetime)$",
           "description": "There are two extension types: ipaddr for IP address values, and decimal for decimal values.",
           "markdownDescription": "There are two extension types: `ipaddr` for IP address values, and `decimal` for decimal values."
         }
@@ -260,6 +302,21 @@
         },
         "required": { "$ref": "#/$defs/requiredDef" },
         "element": { "$ref": "#/$defs/attributesTypeDef" }
+      },
+      "required": ["type", "element"],
+      "additionalProperties": false
+    },
+    "extendedSetTypeDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^Set$",
+          "description": "A Set is collection of elements that can be of the same or different types. A set is constructed using bracket characters [ ] and separating the elements with commas."
+        },
+        "required": { "$ref": "#/$defs/requiredDef" },
+        "element": { "$ref": "#/$defs/attributesTypeDef" },
+        "annotations": { "$ref": "#/$defs/annotationsDef" }
       },
       "required": ["type", "element"],
       "additionalProperties": false

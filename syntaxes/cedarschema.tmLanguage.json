@@ -49,6 +49,14 @@
 			"patterns": [{
 				"name": "keyword.cedarschema",
 				"match": "\\b(in|appliesTo)\\b"
+			},
+			{
+				"match": "}\\s*(tags)\\b",
+				"captures": {
+					"1" : {
+						"name": "keyword.cedarschema"
+					}
+				}
 			}]
 		},
 		"properties": {

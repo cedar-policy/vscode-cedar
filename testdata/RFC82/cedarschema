@@ -1,0 +1,12 @@
+// https://github.com/cedar-policy/rfcs/blob/main/text/0082-entity-tags.md
+entity User = {
+  jobLevel: Long,
+} tags Set<String>;
+entity Document = {
+  owner: User,
+} tags Set<String>;
+action "writeDoc" appliesTo {
+  principal: [User],
+  resource: [Document],
+  context: {}
+};

@@ -52,6 +52,11 @@ suite('splitPropertyChain Suite', () => {
     assert.deepEqual(parts, ['principal', 'some', 'nested', 'attribute']);
   });
 
+  test('validate principal has some.nested.attribute', () => {
+    const parts = splitPropertyChain('principal has some.nested.attribute');
+    assert.deepEqual(parts, ['principal', 'some', 'nested', 'attribute']);
+  });
+
   test('validate context.a.b.c', () => {
     const parts = splitPropertyChain('context.a.b.c');
     assert.deepEqual(parts, ['context', 'a', 'b', 'c']);

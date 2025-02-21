@@ -38,15 +38,25 @@ const createFunctionItem = (
 };
 
 // Set functions
-const createContainsItems = (
-  position: vscode.Position
-): vscode.CompletionItem[] => {
+const createSetItems = (position: vscode.Position): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
 
   items.push(createFunctionItem(range, 'contains', 'contains($1) $0'));
   items.push(createFunctionItem(range, 'containsAll', 'containsAll([$1]) $0'));
   items.push(createFunctionItem(range, 'containsAny', 'containsAny([$1]) $0'));
+  items.push(createFunctionItem(range, 'isEmpty', 'isEmpty() $0'));
+
+  return items;
+};
+
+// Tag functions
+const createTagItems = (position: vscode.Position): vscode.CompletionItem[] => {
+  const items: vscode.CompletionItem[] = [];
+  const range = new vscode.Range(position, position);
+
+  items.push(createFunctionItem(range, 'getTag', 'getTag($1)$0'));
+  items.push(createFunctionItem(range, 'hasTag', 'hasTag($1) $0'));
 
   return items;
 };
@@ -54,6 +64,10 @@ const createContainsItems = (
 // [^\s"]* inside the (" ") avoids a greedy match
 const IP_REGEX = /\bip\("[^\s"]*"\)\.$/;
 const DECIMAL_REGEX = /\bdecimal\("[^\s"]*"\)\.$/;
+const DATETIME_REGEX =
+  /\b(datetime\("[^\s"]*"\)|offset\(duration\("[^\s"]*"\)\)|toDate\(\))\.$/;
+const DURATION_REGEX =
+  /\b(duration\("[^\s"]*"\)|durationSince\(datetime\("[^\s"]*"\)\)|toTime\(\))\.$/;
 
 // IPAddr extension functions
 const createIpFunctionItem = (range: vscode.Range): vscode.CompletionItem => {
@@ -98,6 +112,55 @@ const createDecimalItems = (
   return items;
 };
 
+// Datetime extension functions
+const createDatetimeFunctionItem = (
+  range: vscode.Range
+): vscode.CompletionItem => {
+  return createFunctionItem(
+    range,
+    'datetime',
+    'datetime("${1:YYYY-MM-DDThh:mm:ssZ}")$0'
+  );
+};
+const createDatetimeItems = (
+  position: vscode.Position
+): vscode.CompletionItem[] => {
+  const items: vscode.CompletionItem[] = [];
+  const range = new vscode.Range(position, position);
+
+  items.push(createFunctionItem(range, 'offset', 'offset($1)$0'));
+  items.push(createFunctionItem(range, 'durationSince', 'durationSince($1)$0'));
+  items.push(createFunctionItem(range, 'toDate', 'toDate()$0'));
+  items.push(createFunctionItem(range, 'toTime', 'toTime()$0'));
+
+  return items;
+};
+const createDurationFunctionItem = (
+  range: vscode.Range
+): vscode.CompletionItem => {
+  return createFunctionItem(
+    range,
+    'duration',
+    'duration("${1:1d2h3m4s5ms}")$0'
+  );
+};
+const createDurationItems = (
+  position: vscode.Position
+): vscode.CompletionItem[] => {
+  const items: vscode.CompletionItem[] = [];
+  const range = new vscode.Range(position, position);
+
+  items.push(
+    createFunctionItem(range, 'toMilliseconds', 'toMilliseconds() $0')
+  );
+  items.push(createFunctionItem(range, 'toSeconds', 'toSeconds() $0'));
+  items.push(createFunctionItem(range, 'toMinutes', 'toMinutes() $0'));
+  items.push(createFunctionItem(range, 'toHours', 'toHours() $0'));
+  items.push(createFunctionItem(range, 'toDays', 'toDays() $0'));
+
+  return items;
+};
+
 const ENTITY_REGEX = /(?:\s|=|\[|\()(?<entity>(?:[_a-zA-Z][_a-zA-Z0-9]*::)+)$/;
 const SCOPE_REGEX =
   /(?<element>(principal|action|resource))(\s*==\s*|(\s+is\s+([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)?\s+in\s+\[?)(?<trigger>.?)$/;
@@ -123,6 +186,12 @@ export const splitPropertyChain = (property: string) => {
         parts.push(property.substring(start, pos));
       }
       start = pos + 1;
+    } else if (char === ' ') {
+      if (start !== pos) {
+        parts.push(property.substring(start, pos));
+      }
+      pos = pos + ' has '.length;
+      start = pos;
     } else if (char === '[') {
       if (start !== pos) {
         parts.push(property.substring(start, pos));
@@ -228,12 +297,20 @@ const createEntityTypesAttributeItems = (
 ): vscode.CompletionItem[] => {
   let items: vscode.CompletionItem[] = [];
   const completions = parseCedarSchemaDoc(schemaDoc).completions;
+  const tags = parseCedarSchemaDoc(schemaDoc).tags;
+  let addTagItems = false;
   entityTypes.forEach((entityType) => {
     const attributes = completions[entityType];
     items = items.concat(
       createAttributeItems(position, entityType, attributes)
     );
+    if (tags.includes(entityType)) {
+      addTagItems = true;
+    }
   });
+  if (addTagItems) {
+    items = items.concat(createTagItems(position));
+  }
 
   return items;
 };
@@ -264,6 +341,8 @@ const createInvokeItems = (
 
   items.push(createIpFunctionItem(range));
   items.push(createDecimalFunctionItem(range));
+  items.push(createDatetimeFunctionItem(range));
+  items.push(createDurationFunctionItem(range));
 
   return items;
 };
@@ -278,6 +357,10 @@ const provideCedarPeriodTriggerItems = async (
       return createIPAddrItems(position);
     } else if (linePrefix.match(DECIMAL_REGEX)) {
       return createDecimalItems(position);
+    } else if (linePrefix.match(DATETIME_REGEX)) {
+      return createDatetimeItems(position);
+    } else if (linePrefix.match(DURATION_REGEX)) {
+      return createDurationItems(position);
     }
   }
 
@@ -314,11 +397,15 @@ const provideCedarPeriodTriggerItems = async (
             } else if (!lastTypes.has(lastType)) {
               lastTypes.add(lastType);
               if (lastType.startsWith('Set<')) {
-                items = items.concat(createContainsItems(position));
+                items = items.concat(createSetItems(position));
               } else if (lastType === 'ipaddr') {
                 items = items.concat(createIPAddrItems(position));
               } else if (lastType === 'decimal') {
                 items = items.concat(createDecimalItems(position));
+              } else if (lastType === 'datetime') {
+                items = items.concat(createDatetimeItems(position));
+              } else if (lastType === 'duration') {
+                items = items.concat(createDurationItems(position));
               } else if (!PRIMITIVE_TYPES.includes(lastType)) {
                 items = items.concat(
                   createEntityTypesAttributeItems(position, schemaDoc, [
@@ -335,7 +422,7 @@ const provideCedarPeriodTriggerItems = async (
   }
 
   if (linePrefix.endsWith('].')) {
-    return createContainsItems(position);
+    return createSetItems(position);
   }
 
   return undefined;
@@ -588,7 +675,11 @@ const provideCedarInvokeCompletionItems = async (
         return [createIpFunctionItem(range)];
 
       case 'd':
-        return [createDecimalFunctionItem(range)];
+        return [
+          createDecimalFunctionItem(range),
+          createDatetimeFunctionItem(range),
+          createDurationFunctionItem(range),
+        ];
 
       default:
         break;
