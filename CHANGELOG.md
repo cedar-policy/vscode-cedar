@@ -1,3 +1,8 @@
+## v0.9.1 (Pre-release) 2025-05-02
+
+- Update to Cedar SDK 4.4.0
+- Require Visual Studio Code version [1.95](https://code.visualstudio.com/updates/v1_95) or later
+
 ## v0.9.0 (Pre-release) 2025-02-21
 
 - Update to Cedar SDK 4.3.2

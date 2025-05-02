@@ -24,7 +24,7 @@ export const UNDECLARED_REGEX =
 export const UNDECLAREDS_REGEX =
   /neither `(?<undeclaredn>.+)` nor `(?<undeclared>.+)` refers to anything that has been declared as (?<type>an entity type)/;
 export const UNDECLARED_ACTION_REGEX =
-  /undeclared (?<type>(action)): (?<undeclared>.+)/;
+  /undeclared (?<type>action)s?: (?<undeclared>.+)/;
 // Cedar entities errors
 export const NOTDECLARED_TYPE_REGEX =
   /entity `(?<type>.+)::"(?<id>.+)"` has type `(.+)` which is not declared in the schema(. Did you mean `(?<suggestion>.+)`\?)?/;

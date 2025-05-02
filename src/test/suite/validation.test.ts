@@ -194,18 +194,15 @@ suite('Validation RegEx Test Suite', () => {
     assert.equal(result.success, false);
 
     if (result.errors) {
-      // undeclared action: Action::"test1"\nany actions appearing as parents need to be declared as actions
+      // undeclared actions: Action::"test1" and Action::"test2"\nany actions appearing as parents need to be declared as actions
       let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_ACTION_REGEX);
       assert(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'action');
-        // note: sometimes Action is test1, other times is test2
-        assert.ok(
-          ['Action::"test1"', 'Action::"test2"'].includes(
-            found?.groups.undeclared
-          )
-        );
+        // Check that both undeclared actions are found in the error message
+        assert.ok(errorMsg.includes('Action::"test1"'));
+        assert.ok(errorMsg.includes('Action::"test2"'));
       }
     }
 
