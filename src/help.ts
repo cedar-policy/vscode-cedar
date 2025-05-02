@@ -94,33 +94,37 @@ export const FUNCTION_HELP_DEFINITIONS: Record<string, string[]> = {
   // Datetime extension functions
   datetime: [
     'datetime(String): datetime',
-    '*(experimental)* Function that constructs a `datetime` value from a string in one of the forms:' +
+    'Function that constructs a `datetime` value from a string in one of the forms:' +
       '\n* `"YYYY-MM-DD"` (date only)' +
       '\n* `"YYYY-MM-DDThh:mm:ssZ"` (UTC)' +
       '\n* `"YYYY-MM-DDThh:mm:ss.SSSZ`" (UTC with millisecond precision)' +
       '\n* `"YYYY-MM-DDThh:mm:ss(+/-)hhmm"` (With timezone offset in hours and minutes)' +
       '\n* `"YYYY-MM-DDThh:mm:ss.SSS(+/-)hhmm"` (With timezone offset in hours and minutes and millisecond precision)' +
-      '\n\nhttps://github.com/cedar-policy/rfcs/blob/main/text/0080-datetime-extension.md',
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-datatypes.html#datatype-datetime',
   ],
   offset: [
     'offset(duration): datetime',
-    'Function returns a new `datetime`, offset by `duration`.',
+    'Function returns a new `datetime`, offset by `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-offset.title',
   ],
   durationSince: [
     'durationSince(datetime): duration',
-    'Function returns the difference as a `duration`.',
+    'Function returns the difference as a `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-durationSince.title',
   ],
   toDate: [
     'toDate(): datetime',
-    'Function returns a new `datetime`, truncating to the day, such that printing the `datetime` would have 00:00:00 as the time.',
+    'Function returns a new `datetime`, truncating to the day, such that printing the `datetime` would have 00:00:00 as the time.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toDate.title',
   ],
   toTime: [
     'toTime(): duration',
-    'Function returns a new `duration`, removing the days, such that only milliseconds since `.toDate()` are left.',
+    'Function returns a new `duration`, removing the days, such that only milliseconds since `.toDate()` are left.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toTime.title',
   ],
   duration: [
     'duration(String): duration',
-    '*(experimental)* Function that constructs a duration value from a duration string. ' +
+    'Function that constructs a duration value from a duration string. ' +
       'The string is a concatenated sequence of quantity - unit pairs. For example, `"1d2h3m4s5ms"` is a valid duration string. ' +
       'The quantity part is a positive integer. The unit is one of the following:' +
       '\n * `d`: days' +
@@ -128,26 +132,31 @@ export const FUNCTION_HELP_DEFINITIONS: Record<string, string[]> = {
       '\n * `m`: minutes' +
       '\n * `s`: seconds' +
       '\n * `ms`: milliseconds' +
-      '\n\nhttps://github.com/cedar-policy/rfcs/blob/main/text/0080-datetime-extension.md',
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-datatypes.html#datatype-duration',
   ],
   toMilliseconds: [
     'toMilliseconds(): Long',
-    'Function describing the number of milliseconds in this `duration`.',
+    'Function describing the number of milliseconds in this `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toMilliseconds.title',
   ],
   toSeconds: [
     'toSeconds(): Long',
-    'Function describing the number of seconds in this `duration`.',
+    'Function describing the number of seconds in this `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toSeconds.title',
   ],
   toMinutes: [
     'toMinutes(): Long',
-    'Function describing the number of minutes in this `duration`.',
+    'Function describing the number of minutes in this `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toMinutes.title',
   ],
   toHours: [
     'toHours(): Long',
-    'Function describing the number of hours in this `duration`.',
+    'Function describing the number of hours in this `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toHours.title',
   ],
   toDays: [
     'toDays(): Long',
-    'Function describing the number of days in this `duration`.',
+    'Function describing the number of days in this `duration`.' +
+      '\n\nhttps://docs.cedarpolicy.com/policies/syntax-operators.html#function-toDays.title',
   ],
 };

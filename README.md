@@ -4,7 +4,7 @@ The Cedar policy language extension for Visual Studio Code supports syntax highl
 
 Cedar is an open-source language for writing authorization policies and making authorization decisions based on those policies. Visit the [Cedar policy language reference guide](https://docs.cedarpolicy.com/) for the documentation and the language specification.
 
-**Note:** The release version of this extension uses Cedar 3.x.
+**Note:** The pre-release version currently supports only Cedar 4.x, switch to the release version for Cedar 3.x.
 
 ## Features
 

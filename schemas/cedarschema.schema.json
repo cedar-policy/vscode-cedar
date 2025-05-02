@@ -284,9 +284,9 @@
         "required": { "$ref": "#/$defs/requiredDef" },
         "name": {
           "type": "string",
-          "pattern": "^(ipaddr|decimal|datetime)$",
-          "description": "There are two extension types: ipaddr for IP address values, and decimal for decimal values.",
-          "markdownDescription": "There are two extension types: `ipaddr` for IP address values, and `decimal` for decimal values."
+          "pattern": "^(ipaddr|decimal|datetime|duration)$",
+          "description": "Cedar supports the following extension types: datetime, decimal, duration, ipaddr",
+          "markdownDescription": "Cedar supports the following extension types: `datetime`, `decimal`, `duration`, `ipaddr`"
         }
       },
       "required": ["type", "name"],

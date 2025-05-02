@@ -984,6 +984,8 @@ export const PRIMITIVE_TYPES = [
   'Extension',
 ];
 
+const EXTENSIONS = ['ipaddr', 'decimal', 'datetime', 'duration'];
+
 export type SchemaRange = {
   collection: 'commonTypes' | 'entityTypes' | 'actions';
   etype: string;
@@ -1300,7 +1302,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
         }
       } else if (pathSupplier()[jsonPathLen - 1] === 'name') {
         // anything directly under "name" is (probably) a type
-        if (['ipaddr', 'decimal', 'datetime'].includes(value)) {
+        if (EXTENSIONS.includes(value)) {
           tokensBuilder.push(range, 'function', []);
         } else {
           tokensBuilder.push(range, 'type', []);
@@ -1320,7 +1322,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
           captureAttribute(`Set<${tmpAttribute.element}>`);
         } else if (pathSupplier()[jsonPathLen - 3] === 'attributes') {
           if (
-            ['ipaddr', 'decimal', 'datetime'].includes(value) ||
+            EXTENSIONS.includes(value) ||
             tmpAttribute.type === 'EntityOrCommon'
           ) {
             captureAttribute(value);
@@ -1583,7 +1585,7 @@ const parseCedarSchemaCedarDoc = (
             const idx = textLine.indexOf(type, colonIndex);
             if (idx > -1) {
               const range = makeRange(i, idx, type.length);
-              if (['ipaddr', 'decimal', 'datetime'].includes(type)) {
+              if (EXTENSIONS.includes(type)) {
                 tokensBuilder.push(range, 'function', []);
               } else {
                 tokensBuilder.push(range, 'type', []);
