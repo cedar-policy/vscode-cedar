@@ -12,11 +12,11 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
-    "vscode": "^1.82.0"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "Programming Languages",
@@ -270,13 +270,13 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "=18.15.0",
-    "@types/vscode": "=1.82.0",
+    "@types/node": "=20.17.32",
+    "@types/vscode": "=1.95.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
-    "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.4.1",
-    "@vscode/vsce": "^2.32.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.3.2",
     "eslint": "^8.57.1",
     "js-yaml": "^4.1.0",
     "mocha": "^10.8.2",
