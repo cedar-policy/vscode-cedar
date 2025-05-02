@@ -1,3 +1,12 @@
+## v0.9.1 (Pre-release) 2025-05-02
+
+- Update to Cedar SDK 4.4.0
+- Require Visual Studio Code version [1.95](https://code.visualstudio.com/updates/v1_95) or later
+
+## v0.9.0 (Pre-release) 2025-02-21
+
+- Update to Cedar SDK 4.3.2
+
 ## v0.7.7 (Pre-release) 2024-09-25
 
 - Update to Cedar 3.4.1
@@ -13,26 +22,26 @@
 ## v0.6.3 (Pre-release) 2024-05-17
 
 - Update to Cedar 2.4.6
-- Human-readable schema syntax highlighting
+- Cedar schema syntax highlighting
 
 ## v0.7.5 (Pre-release) 2024-05-17
 
 - Update to Cedar 3.1.4
-- Fix human-readable schema display bugs
+- Fix Cedar schema display bugs
 
 ## v0.7.4 (Pre-release) 2024-04-26
 
 - Problems contain additional help text
-- Fix human-readable schema display bugs
+- Fix Cedar schema display bugs
 
 ## v0.7.3 (Pre-release) 2024-04-21
 
-- IntelliSense and validation using human-readable schema
+- IntelliSense and validation using Cedar schema
 
 ## v0.7.2 (Pre-release) 2024-04-16
 
 - Update to Cedar 3.1.3
-- Human-readable schema translation
+- Cedar schema translation
 - IntelliSense and hover help updates
 - Add JSON export of Cedar policy templates
 

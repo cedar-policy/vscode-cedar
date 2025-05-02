@@ -13,5 +13,7 @@ when
   (principal.some.nested has "attribute with spaces" &&
    principal.some.nested["attribute with spaces"] == "test") ||
   (principal.some.nested has "attribute:with:colons" &&
-   principal.some.nested["attribute:with:colons"] == "test")
+   principal.some.nested["attribute:with:colons"] == "test") ||
+  (principal has some.nested.attribute &&
+   principal.some.nested.attribute == "test")
 };

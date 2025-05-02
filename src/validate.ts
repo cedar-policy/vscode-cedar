@@ -243,12 +243,12 @@ export const validateCedarDoc = async (
         parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
           let policyResult: cedar.ValidatePolicyResult;
           if (schemaDoc.languageId === 'cedarschema') {
-            policyResult = cedar.validatePolicyNatural(
+            policyResult = cedar.validatePolicySchemaCedar(
               schemaDoc.getText(),
               policyText
             );
           } else {
-            policyResult = cedar.validatePolicy(
+            policyResult = cedar.validatePolicySchemaJSON(
               schemaDoc.getText(),
               policyText
             );
@@ -292,9 +292,9 @@ export const validateSchemaDoc = (
   let schemaResult: cedar.ValidateSchemaResult;
   const schema = schemaDoc.getText();
   if (schemaDoc.languageId === 'cedarschema') {
-    schemaResult = cedar.validateSchemaNatural(schema);
+    schemaResult = cedar.validateSchemaCedar(schema);
   } else {
-    schemaResult = cedar.validateSchema(schema);
+    schemaResult = cedar.validateSchemaJSON(schema);
   }
   const success = schemaResult.success;
   if (schemaResult.success === false && schemaResult.errors) {
@@ -354,16 +354,22 @@ export const determineEntityTypes = (
   const tmpPolicy = `${head} when { ${expr} };`;
   let policyResult: cedar.ValidatePolicyResult;
   if (schemaDoc.languageId === 'cedarschema') {
-    policyResult = cedar.validatePolicyNatural(schemaDoc.getText(), tmpPolicy);
+    policyResult = cedar.validatePolicySchemaCedar(
+      schemaDoc.getText(),
+      tmpPolicy
+    );
   } else {
-    policyResult = cedar.validatePolicy(schemaDoc.getText(), tmpPolicy);
+    policyResult = cedar.validatePolicySchemaJSON(
+      schemaDoc.getText(),
+      tmpPolicy
+    );
   }
   if (policyResult.success === false && policyResult.errors) {
     policyResult.errors.forEach((e) => {
       let found =
         scope === 'action'
-          ? e.match(ATTRIBUTE_REGEX)
-          : e.match(UNEXPECTED_REGEX);
+          ? e.message.match(ATTRIBUTE_REGEX)
+          : e.message.match(UNEXPECTED_REGEX);
 
       if (found?.groups && found?.groups.suggestion) {
         if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
@@ -401,19 +407,23 @@ export const validateEntitiesDoc = async (
 
       let entitiesResult: cedar.ValidateEntitiesResult;
       if (schemaDoc.languageId === 'cedarschema') {
-        entitiesResult = cedar.validateEntitiesNatural(
+        entitiesResult = cedar.validateEntitiesSchemaCedar(
           schemaDoc.getText(),
           entities
         );
       } else {
-        entitiesResult = cedar.validateEntities(schemaDoc.getText(), entities);
+        entitiesResult = cedar.validateEntitiesSchemaJSON(
+          schemaDoc.getText(),
+          entities
+        );
       }
       success = entitiesResult.success;
       if (entitiesResult.success === false && entitiesResult.errors) {
-        let vse = entitiesResult.errors.map((e) => {
-          return { message: e, offset: 0, length: 0 };
-        });
-        addSyntaxDiagnosticErrors(entitiesDiagnostics, vse, entitiesDoc);
+        addSyntaxDiagnosticErrors(
+          entitiesDiagnostics,
+          entitiesResult.errors,
+          entitiesDoc
+        );
       }
       entitiesResult.free();
     }

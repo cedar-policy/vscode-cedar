@@ -9,3 +9,4 @@ mod schema_translate;
 mod schema_validator;
 mod syntax_validator;
 mod utils;
+mod validate_message;

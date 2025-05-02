@@ -38,6 +38,10 @@
         "type": "object",
         "description": "Use the attrs object to specify the key name and value of each attribute attached to the associated entity.",
         "markdownDescription": "Use the `attrs` object to specify the key name and value of each attribute attached to the associated entity."
+      },
+      "tags": {
+        "type": "object",
+        "description": "Tags are similar to attributes, but they can have key names which are known only dynamically (at run-time) and not when the policy/schema is authored."
       }
     },
     "required": ["uid", "parents", "attrs"],

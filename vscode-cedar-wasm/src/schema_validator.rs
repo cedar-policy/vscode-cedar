@@ -1,127 +1,101 @@
 // Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use cedar_policy::extensions::Extensions;
 use cedar_policy::SchemaWarning;
-use cedar_policy_validator::human_schema::parser::HumanSyntaxParseErrors;
-use cedar_policy_validator::{HumanSchemaError, ValidatorSchema};
+use cedar_policy_core::extensions::Extensions;
+use cedar_policy_validator::{CedarSchemaError, ValidatorSchema};
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use wasm_bindgen::prelude::*;
+
+use crate::validate_message::{convert_messages_to_js_array, ValidateMessage};
 
 #[wasm_bindgen(typescript_custom_section)]
 const VALIDATE_SCHEMA_RESULT: &'static str = r#"
-export class ValidateSchemaMessage {
-  readonly message: string;
-  readonly length: number;
-  readonly offset: number;
-}
 export class ValidateSchemaResult {
   free(): void;
   readonly success: boolean;
-  readonly warnings: Array<ValidateSchemaMessage> | undefined;
-  readonly errors: Array<ValidateSchemaMessage> | undefined;
+  readonly warnings: Array<ValidateMessage> | undefined;
+  readonly errors: Array<ValidateMessage> | undefined;
 }"#;
-
-#[wasm_bindgen(getter_with_clone, skip_typescript)]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ValidateSchemaMessage {
-    #[wasm_bindgen(readonly)]
-    pub message: String,
-    #[wasm_bindgen(readonly)]
-    pub offset: usize,
-    #[wasm_bindgen(readonly)]
-    pub length: usize,
-}
 
 #[wasm_bindgen(getter_with_clone, skip_typescript)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidateSchemaResult {
     #[wasm_bindgen(readonly)]
     pub success: bool,
-    warnings: Option<Vec<ValidateSchemaMessage>>,
-    errors: Option<Vec<ValidateSchemaMessage>>,
+    warnings: Option<Vec<ValidateMessage>>,
+    errors: Option<Vec<ValidateMessage>>,
 }
 
-fn messages(messages: &Option<Vec<ValidateSchemaMessage>>) -> Option<js_sys::Array> {
-    if let Some(messages) = messages {
-        let arr = js_sys::Array::new_with_length(messages.len() as u32);
-        for (i, e) in messages.iter().enumerate() {
-            let vse = js_sys::Object::new();
-            js_sys::Reflect::set(
-                &vse,
-                &JsValue::from_str("message"),
-                &JsValue::from_str(&e.clone().message),
-            )
-            .unwrap();
-            js_sys::Reflect::set(
-                &vse,
-                &JsValue::from_str("offset"),
-                &JsValue::from_f64(e.offset as f64),
-            )
-            .unwrap();
-            js_sys::Reflect::set(
-                &vse,
-                &JsValue::from_str("length"),
-                &JsValue::from_f64(e.length as f64),
-            )
-            .unwrap();
-
-            arr.set(i as u32, JsValue::from(vse));
-        }
-        Some(arr)
-    } else {
-        None
-    }
+fn messages(messages: &Option<Vec<ValidateMessage>>) -> Option<js_sys::Array> {
+    messages.as_ref().map(convert_messages_to_js_array)
 }
 
 #[wasm_bindgen]
 impl ValidateSchemaResult {
     #[wasm_bindgen(getter)]
     pub fn errors(&self) -> Option<js_sys::Array> {
-        return messages(&self.errors);
+        messages(&self.errors)
     }
     #[wasm_bindgen(getter)]
     pub fn warnings(&self) -> Option<js_sys::Array> {
-        return messages(&self.warnings);
+        messages(&self.warnings)
     }
 }
 
-#[wasm_bindgen(js_name = validateSchema)]
-pub fn validate_schema(input_schema_str: &str) -> ValidateSchemaResult {
-    let result = match ValidatorSchema::from_str(&input_schema_str) {
-        Ok(_schema) => ValidateSchemaResult {
-            success: true,
-            warnings: None,
-            errors: None,
-        },
-        Err(e) => ValidateSchemaResult {
-            success: false,
-            warnings: None,
-            errors: Some(vec![ValidateSchemaMessage {
-                message: match e.help() {
-                    None => String::from(&format!("{e}")),
-                    Some(help) => String::from(&format!("{e}\n{help}")),
-                },
-                offset: 0,
-                length: 0,
-            }]),
-        },
-    };
+fn format_diagnostic_message<T: Diagnostic>(diagnostic: &T) -> String {
+    diagnostic.help().map_or_else(
+        || format!("{diagnostic}"),
+        |help| format!("{diagnostic}\n{help}"),
+    )
+}
+
+#[wasm_bindgen(js_name = validateSchemaJSON)]
+pub fn validate_schema_json(input_schema_str: &str) -> ValidateSchemaResult {
+    let result =
+        match ValidatorSchema::from_json_str(&input_schema_str, Extensions::all_available()) {
+            Ok(_schema) => ValidateSchemaResult {
+                success: true,
+                warnings: None,
+                errors: None,
+            },
+            Err(e) => {
+                let (offset, length) = if let Some(labels) = e.labels() {
+                    if let Some(label) = labels.into_iter().next() {
+                        (label.offset(), label.len())
+                    } else {
+                        (0, 0)
+                    }
+                } else {
+                    (0, 0)
+                };
+
+                ValidateSchemaResult {
+                    success: false,
+                    warnings: None,
+                    errors: Some(vec![ValidateMessage {
+                        message: format_diagnostic_message(&e),
+                        offset,
+                        length,
+                    }]),
+                }
+            }
+        };
     result
 }
 
-#[wasm_bindgen(js_name = validateSchemaNatural)]
-pub fn validate_schema_natural(input_schema_str: &str) -> ValidateSchemaResult {
+#[wasm_bindgen(js_name = validateSchemaCedar)]
+pub fn validate_schema_cedar(input_schema_str: &str) -> ValidateSchemaResult {
     let result =
-        match ValidatorSchema::from_str_natural(&input_schema_str, Extensions::all_available()) {
+        match ValidatorSchema::from_cedarschema_str(&input_schema_str, Extensions::all_available())
+        {
             Ok(_schema) => {
                 let mut warnings_vec = Vec::new();
                 for warning in _schema.1.into_iter() {
                     match HasOffsetLength::offset_length(&warning) {
-                        offset_length => warnings_vec.push(ValidateSchemaMessage {
-                            message: String::from(&format!("{warning}")),
+                        offset_length => warnings_vec.push(ValidateMessage {
+                            message: format_diagnostic_message(&warning),
                             offset: offset_length.offset,
                             length: offset_length.length,
                         }),
@@ -135,8 +109,8 @@ pub fn validate_schema_natural(input_schema_str: &str) -> ValidateSchemaResult {
             }
             Err(e) => {
                 let error = match HasOffsetLength::offset_length(&e) {
-                    offset_length => ValidateSchemaMessage {
-                        message: String::from(&format!("{e}")),
+                    offset_length => ValidateMessage {
+                        message: format_diagnostic_message(&e),
                         offset: offset_length.offset,
                         length: offset_length.length,
                     },
@@ -162,45 +136,46 @@ trait HasOffsetLength {
 
 impl HasOffsetLength for SchemaWarning {
     fn offset_length(&self) -> OffsetLength {
-        match self {
-            SchemaWarning::ShadowsEntity { entity_loc, .. } => OffsetLength {
-                offset: entity_loc.start(),
-                length: entity_loc.end() - entity_loc.start(),
-            },
-            SchemaWarning::ShadowsBuiltin { loc, .. } => OffsetLength {
-                offset: loc.start(),
-                length: loc.end() - loc.start(),
-            },
-            SchemaWarning::UsesBuiltinNamespace { loc, .. } => OffsetLength {
-                offset: loc.start(),
-                length: loc.end() - loc.start(),
-            },
-        }
+        let zero_offset = OffsetLength {
+            offset: 0,
+            length: 0,
+        };
+
+        let labels = match self {
+            SchemaWarning::ShadowsEntity(warning, ..) => warning.labels(),
+            SchemaWarning::ShadowsBuiltin(warning, ..) => warning.labels(),
+            _ => return zero_offset,
+        };
+
+        labels
+            .and_then(|labels| labels.into_iter().next())
+            .map(|label| OffsetLength {
+                offset: label.offset(),
+                length: label.len(),
+            })
+            .unwrap_or(zero_offset)
     }
 }
 
-impl HasOffsetLength for HumanSchemaError {
+impl HasOffsetLength for CedarSchemaError {
     fn offset_length(&self) -> OffsetLength {
         let zero_offset = OffsetLength {
             offset: 0,
             length: 0,
         };
-        match self {
-            HumanSchemaError::Parsing(parse_error) => match parse_error {
-                HumanSyntaxParseErrors::NaturalSyntaxError(nse) => {
-                    let first = nse.iter().into_iter().next();
-                    match first {
-                        Some(item) => OffsetLength {
-                            offset: item.primary_source_span().offset(),
-                            length: item.primary_source_span().len(),
-                        },
-                        None => zero_offset,
-                    }
-                }
-                HumanSyntaxParseErrors::JsonError(_) => zero_offset,
-            },
-            HumanSchemaError::Core(_) => zero_offset,
-            HumanSchemaError::IO(_) => zero_offset,
-        }
+
+        let labels = match self {
+            CedarSchemaError::Parsing(parse_error) => parse_error.labels(),
+            CedarSchemaError::Schema(schema_error) => schema_error.labels(),
+            _ => return zero_offset,
+        };
+
+        labels
+            .and_then(|labels| labels.into_iter().next())
+            .map(|label| OffsetLength {
+                offset: label.offset(),
+                length: label.len(),
+            })
+            .unwrap_or(zero_offset)
     }
 }

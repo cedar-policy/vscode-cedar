@@ -4,10 +4,10 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 
-const CEDAR_SCHEMA_FILE = `cedarschema.json`;
-const CEDAR_SCHEMA_EXTENSION_JSON = `.cedarschema.json`;
-const CEDAR_SCHEMANATURAL_FILE = `cedarschema`;
-const CEDAR_SCHEMANATURAL_EXTENSION = `.cedarschema`;
+const CEDAR_SCHEMA_JSON_FILE = `cedarschema.json`;
+const CEDAR_SCHEMA_JSON_EXTENSION = `.cedarschema.json`;
+const CEDAR_SCHEMA_FILE = `cedarschema`;
+const CEDAR_SCHEMA_EXTENSION = `.cedarschema`;
 export const CEDAR_SCHEMA_GLOB = `{**/cedarschema.json,**/*.cedarschema.json}`;
 
 const CEDAR_ENTITIES_FILE = `cedarentities.json`;
@@ -21,8 +21,8 @@ export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
 export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
   const result =
     doc.languageId === 'cedarschema' ||
-    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_FILE) ||
-    doc.fileName.endsWith(CEDAR_SCHEMA_EXTENSION_JSON);
+    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_JSON_FILE) ||
+    doc.fileName.endsWith(CEDAR_SCHEMA_JSON_EXTENSION);
 
   return result;
 };
@@ -41,12 +41,11 @@ const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
     vscode.Uri.file(filepath)
   );
 
-  // first find Cedar schema natural files
+  // first find Cedar schema files
   for (const file of files) {
     if (
-      (file[1] === vscode.FileType.File &&
-        file[0] === CEDAR_SCHEMANATURAL_FILE) ||
-      file[0].endsWith(CEDAR_SCHEMANATURAL_EXTENSION)
+      (file[1] === vscode.FileType.File && file[0] === CEDAR_SCHEMA_FILE) ||
+      file[0].endsWith(CEDAR_SCHEMA_EXTENSION)
     ) {
       schemaFiles.add(file[0]);
     }
@@ -55,8 +54,9 @@ const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
   // then look for Cedar schema JSON files that aren't translated versions
   for (const file of files) {
     if (
-      (file[1] === vscode.FileType.File && file[0] === CEDAR_SCHEMA_FILE) ||
-      file[0].endsWith(CEDAR_SCHEMA_EXTENSION_JSON)
+      (file[1] === vscode.FileType.File &&
+        file[0] === CEDAR_SCHEMA_JSON_FILE) ||
+      file[0].endsWith(CEDAR_SCHEMA_JSON_EXTENSION)
     ) {
       if (!schemaFiles.has(file[0].substring(0, file[0].length - 5))) {
         // .json
