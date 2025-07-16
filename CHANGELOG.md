@@ -1,3 +1,9 @@
+## v0.9.2 (Pre-release) 2025-07-18
+
+- Update to Cedar SDK 4.5.0
+- Support enumerated entity types
+- Require Visual Studio Code version [1.83](https://code.visualstudio.com/updates/v1_83) or later
+
 ## v0.9.1 (Pre-release) 2025-05-02
 
 - Update to Cedar SDK 4.4.0
