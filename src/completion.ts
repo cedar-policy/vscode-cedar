@@ -239,11 +239,26 @@ const createEntityItems = (
         definition.etype,
         vscode.CompletionItemKind.Class
       );
-      if (!typeOnly) {
-        item.insertText = new vscode.SnippetString(definition.etype + '::"$1"');
-      }
       item.range = range;
-      items.push(item);
+      if (typeOnly) {
+        items.push(item);
+      } else {
+        if (definition.enums && definition.enums.length > 0) {
+          definition.enums.forEach((enumValue) => {
+            let item = new vscode.CompletionItem(
+              `${definition.etype}::"${enumValue}"`,
+              vscode.CompletionItemKind.EnumMember
+            );
+            item.range = range;
+            items.push(item);
+          });
+        } else {
+          item.insertText = new vscode.SnippetString(
+            definition.etype + '::"$1"'
+          );
+          items.push(item);
+        }
+      }
     }
   });
 
