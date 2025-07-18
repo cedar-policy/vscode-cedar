@@ -48,7 +48,15 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.cedarschema",
-				"match": "\\b(in|appliesTo)\\b"
+				"match": "\\b(appliesTo)\\b"
+			},
+			{
+				"match": "\\b(enum|in)\\s*\\[",
+				"captures": {
+					"1" : {
+						"name": "keyword.cedarschema"
+					}
+				}
 			},
 			{
 				"match": "}\\s*(tags)\\b",

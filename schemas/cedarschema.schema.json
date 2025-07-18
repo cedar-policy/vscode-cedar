@@ -43,6 +43,13 @@
               "markdownDescription": "Specifies the shape of the data stored in entities of this type.\n\nThe `shape` element, if present, must have type `Record`, and be accompanied by a description of the entity's attributes."
             },
             "tags": { "$ref": "#/$defs/attributesTypeDef" },
+            "enum": {
+              "type": "array",
+              "description": "Enumerated entity types predefined entity literals.",
+              "items": {
+                "type": "string"
+              }
+            },
             "annotations": { "$ref": "#/$defs/annotationsDef" }
           },
           "additionalProperties": false,
@@ -212,7 +219,7 @@
       "type": "object",
       "properties": {
         "type": {
-          "oneOf" : [
+          "oneOf": [
             {
               "type": "string",
               "pattern": "^String$",

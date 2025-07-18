@@ -3,7 +3,7 @@
 
 use cedar_policy::SchemaWarning;
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::{CedarSchemaError, ValidatorSchema};
+use cedar_policy_core::validator::{CedarSchemaError, ValidatorSchema};
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;

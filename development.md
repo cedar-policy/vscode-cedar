@@ -51,16 +51,16 @@ The `package.json` directly refers to the `vscode-cedar-wasm/pkg` folder.
   },
 ```
 
-`package.json` also determines version [1.95](https://code.visualstudio.com/updates/v1_95) or higher by setting `engines` and pinning `devDependencies` on `@types` for that version of `vscode` and the closest matching version of `node`
+`package.json` also determines version [1.83](https://code.visualstudio.com/updates/v1_83) or higher by setting `engines` and pinning `devDependencies` on `@types` for that version of `vscode` and the closest matching version of `node`
 
 ```json
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.83.0"
   },
 
   "devDependencies": {
-    "@types/node": "=20.17.32",
-    "@types/vscode": "=1.95.0",
+    "@types/node": "=18.15.0",
+    "@types/vscode": "=1.83.0",
     // ...
   }
 ```

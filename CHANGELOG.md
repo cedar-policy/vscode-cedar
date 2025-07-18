@@ -1,3 +1,9 @@
+## v0.9.2 (Pre-release) 2025-07-18
+
+- Update to Cedar SDK 4.5.0
+- Support enumerated entity types
+- Require Visual Studio Code version [1.83](https://code.visualstudio.com/updates/v1_83) or later
+
 ## v0.9.1 (Pre-release) 2025-05-02
 
 - Update to Cedar SDK 4.4.0
@@ -7,11 +13,16 @@
 
 - Update to Cedar SDK 4.3.2
 
+## v0.8.0 (Preview) 2024-09-26
+
+- Update to Cedar 3.4.1
+- Human-readable schema IntelliSense, validation, and translation
+
 ## v0.7.7 (Pre-release) 2024-09-25
 
 - Update to Cedar 3.4.1
 
-## v0.6.4 (Pre-release) 2024-06-03
+## v0.6.4 (Preview) 2024-06-03
 
 - Update to Cedar 2.4.7
 
@@ -19,7 +30,7 @@
 
 - Update to Cedar 3.2.1
 
-## v0.6.3 (Pre-release) 2024-05-17
+## v0.6.3 (Preview) 2024-05-17
 
 - Update to Cedar 2.4.6
 - Cedar schema syntax highlighting

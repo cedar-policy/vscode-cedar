@@ -225,6 +225,7 @@ suite('Cedar WASM validate Suite', () => {
       }
     }`;
     const schemaCedar = `entity User;
+
 action "view" appliesTo {
   principal: [User],
   resource: [User],
