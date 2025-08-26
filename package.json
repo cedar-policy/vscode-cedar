@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -51,8 +51,8 @@
         ],
         "configuration": "./language-configuration.json",
         "icon": {
-          "light": "./icons/Cedar-Policy_16.svg",
-          "dark": "./icons/Cedar-Policy_16_White.svg"
+          "light": "./icons/Cedar_16.svg",
+          "dark": "./icons/Cedar_16.svg"
         }
       },
       {
@@ -70,7 +70,11 @@
         "filenames": [
           "cedarschema"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/CedarSchema_16.svg",
+          "dark": "./icons/CedarSchema_16.svg"
+        }
       },
       {
         "id": "cedarschema-injection"
