@@ -168,21 +168,76 @@ export const getSchemaTextDocument = async (
   return Promise.resolve(schemaDoc);
 };
 
-export const saveTextAndFormat = async (uri: vscode.Uri, text: string) => {
-  const saveUri = await vscode.window.showSaveDialog({
-    defaultUri: uri,
+const getJsonIndentSize = (): number => {
+  const config = vscode.workspace.getConfiguration('editor', {
+    languageId: 'json',
   });
-  if (saveUri) {
-    vscode.workspace.fs.writeFile(saveUri, new Uint8Array(Buffer.from(text)));
-    await vscode.commands.executeCommand('vscode.open', saveUri);
-    const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
-      'vscode.executeFormatDocumentProvider',
-      saveUri
-    );
-    const workEdits = new vscode.WorkspaceEdit();
-    workEdits.set(saveUri, textEdits);
-    await vscode.workspace.applyEdit(workEdits);
-    const savedDoc = await vscode.workspace.openTextDocument(saveUri);
-    savedDoc.save();
+  return config.get<number>('tabSize', 2);
+};
+
+const formatJsonText = (text: string): string => {
+  try {
+    const parsed = JSON.parse(text);
+    const indentSize = getJsonIndentSize();
+    return JSON.stringify(parsed, null, indentSize);
+  } catch {
+    return text; // Return original if not valid JSON
   }
+};
+
+export const saveTextAndFormat = async (
+  uri: vscode.Uri,
+  text: string
+): Promise<boolean> => {
+  let targetUri = uri;
+
+  try {
+    await vscode.workspace.fs.stat(uri);
+  } catch {
+    // File doesn't exist, prompt user
+    const saveUri = await vscode.window.showSaveDialog({ defaultUri: uri });
+    if (!saveUri) {
+      return false;
+    }
+    targetUri = saveUri;
+  }
+
+  // Format JSON text with user's indent settings if it's a JSON file
+  let formattedText = text;
+  if (targetUri.path.endsWith('.json')) {
+    formattedText = formatJsonText(text);
+  }
+
+  let doc = null;
+  try {
+    doc = await vscode.workspace.openTextDocument(targetUri);
+  } catch {
+    // File doesn't exist yet
+  }
+  if (doc) {
+    // File exists, use workspace edit
+    const edit = new vscode.WorkspaceEdit();
+    const fullRange = doc.validateRange(
+      new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE)
+    );
+    edit.replace(targetUri, fullRange, formattedText);
+    await vscode.workspace.applyEdit(edit);
+  } else {
+    // New file, write directly
+    await vscode.workspace.fs.writeFile(
+      targetUri,
+      new Uint8Array(Buffer.from(formattedText))
+    );
+  }
+
+  await vscode.commands.executeCommand('vscode.open', targetUri);
+  const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
+    'vscode.executeFormatDocumentProvider',
+    targetUri
+  );
+  const workEdits = new vscode.WorkspaceEdit();
+  workEdits.set(targetUri, textEdits);
+  await vscode.workspace.applyEdit(workEdits);
+  const savedDoc = await vscode.workspace.openTextDocument(targetUri);
+  return await savedDoc.save();
 };
