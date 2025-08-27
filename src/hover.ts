@@ -197,3 +197,33 @@ export class CedarHoverProvider implements vscode.HoverProvider {
     }
   }
 }
+
+export class CedarEntitiesJSONHoverProvider implements vscode.HoverProvider {
+  provideHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken
+  ): vscode.ProviderResult<vscode.Hover> {
+    let range = document.getWordRangeAtPosition(position);
+    if (range) {
+      let word = document.getText(range);
+      const { prevChar, nextChar } = getPrevNextCharacters(document, range);
+      if (
+        prevChar === '"' &&
+        nextChar === '"' &&
+        ['ip', 'decimal', 'datetime', 'duration'].includes(word)
+      ) {
+        const line = document.lineAt(position).text;
+        const lineBeforeWord = line.substring(0, range.start.character - 1);
+        if (
+          lineBeforeWord.trim().endsWith('"fn":') &&
+          FUNCTION_HELP_DEFINITIONS[word]
+        ) {
+          return {
+            contents: FUNCTION_HELP_DEFINITIONS[word],
+          };
+        }
+      }
+    }
+  }
+}
