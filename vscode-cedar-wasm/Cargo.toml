@@ -38,7 +38,7 @@ miette = "7.2.0"
 wasm-bindgen-test = "0.3.36"
 
 [build-dependencies]
-toml = "0.9"
+toml = "0.8"
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
