@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -51,8 +51,8 @@
         ],
         "configuration": "./language-configuration.json",
         "icon": {
-          "light": "./icons/Cedar-Policy_16.svg",
-          "dark": "./icons/Cedar-Policy_16_White.svg"
+          "light": "./icons/Cedar_16.svg",
+          "dark": "./icons/Cedar_16.svg"
         }
       },
       {
@@ -70,7 +70,11 @@
         "filenames": [
           "cedarschema"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/CedarSchema_16.svg",
+          "dark": "./icons/CedarSchema_16.svg"
+        }
       },
       {
         "id": "cedarschema-injection"
@@ -103,6 +107,11 @@
         "title": "Export Cedar policy as JSON"
       },
       {
+        "command": "cedar.jsonpreview",
+        "category": "Cedar",
+        "title": "JSON"
+      },
+      {
         "command": "cedar.schemavalidate",
         "category": "Cedar",
         "title": "Validate Cedar schema"
@@ -128,12 +137,24 @@
         "title": "Validate Cedar entities"
       },
       {
+        "command": "cedar.entitiesadd",
+        "category": "Cedar",
+        "title": "Add Cedar entity"
+      },
+      {
         "command": "cedar.clearproblems",
         "category": "Cedar",
         "title": "Clear problems"
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "when": "resourceScheme == file && (editorLangId == cedarschema || editorLangId == cedar)",
+          "command": "cedar.jsonpreview",
+          "group": "navigation"
+        }
+      ],
       "editor/context": [
         {
           "when": "editorLangId == cedar",
@@ -141,7 +162,7 @@
           "group": "1_modification"
         },
         {
-          "when": "editorLangId == cedar",
+          "when": "resourceScheme == file && editorLangId == cedar",
           "command": "cedar.export",
           "group": "y_commands"
         },
@@ -151,23 +172,28 @@
           "group": "navigation"
         },
         {
-          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
           "command": "cedar.schemavalidate",
           "group": "1_modification"
         },
         {
-          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
           "command": "cedar.schematranslate",
           "group": "1_modification"
         },
         {
-          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/",
+          "when": "resourceScheme == file && (resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
           "command": "cedar.schemaexport",
           "group": "y_commands"
         },
         {
           "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
           "command": "cedar.entitiesvalidate",
+          "group": "1_modification"
+        },
+        {
+          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "command": "cedar.entitiesadd",
           "group": "1_modification"
         }
       ],
@@ -182,7 +208,7 @@
         },
         {
           "command": "cedar.export",
-          "when": "editorLangId == cedar"
+          "when": "resourceScheme == file && editorLangId == cedar"
         },
         {
           "command": "cedar.schemavalidate",
@@ -190,14 +216,18 @@
         },
         {
           "command": "cedar.schematranslate",
-          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)"
         },
         {
           "command": "cedar.schemaexport",
-          "when": "resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+          "when": "resourceScheme == file && (resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)"
         },
         {
           "command": "cedar.entitiesvalidate",
+          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+        },
+        {
+          "command": "cedar.entitiesadd",
           "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
         }
       ]
@@ -259,6 +289,7 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
+    "test:file": "vscode-test --files",
     "package": "vsce package",
     "package-prerelease": "vsce package --pre-release",
     "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",

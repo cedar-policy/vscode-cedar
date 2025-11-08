@@ -1,0 +1,68 @@
+namespace NS1 {
+  type Primitives = {
+    b: Bool,
+    l: Long,
+    s: String,
+  };
+  type Sets = {
+    bs: Set<Bool>,
+    ls: Set<Long>,
+    ss: Set<String>,
+  };
+  type Functions = {
+    da: datetime,
+    de: decimal,
+    du: duration,
+    ip: ipaddr,
+  };
+  type Both = {
+    p: Primitives,
+    f: Functions,
+  };
+  // cycle in common type references containing `NS1::Cycle`
+  // type Cycle = {
+  //   c: Cycle,
+  // };
+  entity EP = {  
+    b: Bool,
+    l: Long,
+    s: String,
+    p: Primitives,
+  };
+  entity ES = {
+    bs: Set<Bool>,
+    ls: Set<Long>,
+    ss: Set<String>,
+    ps: Set<Primitives>,
+    s: Sets,
+    sss: Set<Sets>
+  };
+  entity EF = {  
+    da: datetime,
+    de: decimal,
+    du: duration,
+    ip: ipaddr,
+    f: Functions,
+  };
+  entity EB = {
+    b: Both,
+  };
+  entity Group {
+      name: String,
+      owners: Set<User>,
+  };
+  entity User in [Group] {  
+      name: String,
+      delegate: User,
+  };
+  action "renameGroup" appliesTo {  
+    principal: [User],  
+    resource: [Group],  
+    context: {}  
+  };
+  action "renameUser" appliesTo {  
+    principal: [User],  
+    resource: [User],  
+    context: {}  
+  };
+}

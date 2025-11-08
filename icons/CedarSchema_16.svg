@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>CedarSchema_16</title>
+    <g id="CedarSchema_16" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M5,1 L10.5,1 L12,2.5 L10.5,4 L5,4 Z" fill="#A65C19"></path>
+        <path d="M7,5 L14,5 L14,7 L7,7 Z" fill="#51732F"></path>
+        <path d="M9,8 L13,8 L13,10 L9,10 Z" fill="#51732F"></path>
+        <path d="M7,11 L14,11 L14,13 L7,13 Z" fill="#71A621"></path>
+        <path d="M9,14 L13,14 L13,16 L9,16 Z" fill="#71A621"></path>
+    </g>
+</svg>

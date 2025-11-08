@@ -1,3 +1,9 @@
+## v0.9.3 (Pre-release) 2025-08-27
+
+- Update to Cedar SDK 4.5.1
+- IntelliSense for Cedar entities JSON
+- JSON preview for Cedar policies and schema
+
 ## v0.9.2 (Pre-release) 2025-07-18
 
 - Update to Cedar SDK 4.5.0

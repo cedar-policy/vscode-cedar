@@ -23,7 +23,7 @@ export class ValidateWithSchemaCodeLensProvider
 
       const openCommand: vscode.Command = {
         command: 'vscode.open',
-        title: `Validated using Cedar schema: ${schemaFileName}`,
+        title: `Validated using ${schemaFileName}`,
         tooltip: `Open ${schemaDoc?.uri.fsPath}`,
         arguments: [schemaDoc?.uri],
       };

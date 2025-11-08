@@ -137,7 +137,7 @@ type PolicyCacheItem = {
 
 const policyCache: Record<string, PolicyCacheItem> = {};
 
-const ID_ANNOTATION = /@id\("(?<id>(.+))"\)/;
+const ID_ANNOTATION = /@(id|cdkId)\("(?<id>(.+))"\)/;
 const ANNOTATION = /@(?<name>[_a-zA-Z][_a-zA-Z0-9]*)($|\(".*"\))/;
 
 export const parseCedarPoliciesDoc = (
@@ -319,6 +319,7 @@ export const parseCedarJsonPolicyDoc = (
   const referencedTypes: ReferencedRange[] = [];
   const actionIds: ReferencedRange[] = [];
   let tmpActionType = '';
+  let pathLenOffset = 0;
 
   jsonc.visit(cedarJsonDoc.getText(), {
     onObjectProperty(
@@ -330,13 +331,21 @@ export const parseCedarJsonPolicyDoc = (
       pathSupplier
     ) {
       const range = makeRange(startLine, startCharacter, length);
+      if (pathSupplier().length === 0) {
+        if (
+          ['templates', 'staticPolicies', 'templateLinks'].includes(property)
+        ) {
+          // multiple Cedar policies in JSON offset paths by 2
+          pathLenOffset = 2;
+        }
+      }
       const jsonPathLen = pathSupplier().length;
-      if (jsonPathLen === 0) {
+      if (jsonPathLen - pathLenOffset === 0) {
         if (['principal', 'action', 'resource'].includes(property)) {
           tokensBuilder.push(range, 'variable', ['readonly']);
         }
       } else if (
-        jsonPathLen === 1 &&
+        jsonPathLen - pathLenOffset === 1 &&
         pathSupplier()[jsonPathLen - 1] === 'annotations'
       ) {
         tokensBuilder.push(range, 'decorator', []);
@@ -367,24 +376,34 @@ export const parseCedarJsonPolicyDoc = (
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
       const property = pathSupplier()[0] as string;
-      if (jsonPathLen === 1 && pathSupplier()[0] === 'effect') {
+      if (
+        jsonPathLen - pathLenOffset === 1 &&
+        pathSupplier()[pathLenOffset] === 'effect'
+      ) {
         tokensBuilder.push(range, 'keyword', []);
       }
 
       if (
-        jsonPathLen === 2 &&
+        jsonPathLen - pathLenOffset === 2 &&
         pathSupplier()[jsonPathLen - 1] === 'slot' &&
         ['?principal', '?resource'].includes(value)
       ) {
         tokensBuilder.push(range, 'variable', []);
       }
 
-      if (jsonPathLen === 2 && pathSupplier()[jsonPathLen - 1] === 'op') {
+      if (
+        jsonPathLen - pathLenOffset === 2 &&
+        pathSupplier()[jsonPathLen - 1] === 'op'
+      ) {
         tokensBuilder.push(range, 'operator', []);
       }
 
-      if (jsonPathLen > 2 && pathSupplier()[jsonPathLen - 1] === 'type') {
+      if (
+        (jsonPathLen - pathLenOffset === 2 &&
+          pathSupplier()[jsonPathLen - 1] === 'entity_type') ||
+        (jsonPathLen > 2 && pathSupplier()[jsonPathLen - 1] === 'type')
         // most things directly under "type" are a type
+      ) {
         tokensBuilder.push(range, 'type', []);
 
         if (value === 'Action' || value.endsWith('::Action')) {
@@ -403,16 +422,16 @@ export const parseCedarJsonPolicyDoc = (
       }
 
       if (
-        jsonPathLen === 3 &&
-        pathSupplier()[0] === 'conditions' &&
+        jsonPathLen - pathLenOffset === 3 &&
+        pathSupplier()[pathLenOffset] === 'conditions' &&
         pathSupplier()[jsonPathLen - 1] === 'kind'
       ) {
         // most things directly under "kind" are a keyword
         tokensBuilder.push(range, 'keyword', []);
       } else if (
-        jsonPathLen > 2 &&
+        jsonPathLen - pathLenOffset > 2 &&
         // type / id under top level 'action'
-        (pathSupplier()[0] === 'action' ||
+        (pathSupplier()[pathLenOffset] === 'action' ||
           // type / id directly under '__entity'
           pathSupplier()[jsonPathLen - 2] === '__entity')
       ) {
@@ -423,7 +442,10 @@ export const parseCedarJsonPolicyDoc = (
           });
           tmpActionType = '';
         }
-      } else if (jsonPathLen > 2 && pathSupplier()[jsonPathLen - 1] === 'Var') {
+      } else if (
+        jsonPathLen - pathLenOffset > 2 &&
+        pathSupplier()[jsonPathLen - 1] === 'Var'
+      ) {
         // most things directly under "Var" are a variable
         tokensBuilder.push(range, 'variable', []);
       }
@@ -716,7 +738,7 @@ export const parseCedarEntitiesDoc = (
         jsonPathLen > 2 &&
         pathSupplier()[jsonPathLen - 1] === 'fn' &&
         (pathSupplier()[jsonPathLen - 2] === '__extn' ||
-          ['ip', 'decimal'].includes(value))
+          ['ip', 'decimal', 'datetime', 'duration'].includes(value))
       ) {
         // things under "__extn" then "fn" are a function
         tokensBuilder.push(range, 'function', []);
@@ -989,6 +1011,7 @@ export const authTokensProvider: vscode.DocumentSemanticTokensProvider = {
 export const PRIMITIVE_TYPES = [
   'String',
   'Long',
+  'Bool',
   'Boolean',
   'Record',
   'Set',
@@ -1013,11 +1036,12 @@ type SchemaCompletionData = {
   children?: SchemaCompletionRecord;
 };
 export type SchemaCompletionRecord = Record<string, SchemaCompletionData>;
-type SchemaCacheItem = {
+export type SchemaCacheItem = {
   version: number;
   definitionRanges: SchemaRange[];
   tokens: vscode.SemanticTokens;
   referencedTypes: ReferencedRange[];
+  entityTypes: string[];
   actionIds: ReferencedRange[];
   completions: Record<string, SchemaCompletionRecord>;
   tags: string[];
@@ -1051,6 +1075,7 @@ export const parseCedarSchemaDoc = (
       // update cachedItem
       const tmpCachedItem = parseCedarSchemaJSONText(translateResult.schema);
       cachedItem.completions = tmpCachedItem.completions;
+      cachedItem.entityTypes = tmpCachedItem.entityTypes;
       cachedItem.tags = tmpCachedItem.tags;
 
       const enums: Record<string, string[]> = {};
@@ -1082,6 +1107,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
   const definitionRanges: SchemaRange[] = [];
   const referencedTypes: ReferencedRange[] = [];
   const actionIds: ReferencedRange[] = [];
+  const entityTypes: string[] = [];
   const completions: Record<string, SchemaCompletionRecord> = {};
   const tags: string[] = [];
 
@@ -1100,23 +1126,22 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
   let tmpAttribute: {
     key: string;
     type: string;
-    element: string;
     range: vscode.Range | null;
   } = {
     key: '',
     type: '',
-    element: '',
     range: null,
   };
 
   let tmpSchemaCompletionRecord: SchemaCompletionRecord = {};
   const tmpSchemaCompletionRecordStack: Array<SchemaCompletionRecord> = [];
   const tmpAttributeDepthStack: Array<number> = [];
-  function captureAttribute(value: string) {
-    tmpSchemaCompletionRecord[tmpAttribute.key] = { description: value };
-    tmpSchemaCompletionRecord[tmpAttribute.key] = { description: value };
+  function captureAttribute(type: string) {
+    tmpSchemaCompletionRecord[tmpAttribute.key] = {
+      description: type,
+    };
 
-    if (value === 'Record') {
+    if (type === 'Record') {
       const children: SchemaCompletionRecord = {};
       tmpSchemaCompletionRecord[tmpAttribute.key].children = children;
       tmpSchemaCompletionRecordStack.push(tmpSchemaCompletionRecord);
@@ -1128,7 +1153,6 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
     tmpAttribute = {
       key: '',
       type: '',
-      element: '',
       range: null,
     };
   }
@@ -1164,6 +1188,9 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             symbol: symbol,
           };
           definitionRanges.push(schemaRange);
+          if (collection === 'entityTypes') {
+            entityTypes.push(etype);
+          }
         }
       } else if (depth === 4) {
         if (tmpMemberOf.id && tmpMemberOf.range) {
@@ -1336,18 +1363,17 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             ),
           });
         }
-        if (pathSupplier()[jsonPathLen - 3] === 'attributes') {
+        if (pathSupplier()[jsonPathLen - 2] === 'element') {
+          if (value !== 'Entity' && value !== 'EntityOrCommon') {
+            // 'type' under 'element' indicates parent is a Set
+            captureAttribute(`Set<${value}>`);
+          }
+        } else if (pathSupplier()[jsonPathLen - 3] === 'attributes') {
           tmpAttribute.type = value;
           if (
             !['Set', 'Entity', 'Extension', 'EntityOrCommon'].includes(value)
           ) {
             captureAttribute(value);
-          }
-        } else if (pathSupplier()[jsonPathLen - 2] === 'element') {
-          if (value !== 'Entity') {
-            tmpAttribute.element = value;
-            // 'type' under 'element' indicates parent is a Set
-            captureAttribute(`Set<${value}>`);
           }
         } else if (
           pathSupplier()[jsonPathLen - 2] === 'shape' ||
@@ -1363,7 +1389,10 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
         // anything directly under "name" is (probably) a type
         if (EXTENSIONS.includes(value)) {
           tokensBuilder.push(range, 'function', []);
-        } else if (PRIMITIVE_TYPES.includes(value)) {
+        } else if (
+          PRIMITIVE_TYPES.includes(value) ||
+          value.startsWith('__cedar::')
+        ) {
           // pass
         } else {
           tokensBuilder.push(range, 'type', []);
@@ -1378,15 +1407,25 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
           });
         }
         if (pathSupplier()[jsonPathLen - 2] === 'element') {
-          tmpAttribute.element = ensureNamespace(value, namespace);
-          // 'type' under 'element' indicates parent is a Set of Entity
-          captureAttribute(`Set<${tmpAttribute.element}>`);
+          // 'name' under 'element' indicates parent is a Set
+          if (
+            EXTENSIONS.includes(value) ||
+            PRIMITIVE_TYPES.includes(value) ||
+            value.startsWith('__cedar::')
+          ) {
+            captureAttribute(`Set<${value}>`);
+          } else {
+            captureAttribute(`Set<${ensureNamespace(value, namespace)}>`);
+          }
         } else if (pathSupplier()[jsonPathLen - 3] === 'attributes') {
           if (
             EXTENSIONS.includes(value) ||
-            tmpAttribute.type === 'EntityOrCommon'
+            PRIMITIVE_TYPES.includes(value) ||
+            value.startsWith('__cedar::')
           ) {
-            captureAttribute(value);
+            captureAttribute(
+              value.startsWith('__cedar::') ? value.substring(9) : value
+            );
           } else {
             captureAttribute(ensureNamespace(value, namespace));
           }
@@ -1400,6 +1439,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
     definitionRanges: definitionRanges,
     tokens: tokensBuilder.build(),
     referencedTypes: referencedTypes,
+    entityTypes: entityTypes,
     actionIds: actionIds,
     completions: completions,
     tags: tags,
@@ -1701,6 +1741,7 @@ const parseCedarSchemaCedarDoc = (
     definitionRanges: definitionRanges,
     tokens: tokensBuilder.build(),
     referencedTypes: referencedTypes,
+    entityTypes: [],
     actionIds: actionIds,
     completions: {},
     tags: [],

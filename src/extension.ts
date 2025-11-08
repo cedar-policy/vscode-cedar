@@ -35,8 +35,10 @@ import {
   COMMAND_CEDAR_ACTIVATE,
   COMMAND_CEDAR_CLEARPROBLEMS,
   COMMAND_CEDAR_DOCUMENTATION,
+  COMMAND_CEDAR_ENTITIESADD,
   COMMAND_CEDAR_ENTITIESVALIDATE,
   COMMAND_CEDAR_EXPORT,
+  COMMAND_CEDAR_JSONPREVIEW,
   COMMAND_CEDAR_SCHEMAEXPORT,
   COMMAND_CEDAR_SCHEMAOPEN,
   COMMAND_CEDAR_SCHEMATRANSLATE,
@@ -72,13 +74,15 @@ import {
   CedarCompletionItemProvider,
   CedarSchemaCompletionItemProvider,
 } from './completion';
-import { CedarHoverProvider } from './hover';
+import { CedarHoverProvider, CedarEntitiesJSONHoverProvider } from './hover';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
+import { ValidateWithSchemaCodeLensProvider } from './codelens';
 import {
-  TranslateSchemaCodeLensProvider,
-  ValidateWithSchemaCodeLensProvider,
-} from './codelens';
+  addEntitiesJSON,
+  CedarEntitiesJSONCompletionItemProvider,
+} from './completionjson';
+import { CedarTextDocumentContentProvider } from './provider';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -250,6 +254,29 @@ export async function activate(context: vscode.ExtensionContext) {
         args: any[]
       ) => {
         validateCedarDoc(textEditor.document, diagnosticCollection, true);
+      }
+    )
+  );
+  vscode.workspace.registerTextDocumentContentProvider(
+    CedarTextDocumentContentProvider.scheme,
+    new CedarTextDocumentContentProvider()
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      COMMAND_CEDAR_JSONPREVIEW,
+      async (
+        textEditor: vscode.TextEditor,
+        edit: vscode.TextEditorEdit,
+        args: any[]
+      ) => {
+        if (['cedar', 'cedarschema'].includes(textEditor.document.languageId)) {
+          const cedarUri = textEditor.document.uri.with({
+            scheme: 'cedar',
+            path: textEditor.document.uri.path + '.json',
+          });
+          let jsonDoc = await vscode.workspace.openTextDocument(cedarUri); // calls back into the provider
+          await vscode.window.showTextDocument(jsonDoc, { preview: true });
+        }
       }
     )
   );
@@ -467,6 +494,17 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand(COMMAND_CEDAR_ENTITIESADD, async () => {
+      const textEditor = vscode.window.activeTextEditor;
+      if (!textEditor) {
+        return;
+      }
+
+      await addEntitiesJSON(textEditor, diagnosticCollection);
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_CEDAR_CLEARPROBLEMS, () => {
       diagnosticCollection.clear();
       clearValidationCache();
@@ -631,6 +669,24 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerCodeLensProvider(
       entitiesSelector,
       new ValidateWithSchemaCodeLensProvider()
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      {
+        language: 'json',
+        pattern: `{**/cedarentities.json,**/*.cedarentities.json}`,
+      },
+      new CedarEntitiesJSONCompletionItemProvider(),
+      '{'
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(
+      entitiesSelector,
+      new CedarEntitiesJSONHoverProvider()
     )
   );
 
