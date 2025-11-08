@@ -1,3 +1,7 @@
+## v0.9.4 (Pre-release) 2025-11-10
+
+- Update to Cedar SDK 4.7.0
+
 ## v0.9.3 (Pre-release) 2025-08-27
 
 - Update to Cedar SDK 4.5.1
