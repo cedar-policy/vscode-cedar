@@ -26,7 +26,8 @@
   "explorer.fileNesting.expand": false,
   "explorer.fileNesting.patterns": {
     "package.json": "package-lock.json",
-    "tsconfig.json": ".eslint*, .prettier*"
+    "tsconfig.json": "eslint.*, .prettier*",
+    "Dockerfile": ".dockerignore"
   },
   "terminal.integrated.env.osx": {
     "PATH": "/usr/local/opt/llvm/bin/:$PATH",
