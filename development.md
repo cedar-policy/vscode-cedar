@@ -86,7 +86,7 @@ npx vsce --version
 Then run the `package` command to create the "pre-release" .vsix file.
 
 ```bash
-npx vsce package --pre-release
+npx vsce package --pre-release --follow-symlinks
 ```
 
 ### Container Testing
