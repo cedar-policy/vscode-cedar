@@ -31,7 +31,7 @@ jobs:
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
-          npm install -g wasm-pack
+          cargo install wasm-pack
 
       - name: Cache cargo build artifacts
         # https://doc.rust-lang.org/cargo/guide/build-cache.html
