@@ -18,7 +18,7 @@ mkdir ~/.vscode && echo '{ "disable-hardware-acceleration": true }' > ~/.vscode/
 # Build and Test
 npm ci
 rustup update stable && rustup default stable
-cargo install wasm-pack
+cargo install wasm-pack --version 0.13.1
 npm run wasm-build
 npm run compile
 xvfb-run -a npm run test
