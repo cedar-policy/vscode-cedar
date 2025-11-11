@@ -1614,9 +1614,8 @@ const parseCedarSchemaCedarDoc = (
         declarationStartLine = i;
         symbol = vscode.SymbolKind.Function;
         collection = 'actions';
-        let match = linePreComment.match(/^action\s+(("(.+?)",\s*)*"(.+?)")/);
-        match = linePreComment.match(
-          /^action\s+([_a-zA-Z0-9, "]*)( in| appliesTo|;|$)/
+        const match = linePreComment.match(
+          /^action\s+((?:"[^"]*"|[_a-zA-Z][_a-zA-Z0-9]*|,\s*)+?)\s*(?= in | appliesTo|;|$)/
         );
         if (match) {
           let startPos = match.index || textLine.indexOf('action') + 6;

@@ -103,7 +103,7 @@ suite('Validation RegEx Test Suite', () => {
       assert.equal(result.errors[0].length, 3);
 
       let found = errorMsg.match(UNRECOGNIZED_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Tst');
         assert.equal(found?.groups.suggestion, 'Test');
@@ -111,7 +111,7 @@ suite('Validation RegEx Test Suite', () => {
 
       errorMsg = result.errors[1].message;
       found = errorMsg.match(UNRECOGNIZED_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.unrecognized, 'Action::"doTst"');
         assert.equal(found?.groups.suggestion, 'Action::"doTest"');
@@ -131,7 +131,7 @@ suite('Validation RegEx Test Suite', () => {
       // JSON Schema file could not be parsed: missing field `entityTypes` at line 2 column 9
       let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(AT_LINE_SCHEMA_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(parseInt(found?.groups.line), 2);
         assert.equal(parseInt(found?.groups.column), 9);
@@ -154,7 +154,7 @@ suite('Validation RegEx Test Suite', () => {
       // failed to resolve types: Test, Test\n`Test` has not been declared as an entity type
       let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'an entity type');
         assert.equal(found?.groups.undeclared, 'Test');
@@ -175,7 +175,7 @@ suite('Validation RegEx Test Suite', () => {
       // failed to resolve types: Test, Test\n`Test` has not been declared as an entity type
       let e = result.errors[0];
       let found = e.message.match(UNDECLARED_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'an entity type');
         assert.equal(found?.groups.undeclared, 'Test');
@@ -197,7 +197,7 @@ suite('Validation RegEx Test Suite', () => {
       // undeclared actions: Action::"test1" and Action::"test2"\nany actions appearing as parents need to be declared as actions
       let errorMsg: string = result.errors[0].message;
       let found = errorMsg.match(UNDECLARED_ACTION_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'action');
         // Check that both undeclared actions are found in the error message
@@ -230,7 +230,7 @@ suite('Validation RegEx Test Suite', () => {
         'expected entity `Test::"expected"` to have attribute `test`, but it does not'
       );
       let found = errorMsg.match(EXPECTED_ATTR_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'expected');
@@ -262,7 +262,7 @@ suite('Validation RegEx Test Suite', () => {
         'in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not'
       );
       let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'expected');
@@ -295,7 +295,7 @@ suite('Validation RegEx Test Suite', () => {
         'in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but it actually has type long: `1`'
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'mismatch');
@@ -327,7 +327,7 @@ suite('Validation RegEx Test Suite', () => {
         'in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but it actually has type (entity of type `Tst`): `Tst::"mismatchtype"`'
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'mismatchentity');
@@ -356,7 +356,7 @@ suite('Validation RegEx Test Suite', () => {
         'attribute `tst` on `Test::"exist"` should not exist according to the schema'
       );
       let found = errorMsg.match(EXIST_ATTR_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Test');
         assert.equal(found?.groups.id, 'exist');
@@ -388,7 +388,7 @@ suite('Validation RegEx Test Suite', () => {
         'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema'
       );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'Employee');
         assert.equal(found?.groups.id, '12UA45');
@@ -419,7 +419,7 @@ suite('Validation RegEx Test Suite', () => {
         '`XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema'
       );
       let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
-      assert(found?.groups);
+      assert.ok(found?.groups);
       if (found?.groups) {
         assert.equal(found?.groups.type, 'XYZCorp::Employee');
         assert.equal(found?.groups.id, '12UA45');

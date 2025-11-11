@@ -1,4 +1,6 @@
 name: Build and Test
+permissions:
+  contents: read
 
 on:
   push:
@@ -26,10 +28,16 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install --fix-missing xvfb
 
+      - name: Cache wasm-pack binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-pack
+          key: wasm-pack-${{ runner.os }}-v0.13.1
+
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
-          npm install -g wasm-pack
+          which wasm-pack || cargo install wasm-pack --version 0.13.1
 
       - name: Cache cargo build artifacts
         # https://doc.rust-lang.org/cargo/guide/build-cache.html

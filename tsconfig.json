@@ -1,15 +1,20 @@
 {
 	"include": ["src/**/*", "tests/**/*"],
 	"compilerOptions": {
-		"module": "commonjs",
-		"target": "ES2021",
+		"incremental": true,
+		"module": "node16",
+		"target": "ES2022",
 		"outDir": "out",
 		"lib": [
-			"ES2021"
+			"dom",
+			"ES2022"
 		],
 		"sourceMap": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
 		"rootDir": "src",
 		"allowJs": true,
+		"forceConsistentCasingInFileNames": true,
 		"strict": true   /* enable all strict type-checking options */
 		/* Additional Checks */
 		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */

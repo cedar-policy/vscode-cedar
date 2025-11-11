@@ -7,7 +7,9 @@ src/**
 .yarnrc
 vsc-extension-quickstart.md
 **/tsconfig.json
+tsconfig.tsbuildinfo
 **/.eslintrc.json
+eslint.config.mjs
 **/*.map
 **/*.ts
 *.tgz

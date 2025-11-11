@@ -1,0 +1,14 @@
+namespace NS {
+  entity P, R;
+  action a appliesTo {  
+    principal: [P],
+    resource: [R],
+    context: {}
+  };
+  action aa, "a a", "a / a" in "a";
+  action b, bb, "b b", "b / b" appliesTo {
+    principal: [P],
+    resource: [R],
+    context: {}
+  };
+}
