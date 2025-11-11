@@ -1,0 +1,5 @@
+action "doTest" appliesTo {
+  principal: [Test],
+  resource: [Test],
+  context: {}
+};

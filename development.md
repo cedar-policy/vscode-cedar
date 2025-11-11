@@ -51,6 +51,20 @@ The `package.json` directly refers to the `vscode-cedar-wasm/pkg` folder.
   },
 ```
 
+`package.json` also determines version [1.83](https://code.visualstudio.com/updates/v1_83) or higher by setting `engines` and pinning `devDependencies` on `@types` for that version of `vscode` and the closest matching version of `node`
+
+```json
+  "engines": {
+    "vscode": "^1.83.0"
+  },
+
+  "devDependencies": {
+    "@types/node": "=18.15.0",
+    "@types/vscode": "=1.83.0",
+    // ...
+  }
+```
+
 ### Test
 
 To run NodeJS TypeScript test code from `src/test/suite/*.test.ts` (using Cedar and Cedar schema files containing errors from `testdata`).
@@ -58,6 +72,8 @@ To run NodeJS TypeScript test code from `src/test/suite/*.test.ts` (using Cedar 
 ```bash
 npm run test
 ```
+
+Note: Testing may see `DEP0168] DeprecationWarning: Uncaught N-API callback exception detected` (maybe related to [fix: handle async worker completion](https://github.com/microsoft/vscode-policy-watcher/pull/55)) or `Via 'product.json#extensionEnabledApiProposals' extension` tracked under [WARN Via 'product.json#extensionEnabledApiProposals' extension wants API proposal #245932](https://github.com/microsoft/vscode/issues/245932).
 
 ### Build
 
@@ -67,10 +83,10 @@ The `npm install` included a devDependency for `vsce` (short for "Visual Studio 
 npx vsce --version
 ```
 
-Then run the `package` command to create the .vsix file.
+Then run the `package` command to create the "pre-release" .vsix file.
 
 ```bash
-npm run package
+npx vsce package --pre-release --follow-symlinks
 ```
 
 ### Container Testing
@@ -100,4 +116,12 @@ Note: Preview install may see a `[DEP0005] DeprecationWarning` tracked in GitHub
 
 ### GitHub Pull Request
 
-The project currently uses GitHub flow where feature branches are merged into the `main` branch where releases are tagged.  `.github\workflows\build_and_test.yml` runs on `push` and `pull_request` to the `main` branch.
+The project currently uses GitHub flow where feature branches are merged into the `main` branch where releases are tagged.  `.github\workflows\build_and_test.yml` runs on `push` and `pull_request` to the `main` and `prerelease` branches.
+
+Pull requests require a [Developer Certificate of Origin (DCO)](https://probot.github.io/apps/dco/) to certify the right to submit the code they are contributing to the project.  Either add the `-s` or the `--signoff` flag to your commits or update your `.vscode/settings.json` with `git.alwaysSignOff`.
+
+```json
+{
+  "git.alwaysSignOff": true
+}
+```

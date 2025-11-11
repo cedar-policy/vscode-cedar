@@ -1,0 +1,69 @@
+{
+  "TinyTodo": {
+    "commonTypes": {
+      "Task": {
+        "type": "Record",
+        "attributes": {
+          "id": {
+            "type": "EntityOrCommon",
+            "name": "Long",
+            "annotations": { "doc": "task id" }
+          },
+          "name": { "type": "EntityOrCommon", "name": "String" },
+          "state": { "type": "EntityOrCommon", "name": "String" }
+        },
+        "annotations": { "doc": "a common type representing a task" }
+      },
+      "Tasks": {
+        "type": "Set",
+        "element": { "type": "EntityOrCommon", "name": "Task" },
+        "annotations": { "doc": "a common type representing a set of tasks" }
+      }
+    },
+    "entityTypes": {
+      "Application": {},
+      "List": {
+        "memberOfTypes": ["Application"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "editors": {
+              "type": "EntityOrCommon",
+              "name": "Team",
+              "annotations": { "doc": "editors of a list" }
+            },
+            "name": { "type": "EntityOrCommon", "name": "String" },
+            "owner": { "type": "EntityOrCommon", "name": "User" },
+            "readers": {
+              "type": "EntityOrCommon",
+              "name": "Team",
+              "annotations": { "doc": "readers of a list" }
+            },
+            "tasks": { "type": "EntityOrCommon", "name": "Tasks" }
+          }
+        },
+        "annotations": {
+          "doc": "an entity type representing a list",
+          "docComment": "any entity type is a child of type `Application`"
+        }
+      },
+      "Team": {},
+      "User": {}
+    },
+    "actions": {
+      "DeleteList": {
+        "appliesTo": { "resourceTypes": ["List"], "principalTypes": ["User"] },
+        "annotations": { "doc": "actions that a user can operate on a list" }
+      },
+      "GetList": {
+        "appliesTo": { "resourceTypes": ["List"], "principalTypes": ["User"] },
+        "annotations": { "doc": "actions that a user can operate on a list" }
+      },
+      "UpdateList": {
+        "appliesTo": { "resourceTypes": ["List"], "principalTypes": ["User"] },
+        "annotations": { "doc": "actions that a user can operate on a list" }
+      }
+    },
+    "annotations": { "doc": "this is the namespace" }
+  }
+}

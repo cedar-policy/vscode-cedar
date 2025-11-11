@@ -31,12 +31,12 @@ const buildProperties = (
     if (attributes[k].required === false) {
       kname += '?';
     }
-    let attributeType = attributes[k].type as String;
-    if (attributeType === 'Entity') {
-      attributeType = attributes[k].name as String;
+    let attributeType = attributes[k].type as string;
+    if (['Entity', 'EntityOrCommon'].includes(attributeType)) {
+      attributeType = attributes[k].name as string;
     } else if (attributeType === 'Set') {
-      const shapeType = attributes[k].element?.type as String;
-      if (shapeType === 'Entity') {
+      const shapeType = attributes[k].element?.type as string;
+      if (['Entity', 'EntityOrCommon'].includes(shapeType)) {
         if (diagramType === SchemaExportType.Mermaid) {
           attributeType = `Set~${attributes[k].element?.name}~`;
         } else {
@@ -83,7 +83,7 @@ export const generateDiagram = (
     }
     let commonTypesDSL = '';
 
-    let commonTypes: String[] = [];
+    let commonTypes: string[] = [];
     if (cedarschema[namespace].commonTypes) {
       // @ts-ignore
       commonTypes = Object.keys(cedarschema[namespace]?.commonTypes);

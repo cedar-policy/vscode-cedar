@@ -1,3 +1,4 @@
+.idea/**
 .vscode/**
 .vscode-test/**
 .vscode-test.js
@@ -6,13 +7,16 @@ src/**
 .yarnrc
 vsc-extension-quickstart.md
 **/tsconfig.json
+tsconfig.tsbuildinfo
 **/.eslintrc.json
+eslint.config.mjs
 **/*.map
 **/*.ts
 *.tgz
 vscode-cedar-wasm/**
 development.md
 testdata/**
+out/test/**
 Dockerfile
 .dockerignore
 .prettierignore

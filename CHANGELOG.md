@@ -1,3 +1,11 @@
+## v0.10.0 (Preview) 2025-11-12
+
+- Update to Cedar SDK 4.7.0
+- IntelliSense for Cedar entities JSON
+- JSON preview for Cedar policies and schema
+- Support enumerated entity types
+- Require Visual Studio Code version [1.83](https://code.visualstudio.com/updates/v1_83) or later
+
 ## v0.8.0 (Preview) 2024-09-26
 
 - Update to Cedar 3.4.1

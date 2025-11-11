@@ -4,7 +4,7 @@ The Cedar policy language extension for Visual Studio Code supports syntax highl
 
 Cedar is an open-source language for writing authorization policies and making authorization decisions based on those policies. Visit the [Cedar policy language reference guide](https://docs.cedarpolicy.com/) for the documentation and the language specification.
 
-**Note:** The release version of this extension uses Cedar 3.x.
+**Note:** The release version of this extension uses Cedar SDK 4.x.
 
 ## Features
 
@@ -22,7 +22,7 @@ Files named `cedarschema` or matching `*.cedarschema` are detected as a Cedar sc
 
 ### Cedar entities
 
-Files named `cedarentities.json` or matching `*.cedarentities.json` are detected as Cedar entities and receive additional syntax highlighting.  Validation is performed against a Cedar schema on document open, document save, and via context menu.  Entity navigation using Outline or Breadcrumb.  "Go to Definition" on Cedar entity types.
+Files named `cedarentities.json` or matching `*.cedarentities.json` are detected as Cedar entities and receive additional syntax highlighting.  Validation is performed against a Cedar schema on document open, document save, and via context menu.  IntelliSense for entity types and add entity via context menu.  Entity navigation using Outline or Breadcrumb.  "Go to Definition" on Cedar entity types.
 
 ![Cedar entities validation and navigation](https://raw.githubusercontent.com/cedar-policy/vscode-cedar/main/docs/marketplace/cedar_entities.gif)
 
