@@ -110,6 +110,17 @@ export class CedarEntitiesDocumentSymbolProvider
             )
           );
         }
+        if (entityRange.tagsRange && entityRange.tagsKeyRange) {
+          symbol.children.push(
+            new vscode.DocumentSymbol(
+              'tags',
+              '',
+              vscode.SymbolKind.Object,
+              entityRange.tagsRange,
+              entityRange.tagsKeyRange
+            )
+          );
+        }
         symbols.push(symbol);
       });
 

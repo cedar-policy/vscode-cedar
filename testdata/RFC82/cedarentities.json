@@ -1,0 +1,12 @@
+[
+  {
+    "uid": { "type": "User", "id": "expected" },
+    "attrs": {
+      "jobLevel": 6
+    },
+    "parents": [],
+    "tags": {
+      "test": [""]
+    }
+  }
+]

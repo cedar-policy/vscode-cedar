@@ -4,10 +4,10 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 
-const CEDAR_SCHEMA_FILE = `cedarschema.json`;
-const CEDAR_SCHEMA_EXTENSION_JSON = `.cedarschema.json`;
-const CEDAR_SCHEMANATURAL_FILE = `cedarschema`;
-const CEDAR_SCHEMANATURAL_EXTENSION = `.cedarschema`;
+const CEDAR_SCHEMA_JSON_FILE = `cedarschema.json`;
+const CEDAR_SCHEMA_JSON_EXTENSION = `.cedarschema.json`;
+const CEDAR_SCHEMA_FILE = `cedarschema`;
+const CEDAR_SCHEMA_EXTENSION = `.cedarschema`;
 export const CEDAR_SCHEMA_GLOB = `{**/cedarschema.json,**/*.cedarschema.json}`;
 
 const CEDAR_ENTITIES_FILE = `cedarentities.json`;
@@ -21,8 +21,8 @@ export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
 export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
   const result =
     doc.languageId === 'cedarschema' ||
-    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_FILE) ||
-    doc.fileName.endsWith(CEDAR_SCHEMA_EXTENSION_JSON);
+    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_JSON_FILE) ||
+    doc.fileName.endsWith(CEDAR_SCHEMA_JSON_EXTENSION);
 
   return result;
 };
@@ -41,12 +41,11 @@ const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
     vscode.Uri.file(filepath)
   );
 
-  // first find Cedar schema natural files
+  // first find Cedar schema files
   for (const file of files) {
     if (
-      (file[1] === vscode.FileType.File &&
-        file[0] === CEDAR_SCHEMANATURAL_FILE) ||
-      file[0].endsWith(CEDAR_SCHEMANATURAL_EXTENSION)
+      (file[1] === vscode.FileType.File && file[0] === CEDAR_SCHEMA_FILE) ||
+      file[0].endsWith(CEDAR_SCHEMA_EXTENSION)
     ) {
       schemaFiles.add(file[0]);
     }
@@ -55,8 +54,9 @@ const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
   // then look for Cedar schema JSON files that aren't translated versions
   for (const file of files) {
     if (
-      (file[1] === vscode.FileType.File && file[0] === CEDAR_SCHEMA_FILE) ||
-      file[0].endsWith(CEDAR_SCHEMA_EXTENSION_JSON)
+      (file[1] === vscode.FileType.File &&
+        file[0] === CEDAR_SCHEMA_JSON_FILE) ||
+      file[0].endsWith(CEDAR_SCHEMA_JSON_EXTENSION)
     ) {
       if (!schemaFiles.has(file[0].substring(0, file[0].length - 5))) {
         // .json
@@ -168,21 +168,76 @@ export const getSchemaTextDocument = async (
   return Promise.resolve(schemaDoc);
 };
 
-export const saveTextAndFormat = async (uri: vscode.Uri, text: string) => {
-  const saveUri = await vscode.window.showSaveDialog({
-    defaultUri: uri,
+const getJsonIndentSize = (): number => {
+  const config = vscode.workspace.getConfiguration('editor', {
+    languageId: 'json',
   });
-  if (saveUri) {
-    vscode.workspace.fs.writeFile(saveUri, new Uint8Array(Buffer.from(text)));
-    await vscode.commands.executeCommand('vscode.open', saveUri);
-    const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
-      'vscode.executeFormatDocumentProvider',
-      saveUri
-    );
-    const workEdits = new vscode.WorkspaceEdit();
-    workEdits.set(saveUri, textEdits);
-    await vscode.workspace.applyEdit(workEdits);
-    const savedDoc = await vscode.workspace.openTextDocument(saveUri);
-    savedDoc.save();
+  return config.get<number>('tabSize', 2);
+};
+
+const formatJsonText = (text: string): string => {
+  try {
+    const parsed = JSON.parse(text);
+    const indentSize = getJsonIndentSize();
+    return JSON.stringify(parsed, null, indentSize);
+  } catch {
+    return text; // Return original if not valid JSON
   }
+};
+
+export const saveTextAndFormat = async (
+  uri: vscode.Uri,
+  text: string
+): Promise<boolean> => {
+  let targetUri = uri;
+
+  try {
+    await vscode.workspace.fs.stat(uri);
+  } catch {
+    // File doesn't exist, prompt user
+    const saveUri = await vscode.window.showSaveDialog({ defaultUri: uri });
+    if (!saveUri) {
+      return false;
+    }
+    targetUri = saveUri;
+  }
+
+  // Format JSON text with user's indent settings if it's a JSON file
+  let formattedText = text;
+  if (targetUri.path.endsWith('.json')) {
+    formattedText = formatJsonText(text);
+  }
+
+  let doc = null;
+  try {
+    doc = await vscode.workspace.openTextDocument(targetUri);
+  } catch {
+    // File doesn't exist yet
+  }
+  if (doc) {
+    // File exists, use workspace edit
+    const edit = new vscode.WorkspaceEdit();
+    const fullRange = doc.validateRange(
+      new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE)
+    );
+    edit.replace(targetUri, fullRange, formattedText);
+    await vscode.workspace.applyEdit(edit);
+  } else {
+    // New file, write directly
+    await vscode.workspace.fs.writeFile(
+      targetUri,
+      new Uint8Array(Buffer.from(formattedText))
+    );
+  }
+
+  await vscode.commands.executeCommand('vscode.open', targetUri);
+  const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
+    'vscode.executeFormatDocumentProvider',
+    targetUri
+  );
+  const workEdits = new vscode.WorkspaceEdit();
+  workEdits.set(targetUri, textEdits);
+  await vscode.workspace.applyEdit(workEdits);
+  const savedDoc = await vscode.workspace.openTextDocument(targetUri);
+  return await savedDoc.save();
 };

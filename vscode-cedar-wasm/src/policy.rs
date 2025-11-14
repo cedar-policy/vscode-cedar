@@ -1,7 +1,9 @@
 // Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use cedar_policy::{Policy, Template};
+use std::str::FromStr;
+
+use cedar_policy::{Policy, PolicySet, Template};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -31,6 +33,28 @@ pub fn export_policy(input_policy_str: &str) -> ExportPolicyResult {
     };
 
     let Ok(json) = policy.to_json() else {
+        return ExportPolicyResult {
+            success: false,
+            json: None,
+        };
+    };
+
+    ExportPolicyResult {
+        success: true,
+        json: Some(json.to_string()),
+    }
+}
+
+#[wasm_bindgen(js_name = exportPolicies)]
+pub fn export_policies(input_policies_str: &str) -> ExportPolicyResult {
+    let Ok(policies) = PolicySet::from_str(input_policies_str) else {
+        return ExportPolicyResult {
+            success: false,
+            json: None,
+        };
+    };
+
+    let Ok(json) = policies.to_json() else {
         return ExportPolicyResult {
             success: false,
             json: None,

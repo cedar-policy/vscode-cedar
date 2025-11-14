@@ -1,0 +1,38 @@
+{
+  "": {
+    "entityTypes": {
+      "Document": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "owner": { "type": "EntityOrCommon", "name": "User" }
+          }
+        },
+        "tags": {
+          "type": "Set",
+          "element": { "type": "EntityOrCommon", "name": "String" }
+        }
+      },
+      "User": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "jobLevel": { "type": "EntityOrCommon", "name": "Long" }
+          }
+        },
+        "tags": {
+          "type": "Set",
+          "element": { "type": "EntityOrCommon", "name": "String" }
+        }
+      }
+    },
+    "actions": {
+      "writeDoc": {
+        "appliesTo": {
+          "resourceTypes": ["Document"],
+          "principalTypes": ["User"]
+        }
+      }
+    }
+  }
+}

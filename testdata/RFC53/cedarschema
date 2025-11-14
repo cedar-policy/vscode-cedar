@@ -1,0 +1,12 @@
+namespace RFC53 {
+    entity User;
+    entity Color enum ["Red", "Blue", "Green"];
+    entity Task {
+        owner: User,
+        name: String,
+        status: Color,
+        enum: Color,
+    };
+    action UpdateTask
+        appliesTo { principal: [User], resource: [Task], };
+}

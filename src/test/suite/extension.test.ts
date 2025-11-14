@@ -237,11 +237,17 @@ suite('Cedar Completion Suite', () => {
 
     assert.ok(items);
     if (items) {
-      assert.strictEqual(items.length, 5);
-      assert.strictEqual(
-        (items[0].label as vscode.CompletionItemLabel).label,
-        'isIpv4'
+      const actualLabels = new Set(
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
       );
+      const expectedLabels = new Set([
+        'isIpv4',
+        'isIpv6',
+        'isLoopback',
+        'isMulticast',
+        'isInRange',
+      ]);
+      assert.deepStrictEqual(actualLabels, expectedLabels);
     }
   });
 
@@ -265,25 +271,69 @@ suite('Cedar Completion Suite', () => {
 
     assert.ok(items);
     if (items) {
-      assert.strictEqual(items.length, 4);
-      assert.strictEqual(
-        (items[0].label as vscode.CompletionItemLabel).label,
-        'lessThan'
+      const actualLabels = new Set(
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
       );
+      const expectedLabels = new Set([
+        'lessThan',
+        'lessThanOrEqual',
+        'greaterThan',
+        'greaterThanOrEqual',
+      ]);
+      assert.deepStrictEqual(actualLabels, expectedLabels);
     }
   });
 
-  test('decimal() snippet', async () => {
+  test('datetime() functions', async () => {
+    const content = 'datetime("2024-08-21T").';
+    const items = await triggerLastCharacter(content);
+
+    assert.ok(items);
+    if (items) {
+      const actualLabels = new Set(
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+      );
+      const expectedLabels = new Set([
+        'offset',
+        'durationSince',
+        'toDate',
+        'toTime',
+      ]);
+      assert.deepStrictEqual(actualLabels, expectedLabels);
+    }
+  });
+
+  test('duration() functions', async () => {
+    const content = 'duration("1d").';
+    const items = await triggerLastCharacter(content);
+
+    assert.ok(items);
+    if (items) {
+      const actualLabels = new Set(
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+      );
+      const expectedLabels = new Set([
+        'toMilliseconds',
+        'toSeconds',
+        'toMinutes',
+        'toHours',
+        'toDays',
+      ]);
+      assert.deepStrictEqual(actualLabels, expectedLabels);
+    }
+  });
+
+  test('datetime() / decimal() / duration() snippet', async () => {
     const content = '  d';
     const items = await triggerLastCharacter(content, false);
 
     assert.ok(items);
     if (items) {
-      assert.strictEqual(items.length, 1);
-      assert.strictEqual(
-        (items[0].label as vscode.CompletionItemLabel).label,
-        'decimal'
+      const actualLabels = new Set(
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
       );
+      const expectedLabels = new Set(['datetime', 'decimal', 'duration']);
+      assert.deepStrictEqual(actualLabels, expectedLabels);
     }
   });
 
@@ -293,11 +343,17 @@ suite('Cedar Completion Suite', () => {
 
     assert.ok(items);
     if (items) {
-      assert.strictEqual(items.length, 3);
-      assert.strictEqual(
-        (items[0].label as vscode.CompletionItemLabel).label,
-        'contains'
+      assert.strictEqual(items.length, 4);
+      const actualLabels = new Set(
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
       );
+      const expectedLabels = new Set([
+        'contains',
+        'containsAny',
+        'containsAll',
+        'isEmpty',
+      ]);
+      assert.deepStrictEqual(actualLabels, expectedLabels);
     }
   });
 });

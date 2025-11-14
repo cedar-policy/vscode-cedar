@@ -15,7 +15,7 @@ pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
-#[wasm_bindgen(js_name = "getCedarVersion")]
-pub fn get_cedar_version() -> String {
+#[wasm_bindgen(js_name = "getCedarSDKVersion")]
+pub fn get_cedar_sdk_version() -> String {
     std::env!("CEDAR_VERSION").to_string()
 }

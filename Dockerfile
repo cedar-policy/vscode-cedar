@@ -1,4 +1,4 @@
-FROM node:18
+FROM node:20
 RUN apt-get -y update
 RUN apt-get -y install --fix-missing xvfb 
 RUN apt-get -y install libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm-dev libasound2
@@ -17,8 +17,10 @@ dbus-daemon --session --address=$DBUS_SESSION_BUS_ADDRESS --nofork --nopidfile -
 mkdir ~/.vscode && echo '{ "disable-hardware-acceleration": true }' > ~/.vscode/argv.json
 # Build and Test
 npm ci
-npm install -g wasm-pack
+rustup update stable && rustup default stable
+cargo install wasm-pack --version 0.13.1
 npm run wasm-build
+npm run compile
 xvfb-run -a npm run test
 npm run package
 EOT

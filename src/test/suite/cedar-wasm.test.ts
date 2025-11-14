@@ -17,7 +17,7 @@ suite('Cedar WASM format Suite', () => {
       4
     );
     assert.equal(result.success, true);
-    assert.equal(result.policy, 'permit (principal, action, resource);');
+    assert.equal(result.policy, 'permit (principal, action, resource);\n');
     result.free();
   });
 
@@ -30,7 +30,8 @@ when
     principal has tenant &&
     resource has tenant &&
     principal.tenant != resource.tenant
-};`;
+};
+`;
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       rawPolicy,
       80,
@@ -75,7 +76,8 @@ when
 {
     principal == resource && // keeps comment
     principal.x == resource.x // loses comment
-};`;
+};
+`;
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       formattedPolicy,
       80,
@@ -93,13 +95,13 @@ when
     principal has tenant && // line 1 comment
     resource has tenant && // line 2 comment
     principal.tenant != resource.tenant // line 3 comment
-};`;
+};
+`;
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       formattedPolicy,
       80,
       4
     );
-    //console.log(result.policy);
     assert.equal(result.success, true);
     assert.equal(result.policy, formattedPolicy);
     result.free();
@@ -150,7 +152,6 @@ suite('Cedar WASM validate Suite', () => {
       'forbid(principal, action, resource);permit(2pac, action, resource)';
     const result: cedar.ValidateSyntaxResult = cedar.validateSyntax(policy);
     assert.equal(result.success, false);
-    //console.log(result.errors);
     result.free();
   });
 
@@ -162,7 +163,7 @@ suite('Cedar WASM validate Suite', () => {
     assert.equal(result.errors?.length, 1);
     assert.equal(
       result.errors?.[0].message,
-      'not a valid policy condition: `whenless`\ncondition must be either `when` or `unless`'
+      'invalid policy condition: whenless\ncondition must be either `when` or `unless`'
     );
     assert.equal(result.errors?.[0].offset, 37);
     assert.equal(result.errors?.[0].length, 8);
@@ -172,32 +173,21 @@ suite('Cedar WASM validate Suite', () => {
   test('validate_syntax_returns_validation_errors_when_expected_commas', async () => {
     const policy = 'permit (principal action resource);';
     const result: cedar.ValidateSyntaxResult = cedar.validateSyntax(policy);
-    console.log(result.errors);
     assert.equal(result.success, false);
     assert.ok(result.errors);
-    assert.equal(result.errors?.length, 3);
+    assert.equal(result.errors?.length, 1);
     if (result.errors) {
       let errorOffset: number = result.errors[0].offset;
       let errorLength: number = result.errors[0].length;
       assert.equal(errorOffset, 18);
       assert.equal(errorLength, 6);
-
-      errorOffset = result.errors[1].offset;
-      errorLength = result.errors[1].length;
-      assert.equal(errorOffset, 25);
-      assert.equal(errorLength, 8);
-
-      errorOffset = result.errors[2].offset;
-      errorLength = result.errors[2].length;
-      assert.equal(errorOffset, 33);
-      assert.equal(errorLength, 1);
     }
 
     result.free();
   });
 
-  test('validate_schema_passes', async () => {
-    const schema = `{
+  test('validate_schema_json_passes', async () => {
+    const schemaJSON = `{
       "" : {
         "entityTypes": {
           "User": {}
@@ -212,13 +202,45 @@ suite('Cedar WASM validate Suite', () => {
         }
       }
     }`;
-    const result: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaJSON(schemaJSON);
     assert.equal(result.success, true);
     result.free();
   });
 
-  test('validate_schema_fails', async () => {
-    const schema = `{
+  test('validate_schema_json_translate_passes', async () => {
+    const schemaJSON = `{
+      "" : {
+        "entityTypes": {
+          "User": {}
+        },
+        "actions": {
+          "view" : {
+            "appliesTo": {
+              "principalTypes": ["User"],
+              "resourceTypes": ["User"]
+            }
+          }
+        }
+      }
+    }`;
+    const schemaCedar = `entity User;
+
+action "view" appliesTo {
+  principal: [User],
+  resource: [User],
+  context: {}
+};
+`;
+    const result: cedar.TranslateSchemaResult =
+      cedar.translateSchemaFromJSON(schemaJSON);
+    assert.equal(result.success, true);
+    assert.equal(result.schema, schemaCedar);
+    result.free();
+  });
+
+  test('validate_schema_json_fails', async () => {
+    const schemaJSON = `{
       "" : {
         "entityTypes": {
           "User": {}
@@ -233,13 +255,14 @@ suite('Cedar WASM validate Suite', () => {
         }
       }
     }`;
-    const result: cedar.ValidateSchemaResult = cedar.validateSchema(schema);
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaJSON(schemaJSON);
     assert.equal(result.success, false);
     result.free();
   });
 
-  test('validate_schema_natural_passes', async () => {
-    const schema = `namespace Demo {
+  test('validate_schema_cedar_passes', async () => {
+    const schemaCedar = `namespace Demo {
   entity User in UserGroup = {
     "department": String,
     "jobLevel": Long,
@@ -247,13 +270,13 @@ suite('Cedar WASM validate Suite', () => {
   entity UserGroup;
 }`;
     const result: cedar.ValidateSchemaResult =
-      cedar.validateSchemaNatural(schema);
+      cedar.validateSchemaCedar(schemaCedar);
     assert.equal(result.success, true);
     result.free();
   });
 
-  test('validate_schema_natural_translate_passes', async () => {
-    const schema = `namespace Demo {
+  test('validate_schema_cedar_translate_passes', async () => {
+    const schemaCedar = `namespace Demo {
   entity User in UserGroup = {
     "department": String,
     "jobLevel": Long,
@@ -261,26 +284,25 @@ suite('Cedar WASM validate Suite', () => {
   entity UserGroup;
 }`;
     const result: cedar.TranslateSchemaResult =
-      cedar.translateSchemaToJSON(schema);
+      cedar.translateSchemaToJSON(schemaCedar);
     assert.equal(result.success, true);
 
     result.free();
   });
 
   test('validate_policy_fails', async () => {
-    const schema = '{ "entityTypes": [], "actions": [] }';
+    const schemaJSON = '{ "entityTypes": [], "actions": [] }';
     const policy = 'permit(principal, action, resource);';
-    const result: cedar.ValidatePolicyResult = cedar.validatePolicy(
-      schema,
+    const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
+      schemaJSON,
       policy
     );
     assert.equal(result.success, false);
-    //console.log(result.errors);
     result.free();
   });
 
   test('validate_policy_passes', async () => {
-    const schema = `{
+    const schemaJSON = `{
       "" : {
         "entityTypes": {
           "User": {}
@@ -296,8 +318,8 @@ suite('Cedar WASM validate Suite', () => {
       }
     }`;
     const policy = `permit(principal == User::"Kevin", action == Action::"view", resource == User::"Kevin");`;
-    const result: cedar.ValidatePolicyResult = cedar.validatePolicy(
-      schema,
+    const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
+      schemaJSON,
       policy
     );
     assert.equal(result.success, true);
@@ -306,7 +328,7 @@ suite('Cedar WASM validate Suite', () => {
   });
 
   test('validate_entity_passes', async () => {
-    const schema = `{
+    const schemaJSON = `{
       "" : {
         "entityTypes": {
           "User": {}
@@ -321,17 +343,15 @@ suite('Cedar WASM validate Suite', () => {
         "attrs": {}
       }
     ]`;
-    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      schema,
-      entities
-    );
+    const result: cedar.ValidateEntitiesResult =
+      cedar.validateEntitiesSchemaJSON(schemaJSON, entities);
     assert.equal(result.success, true);
 
     result.free();
   });
 
   test('validate_entity_fails', async () => {
-    const schema = `{
+    const schemaJSON = `{
       "" : {
         "entityTypes": {
           "User": {}
@@ -346,20 +366,18 @@ suite('Cedar WASM validate Suite', () => {
         "attrs": {}
       }
     ]`;
-    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      schema,
-      entities
-    );
+    const result: cedar.ValidateEntitiesResult =
+      cedar.validateEntitiesSchemaJSON(schemaJSON, entities);
     assert.equal(result.success, false);
     assert.equal(
-      result.errors?.[0],
+      result.errors?.[0].message,
       'error during entity deserialization: in uid field of <unknown entity>, expected a literal entity reference, but got `"User::\\"JaneDoe\\""`'
     );
 
     result.free();
   });
 
-  test('validate_entity_natural_passes', async () => {
+  test('validate_entity_cedar_passes', async () => {
     const schema = `entity User;`;
     const entities = `[
       {
@@ -368,17 +386,15 @@ suite('Cedar WASM validate Suite', () => {
         "attrs": {}
       }
     ]`;
-    const result: cedar.ValidateEntitiesResult = cedar.validateEntitiesNatural(
-      schema,
-      entities
-    );
+    const result: cedar.ValidateEntitiesResult =
+      cedar.validateEntitiesSchemaCedar(schema, entities);
     assert.equal(result.success, true);
 
     result.free();
   });
 
   test('validate_entity_attrs', async () => {
-    const schema = `{
+    const schemaJSON = `{
       "" : {
         "entityTypes": {
           "User": {}
@@ -395,13 +411,11 @@ suite('Cedar WASM validate Suite', () => {
         }
       }
     ]`;
-    const result: cedar.ValidateEntitiesResult = cedar.validateEntities(
-      schema,
-      entities
-    );
+    const result: cedar.ValidateEntitiesResult =
+      cedar.validateEntitiesSchemaJSON(schemaJSON, entities);
     assert.equal(result.success, false);
     assert.equal(
-      result.errors?.[0],
+      result.errors?.[0].message,
       'error during entity deserialization: attribute `tags` on `User::"JaneDoe"` should not exist according to the schema'
     );
 
@@ -409,7 +423,7 @@ suite('Cedar WASM validate Suite', () => {
   });
 
   test('validate_policy_bad_extensions', async () => {
-    const schema = `{
+    const schemaJSON = `{
   "unittest": {
     "entityTypes": {
       "User": {}
@@ -424,7 +438,9 @@ suite('Cedar WASM validate Suite', () => {
                 "type": "String"
               }
             }
-          }
+          },
+          "principalTypes": ["User"],
+          "resourceTypes": ["User"]
         }
       }
     }
@@ -436,18 +452,17 @@ when {
     ip(context.usrIP).isLoopback() ||
     decimal("0.12345").lessThan(decimal("0.1234"))
 };`;
-    const result: cedar.ValidatePolicyResult = cedar.validatePolicy(
-      schema,
+    const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
+      schemaJSON,
       policy
     );
-    // console.log(result.errors);
     assert.equal(result.success, false);
     assert.equal(result.errors?.length, 4);
     result.free();
   });
 
   test('validate_policy_if_then_else', async () => {
-    const schema = `{
+    const schemaJSON = `{
     "My::Name::Space": {
       "entityTypes": {
         "User": {
@@ -576,11 +591,10 @@ when {
 when {
   if context.tier == "free" then resource.sizeInBytes < 5000000 else resource.sizeInBytes < 15000000
 };`;
-    const result: cedar.ValidatePolicyResult = cedar.validatePolicy(
-      schema,
+    const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
+      schemaJSON,
       policy
     );
-    // console.log(result.errors);
     assert.equal(result.success, false);
     assert.equal(result.errors?.length, 9);
     result.free();
