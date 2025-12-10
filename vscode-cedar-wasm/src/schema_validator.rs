@@ -55,12 +55,18 @@ fn format_diagnostic_message<T: Diagnostic>(diagnostic: &T) -> String {
 pub fn validate_schema_json(input_schema_str: &str) -> ValidateSchemaResult {
     let result =
         match ValidatorSchema::from_json_str(&input_schema_str, Extensions::all_available()) {
-            Ok(_schema) => ValidateSchemaResult {
-                success: true,
-                warnings: None,
-                errors: None,
-            },
+            Ok(_schema) => {
+                // TODO: Check if there's a way to get warnings from successful schema validation in Cedar 4.8.2
+                ValidateSchemaResult {
+                    success: true,
+                    warnings: None,
+                    errors: None,
+                }
+            }
             Err(e) => {
+                let mut warnings = Vec::new();
+                let mut errors = Vec::new();
+
                 let (offset, length) = if let Some(labels) = e.labels() {
                     if let Some(label) = labels.into_iter().next() {
                         (label.offset(), label.len())
@@ -71,14 +77,21 @@ pub fn validate_schema_json(input_schema_str: &str) -> ValidateSchemaResult {
                     (0, 0)
                 };
 
+                let message = ValidateMessage {
+                    message: format_diagnostic_message(&e),
+                    offset,
+                    length,
+                };
+
+                match e.severity() {
+                    Some(miette::Severity::Warning) => warnings.push(message),
+                    _ => errors.push(message),
+                }
+
                 ValidateSchemaResult {
-                    success: false,
-                    warnings: None,
-                    errors: Some(vec![ValidateMessage {
-                        message: format_diagnostic_message(&e),
-                        offset,
-                        length,
-                    }]),
+                    success: errors.is_empty(),
+                    warnings: if warnings.is_empty() { None } else { Some(warnings) },
+                    errors: if errors.is_empty() { None } else { Some(errors) },
                 }
             }
         };
@@ -90,35 +103,43 @@ pub fn validate_schema_cedar(input_schema_str: &str) -> ValidateSchemaResult {
     let result =
         match ValidatorSchema::from_cedarschema_str(&input_schema_str, Extensions::all_available())
         {
-            Ok(_schema) => {
+            Ok((_schema, warnings_iter)) => {
                 let mut warnings_vec = Vec::new();
-                for warning in _schema.1.into_iter() {
-                    match HasOffsetLength::offset_length(&warning) {
-                        offset_length => warnings_vec.push(ValidateMessage {
-                            message: format_diagnostic_message(&warning),
-                            offset: offset_length.offset,
-                            length: offset_length.length,
-                        }),
-                    };
+                for warning in warnings_iter {
+                    let offset_length = HasOffsetLength::offset_length(&warning);
+                    warnings_vec.push(ValidateMessage {
+                        message: format_diagnostic_message(&warning),
+                        offset: offset_length.offset,
+                        length: offset_length.length,
+                    });
                 }
                 ValidateSchemaResult {
                     success: true,
-                    warnings: Some(warnings_vec),
+                    warnings: if warnings_vec.is_empty() { None } else { Some(warnings_vec) },
                     errors: None,
                 }
             }
             Err(e) => {
-                let error = match HasOffsetLength::offset_length(&e) {
+                let mut warnings = Vec::new();
+                let mut errors = Vec::new();
+
+                let message = match HasOffsetLength::offset_length(&e) {
                     offset_length => ValidateMessage {
                         message: format_diagnostic_message(&e),
                         offset: offset_length.offset,
                         length: offset_length.length,
                     },
                 };
+
+                match e.severity() {
+                    Some(miette::Severity::Warning) => warnings.push(message),
+                    _ => errors.push(message),
+                }
+
                 ValidateSchemaResult {
-                    success: false,
-                    warnings: None,
-                    errors: Some(vec![error]),
+                    success: errors.is_empty(),
+                    warnings: if warnings.is_empty() { None } else { Some(warnings) },
+                    errors: if errors.is_empty() { None } else { Some(errors) },
                 }
             }
         };

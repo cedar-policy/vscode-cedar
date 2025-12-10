@@ -14,6 +14,7 @@ const VALIDATE_POLICY_RESULT: &'static str = r#"
 export class ValidatePolicyResult {
   free(): void;
   readonly success: boolean;
+  readonly warnings: Array<ValidateMessage> | undefined;
   readonly errors: Array<ValidateMessage> | undefined;
 }"#;
 
@@ -22,6 +23,7 @@ export class ValidatePolicyResult {
 pub struct ValidatePolicyResult {
     #[wasm_bindgen(readonly)]
     pub success: bool,
+    warnings: Option<Vec<ValidateMessage>>,
     errors: Option<Vec<ValidateMessage>>,
 }
 
@@ -30,6 +32,11 @@ impl ValidatePolicyResult {
     #[wasm_bindgen(getter)]
     pub fn errors(&self) -> Option<js_sys::Array> {
         self.errors.as_ref().map(convert_messages_to_js_array)
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn warnings(&self) -> Option<js_sys::Array> {
+        self.warnings.as_ref().map(convert_messages_to_js_array)
     }
 }
 
@@ -45,6 +52,7 @@ pub fn validate_policy_schema_json(
             // JSON Schema file could not be parsed: expected `,` or `}` at line 8 column 38'
             return ValidatePolicyResult {
                 success: false,
+                warnings: None,
                 errors: Some(vec![ValidateMessage {
                     message: String::from(&format!("{e}")),
                     offset: 0,
@@ -66,6 +74,7 @@ pub fn validate_policy_schema_cedar(
         Err(e) => {
             return ValidatePolicyResult {
                 success: false,
+                warnings: None,
                 errors: Some(vec![ValidateMessage {
                     message: String::from(&format!("{e}")),
                     offset: 0,
@@ -84,14 +93,40 @@ fn validate_policy_schema(schema: Schema, input_policies_str: &str) -> ValidateP
         Err(_e) => {
             return ValidatePolicyResult {
                 success: false,
+                warnings: None,
                 errors: None,
             }
         }
     };
     let result = validator.validate(&pset, ValidationMode::Strict);
+    
+    let mut validate_warnings = Vec::new();
+    result.validation_warnings().for_each(|w| {
+        w.labels().iter_mut().for_each(|labels| {
+            labels.as_mut().for_each(|labeled_span| {
+                let vpm = ValidateMessage {
+                    message: match labeled_span.label() {
+                        None => match w.help() {
+                            None => w.to_string(),
+                            Some(help) => format!("{}\n{}", w, help),
+                        },
+                        Some(msg) => match w.help() {
+                            None => format!("{}\n{}", w, msg),
+                            Some(help) => format!("{}\n{}\n{}", w, msg, help),
+                        },
+                    },
+                    offset: labeled_span.offset(),
+                    length: labeled_span.len(),
+                };
+                validate_warnings.push(vpm);
+            });
+        });
+    });
+    
     if result.validation_passed() {
         return ValidatePolicyResult {
             success: true,
+            warnings: if validate_warnings.is_empty() { None } else { Some(validate_warnings) },
             errors: None,
         };
     } else {
@@ -117,8 +152,10 @@ fn validate_policy_schema(schema: Schema, input_policies_str: &str) -> ValidateP
                 });
             });
         });
+        
         return ValidatePolicyResult {
             success: false,
+            warnings: if validate_warnings.is_empty() { None } else { Some(validate_warnings) },
             errors: Some(validate_errs),
         };
     }
@@ -138,6 +175,7 @@ mod test {
             result,
             ValidatePolicyResult {
                 success: false,
+                warnings: _,
                 errors: _,
             }
         ));

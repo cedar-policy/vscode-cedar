@@ -1,0 +1,5 @@
+// error parsing schema: this uses a reserved schema keyword: `Set`
+// Keywords such as `entity`, `extension`, `set` and `record` cannot be used as common type names
+namespace NS {
+  type Set = Long;
+}
