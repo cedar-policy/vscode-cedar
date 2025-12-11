@@ -1,0 +1,5 @@
+// error parsing schema: use of the reserved `__cedar` namespace
+// Names containing `__cedar` (for example: `__cedar::A`, `A::__cedar`, or `A::__cedar::B`) are reserved
+namespace __cedar {
+  entity foo;
+}

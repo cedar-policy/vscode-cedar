@@ -4,7 +4,7 @@
 import * as vscode from 'vscode';
 import * as cedar from 'vscode-cedar-wasm';
 import {
-  addPolicyResultErrors,
+  addPolicyResultMessages,
   addSyntaxDiagnosticErrors,
   addValidationDiagnosticWarning,
   determineRangeFromOffset,
@@ -253,13 +253,24 @@ export const validateCedarDoc = async (
               policyText
             );
           }
+          if (policyResult.warnings) {
+            addPolicyResultMessages(
+              diagnostics,
+              policyResult.warnings,
+              policyText,
+              policyRange.effectRange,
+              policyRange.range.start.line,
+              true
+            );
+          }
           if (policyResult.success === false && policyResult.errors) {
-            addPolicyResultErrors(
+            addPolicyResultMessages(
               diagnostics,
               policyResult.errors,
               policyText,
               policyRange.effectRange,
-              policyRange.range.start.line
+              policyRange.range.start.line,
+              false
             );
           }
           policyResult.free();

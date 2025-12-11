@@ -14,7 +14,6 @@ import {
   MISMATCH_ATTR_REGEX,
   NOTALLOWED_PARENT_REGEX,
   NOTDECLARED_TYPE_REGEX,
-  OFFSET_POLICY_REGEX,
   UNDECLARED_REGEX,
   UNDECLARED_ACTION_REGEX,
   UNRECOGNIZED_REGEX,
@@ -36,6 +35,43 @@ suite('Validation Schema Cedar Test Suite', () => {
     // The name `ipaddr` shadows a builtin Cedar name. You'll have to refer to the builtin as `__cedar::ipaddr`.
     // The name `String` shadows a builtin Cedar name. You'll have to refer to the builtin as `__cedar::String`.
     assert.equal(result.warnings?.length, 2);
+    result.free();
+  });
+
+  test('validate __cedar reserved', async () => {
+    const schema = readTestDataFile('reserved', '__cedar.cedarschema');
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaCedar(schema);
+    assert.equal(result.success, false);
+    // error parsing schema: use of the reserved `__cedar` namespace
+    assert.equal(result.errors?.length, 1);
+    if (result.errors) {
+      let e = result.errors[0];
+      assert.ok(e.message.includes('use of the reserved `__cedar` namespace'));
+      assert.equal(e.offset, 180);
+      assert.equal(e.length, 7);
+    }
+
+    result.free();
+  });
+
+  test('validate Set reserved', async () => {
+    const schema = readTestDataFile('reserved', 'set.cedarschema');
+    const result: cedar.ValidateSchemaResult =
+      cedar.validateSchemaCedar(schema);
+    assert.equal(result.success, false);
+    // error parsing schema: this uses a reserved schema keyword: `Set`
+    assert.equal(result.errors?.length, 1);
+    if (result.errors) {
+      let e = result.errors[0];
+      assert.ok(
+        e.message.includes('this uses a reserved schema keyword: `Set`')
+      );
+      assert.equal(e.offset, 188);
+      assert.equal(e.length, 3);
+    }
+
+    result.free();
   });
 });
 
@@ -56,26 +92,21 @@ suite('Validation RegEx Test Suite', () => {
     result.free();
   });
 
-  test('validate policy error "offset"', async () => {
-    const policy = readTestDataFile('offset', 'policy.cedar');
-    const schema = readTestDataFile('offset', 'cedarschema.json');
+  test('validate policy warning "impossible"', async () => {
+    const policy = readTestDataFile('impossible', 'policy.cedar');
+    const schema = readTestDataFile('impossible', 'cedarschema.json');
 
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schema,
       policy
     );
-    assert.equal(result.success, false);
+    assert.equal(result.success, true);
+    assert.equal(result.warnings?.length, 1);
 
-    if (result.errors) {
-      // the types __cedar::internal::True and Long are not compatible\nfor policy `policy0`, both operands to a `==` expression must have compatible types. Types must be exactly equal to be compatible
-      let e: cedar.ValidateMessage = result.errors[0];
-      assert.ok(
-        e.message.startsWith(
-          'the types __cedar::internal::True and Long are not compatible'
-        )
-      );
-      assert.equal(e.offset, 44);
-      assert.equal(e.length, 9);
+    if (result.warnings) {
+      // for policy `policy0`, policy is impossible: the policy expression evaluates to false for all valid requests
+      let e: cedar.ValidateMessage = result.warnings[0];
+      assert.ok(e.message.includes('policy is impossible:'));
     }
 
     result.free();

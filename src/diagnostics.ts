@@ -49,7 +49,7 @@ const addDiagnosticsError = (
   diagnostics.push(diagnostic);
 };
 
-const determineRangeFromPolicyError = (
+const determineRangeFromPolicyMessage = (
   vpm: cedar.ValidateMessage,
   policy: string,
   defaultErrorRange: vscode.Range,
@@ -509,18 +509,19 @@ export const addValidationDiagnosticWarning = (
   diagnostics.push(diagnostic);
 };
 
-export const addPolicyResultErrors = (
+export const addPolicyResultMessages = (
   diagnostics: vscode.Diagnostic[],
-  errors: cedar.ValidateMessage[],
+  messages: cedar.ValidateMessage[],
   policy: string,
   effectRange: vscode.Range,
-  startLine: number
+  startLine: number,
+  areWarnings: boolean
 ) => {
   // create an error for each of the errors
-  errors.forEach((vpm) => {
+  messages.forEach((vpm) => {
     let e = vpm.message;
     let diagnosticCode = undefined;
-    let range = determineRangeFromPolicyError(
+    let range = determineRangeFromPolicyMessage(
       vpm,
       policy,
       effectRange,
@@ -564,7 +565,9 @@ export const addPolicyResultErrors = (
     const diagnostic = new vscode.Diagnostic(
       range,
       e,
-      vscode.DiagnosticSeverity.Error
+      areWarnings
+        ? vscode.DiagnosticSeverity.Warning
+        : vscode.DiagnosticSeverity.Error
     );
     diagnostic.source = SOURCE_CEDAR;
     if (diagnosticCode) {
