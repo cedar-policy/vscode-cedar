@@ -1,4 +1,4 @@
-## v0.10.0 (Preview) 2025-12-12
+## v0.10.1 (Preview) 2025-12-12
 
 - Update to Cedar SDK 4.8.2
 
