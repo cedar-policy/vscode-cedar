@@ -32,12 +32,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/wasm-pack
-          key: wasm-pack-${{ runner.os }}-v0.13.1
+          key: wasm-pack-${{ runner.os }}-v0.14.0
 
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
-          which wasm-pack || cargo install wasm-pack --version 0.13.1
+          which wasm-pack || cargo install wasm-pack --version 0.14.0
 
       - name: Cache cargo build artifacts
         # https://doc.rust-lang.org/cargo/guide/build-cache.html
