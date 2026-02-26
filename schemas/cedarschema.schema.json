@@ -238,7 +238,8 @@
             }
           ]
         },
-        "required": { "$ref": "#/$defs/requiredDef" }
+        "required": { "$ref": "#/$defs/requiredDef" },
+        "annotations": { "$ref": "#/$defs/annotationsDef" }
       },
       "required": ["type"],
       "additionalProperties": false

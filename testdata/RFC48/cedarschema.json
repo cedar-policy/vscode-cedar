@@ -5,41 +5,63 @@
         "type": "Record",
         "attributes": {
           "id": {
-            "type": "EntityOrCommon",
-            "name": "Long",
-            "annotations": { "doc": "task id" }
+            "type": "Long",
+            "annotations": {
+              "doc": "task id"
+            }
           },
-          "name": { "type": "EntityOrCommon", "name": "String" },
-          "state": { "type": "EntityOrCommon", "name": "String" }
+          "name": {
+            "type": "String"
+          },
+          "state": {
+            "type": "String"
+          }
         },
-        "annotations": { "doc": "a common type representing a task" }
+        "annotations": {
+          "doc": "a common type representing a task"
+        }
       },
       "Tasks": {
         "type": "Set",
-        "element": { "type": "EntityOrCommon", "name": "Task" },
-        "annotations": { "doc": "a common type representing a set of tasks" }
+        "element": {
+          "type": "TinyTodo::Task"
+        },
+        "annotations": {
+          "doc": "a common type representing a set of tasks"
+        }
       }
     },
     "entityTypes": {
       "Application": {},
       "List": {
-        "memberOfTypes": ["Application"],
+        "memberOfTypes": ["TinyTodo::Application"],
         "shape": {
           "type": "Record",
           "attributes": {
             "editors": {
-              "type": "EntityOrCommon",
-              "name": "Team",
-              "annotations": { "doc": "editors of a list" }
+              "type": "Entity",
+              "name": "TinyTodo::Team",
+              "annotations": {
+                "doc": "editors of a list"
+              }
             },
-            "name": { "type": "EntityOrCommon", "name": "String" },
-            "owner": { "type": "EntityOrCommon", "name": "User" },
+            "name": {
+              "type": "String"
+            },
+            "owner": {
+              "type": "Entity",
+              "name": "TinyTodo::User"
+            },
             "readers": {
-              "type": "EntityOrCommon",
-              "name": "Team",
-              "annotations": { "doc": "readers of a list" }
+              "type": "Entity",
+              "name": "TinyTodo::Team",
+              "annotations": {
+                "doc": "readers of a list"
+              }
             },
-            "tasks": { "type": "EntityOrCommon", "name": "Tasks" }
+            "tasks": {
+              "type": "TinyTodo::Tasks"
+            }
           }
         },
         "annotations": {
@@ -52,18 +74,35 @@
     },
     "actions": {
       "DeleteList": {
-        "appliesTo": { "resourceTypes": ["List"], "principalTypes": ["User"] },
-        "annotations": { "doc": "actions that a user can operate on a list" }
+        "appliesTo": {
+          "resourceTypes": ["TinyTodo::List"],
+          "principalTypes": ["TinyTodo::User"]
+        },
+        "annotations": {
+          "doc": "actions that a user can operate on a list"
+        }
       },
       "GetList": {
-        "appliesTo": { "resourceTypes": ["List"], "principalTypes": ["User"] },
-        "annotations": { "doc": "actions that a user can operate on a list" }
+        "appliesTo": {
+          "resourceTypes": ["TinyTodo::List"],
+          "principalTypes": ["TinyTodo::User"]
+        },
+        "annotations": {
+          "doc": "actions that a user can operate on a list"
+        }
       },
       "UpdateList": {
-        "appliesTo": { "resourceTypes": ["List"], "principalTypes": ["User"] },
-        "annotations": { "doc": "actions that a user can operate on a list" }
+        "appliesTo": {
+          "resourceTypes": ["TinyTodo::List"],
+          "principalTypes": ["TinyTodo::User"]
+        },
+        "annotations": {
+          "doc": "actions that a user can operate on a list"
+        }
       }
     },
-    "annotations": { "doc": "this is the namespace" }
+    "annotations": {
+      "doc": "this is the namespace"
+    }
   }
 }

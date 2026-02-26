@@ -1,15 +1,28 @@
 {
   "RFC53": {
     "entityTypes": {
-      "Color": { "enum": ["Red", "Blue", "Green"] },
+      "Color": {
+        "enum": ["Red", "Blue", "Green"]
+      },
       "Task": {
         "shape": {
           "type": "Record",
           "attributes": {
-            "enum": { "type": "EntityOrCommon", "name": "Color" },
-            "name": { "type": "EntityOrCommon", "name": "String" },
-            "owner": { "type": "EntityOrCommon", "name": "User" },
-            "status": { "type": "EntityOrCommon", "name": "Color" }
+            "enum": {
+              "type": "Entity",
+              "name": "RFC53::Color"
+            },
+            "name": {
+              "type": "String"
+            },
+            "owner": {
+              "type": "Entity",
+              "name": "RFC53::User"
+            },
+            "status": {
+              "type": "Entity",
+              "name": "RFC53::Color"
+            }
           }
         }
       },
@@ -17,7 +30,10 @@
     },
     "actions": {
       "UpdateTask": {
-        "appliesTo": { "resourceTypes": ["Task"], "principalTypes": ["User"] }
+        "appliesTo": {
+          "resourceTypes": ["RFC53::Task"],
+          "principalTypes": ["RFC53::User"]
+        }
       }
     }
   }
