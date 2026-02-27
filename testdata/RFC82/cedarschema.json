@@ -5,24 +5,33 @@
         "shape": {
           "type": "Record",
           "attributes": {
-            "owner": { "type": "EntityOrCommon", "name": "User" }
+            "owner": {
+              "type": "Entity",
+              "name": "User"
+            }
           }
         },
         "tags": {
           "type": "Set",
-          "element": { "type": "EntityOrCommon", "name": "String" }
+          "element": {
+            "type": "String"
+          }
         }
       },
       "User": {
         "shape": {
           "type": "Record",
           "attributes": {
-            "jobLevel": { "type": "EntityOrCommon", "name": "Long" }
+            "jobLevel": {
+              "type": "Long"
+            }
           }
         },
         "tags": {
           "type": "Set",
-          "element": { "type": "EntityOrCommon", "name": "String" }
+          "element": {
+            "type": "String"
+          }
         }
       }
     },
