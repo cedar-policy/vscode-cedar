@@ -75,6 +75,7 @@ import {
   CedarSchemaCompletionItemProvider,
 } from './completion';
 import { CedarHoverProvider, CedarEntitiesJSONHoverProvider } from './hover';
+import { CedarSignatureHelpProvider } from './signaturehelp';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
 import { ValidateWithSchemaCodeLensProvider } from './codelens';
@@ -147,6 +148,15 @@ export async function activate(context: vscode.ExtensionContext) {
       ':', // entities
       '@', // annotations
       '?' // templates
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerSignatureHelpProvider(
+      { language: 'cedar' },
+      new CedarSignatureHelpProvider(),
+      '(', // trigger: opening a function call
+      ',' // retrigger: moving to the next argument
     )
   );
 
