@@ -218,7 +218,7 @@ export async function activate(context: vscode.ExtensionContext) {
    */
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_CEDAR_ABOUT, (args: any[]) => {
-      aboutExtension();
+      aboutExtension(context);
     })
   );
   context.subscriptions.push(
