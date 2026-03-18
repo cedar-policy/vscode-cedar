@@ -16,7 +16,8 @@
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
-    "vscode": "^1.83.0"
+    "vscode": "^1.83.0",
+    "node": ">=18.0.0"
   },
   "categories": [
     "Programming Languages",

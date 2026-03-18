@@ -85,11 +85,9 @@ export const generateDiagram = (
 
     let commonTypes: string[] = [];
     if (cedarschema[namespace].commonTypes) {
-      // @ts-ignore
-      commonTypes = Object.keys(cedarschema[namespace]?.commonTypes);
+      commonTypes = Object.keys(cedarschema[namespace].commonTypes);
       commonTypes.forEach((name) => {
-        // @ts-ignore
-        const e = cedarschema[namespace]?.commonTypes[name];
+        const e = cedarschema[namespace].commonTypes![name];
         let properties = '\n';
         if (e?.attributes) {
           const attributes = e.attributes;

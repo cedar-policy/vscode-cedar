@@ -257,9 +257,11 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  vscode.workspace.registerTextDocumentContentProvider(
-    CedarTextDocumentContentProvider.scheme,
-    new CedarTextDocumentContentProvider()
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      CedarTextDocumentContentProvider.scheme,
+      new CedarTextDocumentContentProvider()
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(
