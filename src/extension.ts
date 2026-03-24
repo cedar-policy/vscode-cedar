@@ -75,6 +75,7 @@ import {
   CedarSchemaCompletionItemProvider,
 } from './completion';
 import { CedarHoverProvider, CedarEntitiesJSONHoverProvider } from './hover';
+import { CedarSignatureHelpProvider } from './signaturehelp';
 import { aboutExtension } from './about';
 import * as cedar from 'vscode-cedar-wasm';
 import { ValidateWithSchemaCodeLensProvider } from './codelens';
@@ -151,6 +152,15 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    vscode.languages.registerSignatureHelpProvider(
+      { language: 'cedar' },
+      new CedarSignatureHelpProvider(),
+      '(', // trigger: opening a function call
+      ',' // retrigger: moving to the next argument
+    )
+  );
+
+  context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(
       { language: 'cedar' },
       new ValidateWithSchemaCodeLensProvider()
@@ -218,7 +228,7 @@ export async function activate(context: vscode.ExtensionContext) {
    */
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_CEDAR_ABOUT, (args: any[]) => {
-      aboutExtension();
+      aboutExtension(context);
     })
   );
   context.subscriptions.push(
@@ -257,9 +267,11 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  vscode.workspace.registerTextDocumentContentProvider(
-    CedarTextDocumentContentProvider.scheme,
-    new CedarTextDocumentContentProvider()
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      CedarTextDocumentContentProvider.scheme,
+      new CedarTextDocumentContentProvider()
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(

@@ -29,18 +29,18 @@ const tokenTypes = [
 const tokenModifiers = ['declaration', 'deprecated', 'readonly'];
 export const semanticTokensLegend = new vscode.SemanticTokensLegend(
   tokenTypes,
-  tokenModifiers
+  tokenModifiers,
 );
 
 const makeRange = (
   startLine: number,
   startCharacter: number,
   length: number,
-  offset = 0
+  offset = 0,
 ): vscode.Range => {
   return new vscode.Range(
     new vscode.Position(startLine, startCharacter + offset),
-    new vscode.Position(startLine, startCharacter + length - offset)
+    new vscode.Position(startLine, startCharacter + length - offset),
   );
 };
 
@@ -66,13 +66,13 @@ const determineReferenceRange = (
   type: string,
   line: number,
   start: number,
-  length: number
+  length: number,
 ) => {
   const pos = type.lastIndexOf('::');
   const typePos = pos === -1 ? 0 : pos + 2;
   const defRange = new vscode.Range(
     new vscode.Position(line, start + typePos),
-    new vscode.Position(line, start + length - 1)
+    new vscode.Position(line, start + length - 1),
   );
 
   return defRange;
@@ -88,7 +88,7 @@ const determineEntitiesInString = (
   startLine: number,
   startCharacter: number,
   tokensBuilder: vscode.SemanticTokensBuilder,
-  referencedTypes: ReferencedRange[]
+  referencedTypes: ReferencedRange[],
 ) => {
   let foundArray = [...value.matchAll(ENTITY_REGEXG)];
   foundArray.forEach((found) => {
@@ -102,7 +102,7 @@ const determineEntitiesInString = (
           type,
           startLine,
           startCharacter + 1,
-          type.length + 1
+          type.length + 1,
         ),
       });
     }
@@ -144,7 +144,7 @@ export const parseCedarPoliciesDoc = (
   cedarDoc: vscode.TextDocument,
   visitPolicy?:
     | undefined
-    | ((policyRange: PolicyRange, policyText: string) => void)
+    | ((policyRange: PolicyRange, policyText: string) => void),
 ): PolicyCacheItem => {
   // policy text is not cached, so check for no visitPolicy callback
   if (visitPolicy === undefined) {
@@ -186,21 +186,19 @@ export const parseCedarPoliciesDoc = (
       if (end > -1) {
         const range = new vscode.Range(
           new vscode.Position(i, textLine.indexOf('@')),
-          new vscode.Position(i, end)
+          new vscode.Position(i, end),
         );
         tokensBuilder.push(range, 'decorator', []);
       }
-    }
-
-    if (trimmed.startsWith('permit') || trimmed.startsWith('forbid')) {
+    } else if (trimmed.startsWith('permit') || trimmed.startsWith('forbid')) {
       const startPos = Math.max(
         0,
         textLine.indexOf('permit'),
-        textLine.indexOf('forbid')
+        textLine.indexOf('forbid'),
       );
       effectRange = new vscode.Range(
         new vscode.Position(i, startPos),
-        new vscode.Position(i, startPos + 6)
+        new vscode.Position(i, startPos + 6),
       );
     }
 
@@ -214,21 +212,25 @@ export const parseCedarPoliciesDoc = (
     const commentPos = textLine.indexOf('//');
     const linePreComment = textLine.substring(
       0,
-      commentPos > -1 ? commentPos : textLine.length
+      commentPos > -1 ? commentPos : textLine.length,
     );
 
+    // TODO: fix later, finds too many strings (like keywords), but these are
+    // just candidate ranges resolved in findSchemaDefinition (definition.ts)
     let foundArray = [...linePreComment.matchAll(ENTITY_REGEXG)];
     foundArray.forEach((found) => {
       if (found && found?.groups) {
         const type = found?.groups.type;
         if (type === 'Action' || type.endsWith('::Action')) {
           const id = found?.groups.id;
-          const startCharacter =
-            linePreComment.indexOf(`"${id}"`, found.index) || 0;
-          actionIds.push({
-            name: `${type}::"${id}"`,
-            range: makeRange(i, startCharacter + 1, id.length),
-          });
+          if (id) {
+            const startCharacter =
+              linePreComment.indexOf(`"${id}"`, found.index) || 0;
+            actionIds.push({
+              name: `${type}::"${id}"`,
+              range: makeRange(i, startCharacter + 1, id.length),
+            });
+          }
         } else {
           referencedTypes.push({
             name: type,
@@ -236,7 +238,7 @@ export const parseCedarPoliciesDoc = (
               type,
               i,
               found.index as number,
-              type.length + 1
+              type.length + 1,
             ),
           });
         }
@@ -253,7 +255,7 @@ export const parseCedarPoliciesDoc = (
         id: id || `policy${count}`,
         range: new vscode.Range(
           new vscode.Position(startLine, 0),
-          new vscode.Position(i, textLine.length)
+          new vscode.Position(i, textLine.length),
         ),
         effectRange: effectRange,
         entityTypes: undefined,
@@ -286,7 +288,7 @@ export const parseCedarPoliciesDoc = (
 
 export const cedarTokensProvider: vscode.DocumentSemanticTokensProvider = {
   provideDocumentSemanticTokens(
-    cedarDoc: vscode.TextDocument
+    cedarDoc: vscode.TextDocument,
   ): vscode.ProviderResult<vscode.SemanticTokens> {
     return parseCedarPoliciesDoc(cedarDoc).tokens;
   },
@@ -306,7 +308,7 @@ type PolicyJsonCacheItem = {
 const policyJsonCache: Record<string, PolicyJsonCacheItem> = {};
 
 export const parseCedarJsonPolicyDoc = (
-  cedarJsonDoc: vscode.TextDocument
+  cedarJsonDoc: vscode.TextDocument,
 ): PolicyJsonCacheItem => {
   let cachedItem = policyJsonCache[cedarJsonDoc.uri.toString()];
   if (cachedItem && cachedItem.version === cedarJsonDoc.version) {
@@ -328,7 +330,7 @@ export const parseCedarJsonPolicyDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       if (pathSupplier().length === 0) {
@@ -371,7 +373,7 @@ export const parseCedarJsonPolicyDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
@@ -415,7 +417,7 @@ export const parseCedarJsonPolicyDoc = (
               value,
               startLine,
               startCharacter + 1,
-              length - 1
+              length - 1,
             ),
           });
         }
@@ -465,7 +467,7 @@ export const parseCedarJsonPolicyDoc = (
 
 export const cedarJsonTokensProvider: vscode.DocumentSemanticTokensProvider = {
   provideDocumentSemanticTokens(
-    cedarJsonDoc: vscode.TextDocument
+    cedarJsonDoc: vscode.TextDocument,
   ): vscode.ProviderResult<vscode.SemanticTokens> {
     return parseCedarJsonPolicyDoc(cedarJsonDoc).tokens;
   },
@@ -503,7 +505,7 @@ export const parseCedarEntitiesDoc = (
   entitiesDoc: vscode.TextDocument,
   visitEntity?:
     | undefined
-    | ((entityRange: EntityRange, entityText: string) => void)
+    | ((entityRange: EntityRange, entityText: string) => void),
 ): EntityCacheItem => {
   // entity text is not cached, so check for no visitEntity callback
   if (visitEntity === undefined) {
@@ -606,7 +608,7 @@ export const parseCedarEntitiesDoc = (
         // only enable the range if there are attribute names
         attrsRange = new vscode.Range(
           attrsKeyRange?.start,
-          new vscode.Position(startLine, startCharacter + length)
+          new vscode.Position(startLine, startCharacter + length),
         );
       } else if (
         depth === 1 &&
@@ -617,7 +619,7 @@ export const parseCedarEntitiesDoc = (
         // only enable the range if there are tag names
         tagsRange = new vscode.Range(
           tagsKeyRange?.start,
-          new vscode.Position(startLine, startCharacter + length)
+          new vscode.Position(startLine, startCharacter + length),
         );
       } else if (depth === 1 && depth1Property === PARENTS && parentsKeyRange) {
         parentsCount++;
@@ -633,7 +635,7 @@ export const parseCedarEntitiesDoc = (
         // only enable the range if there are objects inside parents array
         parentsRange = new vscode.Range(
           parentsKeyRange?.start,
-          new vscode.Position(startLine, startCharacter + length)
+          new vscode.Position(startLine, startCharacter + length),
         );
       }
     },
@@ -643,7 +645,7 @@ export const parseCedarEntitiesDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const innerRange = makeRange(startLine, startCharacter, length, 1);
@@ -681,7 +683,7 @@ export const parseCedarEntitiesDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
@@ -711,7 +713,7 @@ export const parseCedarEntitiesDoc = (
           startLine,
           startCharacter,
           tokensBuilder,
-          referencedTypes
+          referencedTypes,
         );
       }
 
@@ -731,7 +733,7 @@ export const parseCedarEntitiesDoc = (
             value,
             startLine,
             startCharacter + 1,
-            length - 1
+            length - 1,
           ),
         });
       } else if (
@@ -760,7 +762,7 @@ export const parseCedarEntitiesDoc = (
 // analyze the Cedar entities JSON documents and return semantic tokens
 export const entitiesTokensProvider: vscode.DocumentSemanticTokensProvider = {
   provideDocumentSemanticTokens(
-    cedarEntitiesDoc: vscode.TextDocument
+    cedarEntitiesDoc: vscode.TextDocument,
   ): vscode.ProviderResult<vscode.SemanticTokens> {
     return parseCedarEntitiesDoc(cedarEntitiesDoc).tokens;
   },
@@ -786,7 +788,7 @@ export type TemplateLinksCacheItem = {
 const templateLinksCache: Record<string, TemplateLinksCacheItem> = {};
 
 export const parseCedarTemplateLinksDoc = (
-  cedarTemplateLinksDoc: vscode.TextDocument
+  cedarTemplateLinksDoc: vscode.TextDocument,
 ): TemplateLinksCacheItem => {
   let cachedItem = templateLinksCache[cedarTemplateLinksDoc.uri.toString()];
   if (cachedItem && cachedItem.version === cedarTemplateLinksDoc.version) {
@@ -831,7 +833,7 @@ export const parseCedarTemplateLinksDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const jsonPathLen = pathSupplier().length;
       if (pathSupplier()[1] === 'link_id') {
@@ -842,7 +844,7 @@ export const parseCedarTemplateLinksDoc = (
           startLine,
           startCharacter,
           tokensBuilder,
-          referencedTypes
+          referencedTypes,
         );
       }
     },
@@ -852,7 +854,7 @@ export const parseCedarTemplateLinksDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
@@ -883,7 +885,7 @@ export const parseCedarTemplateLinksDoc = (
 export const templateLinksTokensProvider: vscode.DocumentSemanticTokensProvider =
   {
     provideDocumentSemanticTokens(
-      cedarTemplateLinksDoc: vscode.TextDocument
+      cedarTemplateLinksDoc: vscode.TextDocument,
     ): vscode.ProviderResult<vscode.SemanticTokens> {
       return parseCedarTemplateLinksDoc(cedarTemplateLinksDoc).tokens;
     },
@@ -902,7 +904,7 @@ export type AuthCacheItem = {
 const authCache: Record<string, AuthCacheItem> = {};
 
 export const parseCedarAuthDoc = (
-  cedarAuthDoc: vscode.TextDocument
+  cedarAuthDoc: vscode.TextDocument,
 ): AuthCacheItem => {
   let cachedItem = authCache[cedarAuthDoc.uri.toString()];
   if (cachedItem && cachedItem.version === cedarAuthDoc.version) {
@@ -921,7 +923,7 @@ export const parseCedarAuthDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const jsonPathLen = pathSupplier().length;
       const property = pathSupplier()[0] as string;
@@ -936,7 +938,7 @@ export const parseCedarAuthDoc = (
             const typeRange = makeRange(
               startLine,
               startCharacter + 1,
-              type.length
+              type.length,
             );
             tokensBuilder.push(typeRange, 'type', []);
 
@@ -949,7 +951,7 @@ export const parseCedarAuthDoc = (
                   range: makeRange(
                     startLine,
                     startCharacter + pos + 2,
-                    actionId.length
+                    actionId.length,
                   ),
                 });
               }
@@ -960,7 +962,7 @@ export const parseCedarAuthDoc = (
                   type,
                   startLine,
                   startCharacter + 1,
-                  type.length + 1
+                  type.length + 1,
                 ),
               });
             }
@@ -974,7 +976,7 @@ export const parseCedarAuthDoc = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
@@ -1000,7 +1002,7 @@ export const parseCedarAuthDoc = (
 // analyze the Cedar request JSON documents and return semantic tokens
 export const authTokensProvider: vscode.DocumentSemanticTokensProvider = {
   provideDocumentSemanticTokens(
-    cedarAuthDoc: vscode.TextDocument
+    cedarAuthDoc: vscode.TextDocument,
   ): vscode.ProviderResult<vscode.SemanticTokens> {
     return parseCedarAuthDoc(cedarAuthDoc).tokens;
   },
@@ -1053,7 +1055,7 @@ export const parseCedarSchemaDoc = (
   schemaDoc: vscode.TextDocument,
   visitSchema?:
     | undefined
-    | ((schemaRange: SchemaRange, schemaText: string) => void)
+    | ((schemaRange: SchemaRange, schemaText: string) => void),
 ): SchemaCacheItem => {
   // schema text is not cached, so check for no visitSchema callback
   if (visitSchema === undefined) {
@@ -1214,7 +1216,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
@@ -1285,7 +1287,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const jsonPathLen = pathSupplier().length;
       const range = makeRange(startLine, startCharacter, length);
@@ -1303,7 +1305,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
               value,
               startLine,
               startCharacter + 1,
-              length - 1
+              length - 1,
             ),
           });
         }
@@ -1329,7 +1331,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             value,
             startLine,
             startCharacter + 1,
-            length - 1
+            length - 1,
           ),
         });
       } else if (
@@ -1359,7 +1361,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
               value,
               startLine,
               startCharacter + 1,
-              length - 1
+              length - 1,
             ),
           });
         }
@@ -1402,7 +1404,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
               value,
               startLine,
               startCharacter + 1,
-              length - 1
+              length - 1,
             ),
           });
         }
@@ -1424,7 +1426,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             value.startsWith('__cedar::')
           ) {
             captureAttribute(
-              value.startsWith('__cedar::') ? value.substring(9) : value
+              value.startsWith('__cedar::') ? value.substring(9) : value,
             );
           } else {
             captureAttribute(ensureNamespace(value, namespace));
@@ -1452,7 +1454,7 @@ const parseCedarSchemaCedarDoc = (
   schemaDoc: vscode.TextDocument,
   visitSchema?:
     | undefined
-    | ((schemaRange: SchemaRange, schemaText: string) => void)
+    | ((schemaRange: SchemaRange, schemaText: string) => void),
 ): SchemaCacheItem => {
   // schema text is not cached, so check for no visitSchema callback
   if (visitSchema === undefined) {
@@ -1480,14 +1482,14 @@ const parseCedarSchemaCedarDoc = (
     i: number,
     match: string,
     startPos: number = 0,
-    margin: number = 0
+    margin: number = 0,
   ): vscode.Range | null {
     let range = null;
     const idx = textLine.indexOf(match, startPos);
     if (idx > -1) {
       range = new vscode.Range(
         new vscode.Position(i, idx + margin),
-        new vscode.Position(i, idx + match.length - margin)
+        new vscode.Position(i, idx + match.length - margin),
       );
     }
     return range;
@@ -1496,7 +1498,7 @@ const parseCedarSchemaCedarDoc = (
   function parseCedarSchemaEntityItem(
     item: string,
     line: number,
-    offset: number
+    offset: number,
   ) {
     offset += indexOfNonSpace(item);
     item = item.trim();
@@ -1510,7 +1512,7 @@ const parseCedarSchemaCedarDoc = (
   function parseCedarSchemaActionItem(
     item: string,
     line: number,
-    offset: number
+    offset: number,
   ) {
     const trimmed = item.trim();
     const quotePosition = item.indexOf('"');
@@ -1528,7 +1530,7 @@ const parseCedarSchemaCedarDoc = (
         range: makeRange(
           line,
           offset + quotePosition,
-          trimmed.length - quotePosition
+          trimmed.length - quotePosition,
         ),
       });
     } else {
@@ -1551,7 +1553,7 @@ const parseCedarSchemaCedarDoc = (
     if (linePreComment.length > 0) {
       if (linePreComment.startsWith('namespace')) {
         const match = linePreComment.match(
-          /^namespace\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*{/
+          /^namespace\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*{/,
         );
         if (match) {
           namespace = match[1] + '::';
@@ -1567,7 +1569,7 @@ const parseCedarSchemaCedarDoc = (
         if (end > -1) {
           const range = new vscode.Range(
             new vscode.Position(i, textLine.indexOf('@')),
-            new vscode.Position(i, end)
+            new vscode.Position(i, end),
           );
           tokensBuilder.push(range, 'decorator', []);
         }
@@ -1578,7 +1580,7 @@ const parseCedarSchemaCedarDoc = (
         symbol = vscode.SymbolKind.Struct;
         collection = 'commonTypes';
         const match = linePreComment.match(
-          /^type\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*=/
+          /^type\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*=/,
         );
         if (match) {
           const range = determineRange(textLine, i, match[1], match.index || 0);
@@ -1594,7 +1596,7 @@ const parseCedarSchemaCedarDoc = (
         symbol = vscode.SymbolKind.Class;
         collection = 'entityTypes';
         const match = linePreComment.match(
-          /^entity\s+(([_a-zA-Z][_a-zA-Z0-9]*,\s*)*[_a-zA-Z][_a-zA-Z0-9]*)\s*( enum| in|=|{|;|$)/
+          /^entity\s+(([_a-zA-Z][_a-zA-Z0-9]*,\s*)*[_a-zA-Z][_a-zA-Z0-9]*)\s*( enum| in|=|{|;|$)/,
         );
         if (match) {
           let startPos = match.index || 0;
@@ -1615,7 +1617,7 @@ const parseCedarSchemaCedarDoc = (
         symbol = vscode.SymbolKind.Function;
         collection = 'actions';
         const match = linePreComment.match(
-          /^action\s+((?:"[^"]*"|[_a-zA-Z][_a-zA-Z0-9]*)(?:\s*,\s*(?:"[^"]*"|[_a-zA-Z][_a-zA-Z0-9]*))*)\s*(?= in | appliesTo|;|$)/
+          /^action\s+((?:"[^"]*"|[_a-zA-Z][_a-zA-Z0-9]*)(?:\s*,\s*(?:"[^"]*"|[_a-zA-Z][_a-zA-Z0-9]*))*)\s*(?= in | appliesTo|;|$)/,
         );
         if (match) {
           let startPos = match.index || textLine.indexOf('action') + 6;
@@ -1664,12 +1666,12 @@ const parseCedarSchemaCedarDoc = (
         const inIndex = linePreComment.indexOf(' in ');
         if (inIndex > -1) {
           const match = linePreComment.match(
-            / in\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)/
+            / in\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)/,
           );
           if (match) {
             const matchIndex = textLine.indexOf(
               match[1],
-              textLine.indexOf(' in ')
+              textLine.indexOf(' in '),
             );
             if (linePreComment.startsWith('action')) {
               parseCedarSchemaActionItem(match[1], i, matchIndex);
@@ -1683,7 +1685,7 @@ const parseCedarSchemaCedarDoc = (
       if (declarationStartLine !== -1 && colonIndex > -1) {
         // inside a declaration
         const match = textLine.match(
-          /^\s*(?:("[^"]+"|[_a-zA-Z][_a-zA-Z0-9]*))[?]?\s*:\s*(?:Set\s*<\s*)?(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*(?:\s*>\s*)?/
+          /^\s*(?:("[^"]+"|[_a-zA-Z][_a-zA-Z0-9]*))[?]?\s*:\s*(?:Set\s*<\s*)?(?<type>([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)\s*(?:\s*>\s*)?/,
         );
         if (match && match.groups?.type) {
           let type = match.groups?.type;
@@ -1716,7 +1718,7 @@ const parseCedarSchemaCedarDoc = (
       ) {
         const range = new vscode.Range(
           new vscode.Position(declarationStartLine, 0),
-          new vscode.Position(i, textLine.length)
+          new vscode.Position(i, textLine.length),
         );
         Object.entries(declarations).forEach(([key, value]) => {
           const schemaRange: SchemaRange = {
@@ -1753,7 +1755,7 @@ const parseCedarSchemaCedarDoc = (
 export const traversePropertyChain = (
   completions: Record<string, SchemaCompletionRecord>,
   properties: string[],
-  entityType: string
+  entityType: string,
 ): { lastType: string; completion: SchemaCompletionRecord | undefined } => {
   let lastType = '';
   let completion: SchemaCompletionRecord | undefined = completions[entityType];
@@ -1778,7 +1780,7 @@ export const traversePropertyChain = (
 
 export const schemaTokensProvider: vscode.DocumentSemanticTokensProvider = {
   provideDocumentSemanticTokens(
-    cedarSchemaDoc: vscode.TextDocument
+    cedarSchemaDoc: vscode.TextDocument,
   ): vscode.ProviderResult<vscode.SemanticTokens> {
     return parseCedarSchemaDoc(cedarSchemaDoc).tokens;
   },

@@ -1,3 +1,8 @@
+## v0.10.3 (Preview) 2026-03-18
+
+- Update to Cedar SDK 4.9.1
+- IntelliSense for built-in function signatures
+
 ## v0.10.2 (Preview) 2026-02-26
 
 - Update to Cedar SDK 4.9.0

@@ -64,16 +64,19 @@ class CedarJSONDocument {
       }
       exportResult.free();
     } else if (document.languageId === 'cedarschema') {
-      let translateResult: cedar.TranslateSchemaResult;
-      translateResult = cedar.translateSchemaToJSON(document.getText());
-      if (translateResult.success && translateResult.schema) {
-        exportJson = JSON.stringify(
-          JSON.parse(translateResult.schema),
-          null,
-          2
-        );
-      } else {
-        exportJson = 'Invalid Cedar schema';
+      const translateResult = cedar.translateSchemaToJSON(document.getText());
+      try {
+        if (translateResult.success && translateResult.schema) {
+          exportJson = JSON.stringify(
+            JSON.parse(translateResult.schema),
+            null,
+            2
+          );
+        } else {
+          exportJson = 'Invalid Cedar schema';
+        }
+      } finally {
+        translateResult.free();
       }
     }
     return exportJson;
