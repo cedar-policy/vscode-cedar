@@ -3,6 +3,9 @@ const { defineConfig } = require('@vscode/test-cli');
 
 module.exports = defineConfig({
   files: 'out/test/**/*.test.js',
+  mocha: {
+    timeout: 10000
+  },
   // --disable-gpu prevents the following error
   // ERROR:gl_display.cc(497)] EGL Driver message (Error) eglQueryDeviceAttribEXT: Bad attribute.
   launchArgs: [

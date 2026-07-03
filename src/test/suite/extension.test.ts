@@ -5,8 +5,16 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as completion from '../../completion';
+import { before } from 'mocha';
 
 suite('Cedar Completion Suite', () => {
+  before(async () => {
+    const ext = vscode.extensions.getExtension('cedar-policy.vscode-cedar');
+    if (ext && !ext.isActive) {
+      await ext.activate();
+    }
+  });
+
   vscode.window.showInformationMessage('Start Cedar Completion tests.');
 
   const mockToken: vscode.CancellationToken =
