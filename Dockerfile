@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:24
 RUN apt-get -y update
 RUN apt-get -y install --fix-missing xvfb 
 RUN apt-get -y install libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm-dev libasound2
@@ -18,7 +18,7 @@ mkdir ~/.vscode && echo '{ "disable-hardware-acceleration": true }' > ~/.vscode/
 # Build and Test
 npm ci
 rustup update stable && rustup default stable
-cargo install wasm-pack --version 0.13.1
+cargo install wasm-pack --version 0.15.0
 npm run wasm-build
 npm run compile
 xvfb-run -a npm run test
