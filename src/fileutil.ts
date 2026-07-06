@@ -72,47 +72,51 @@ export const handleDidRenameFiles = async (
   e: vscode.FileRenameEvent,
   diagnosticCollection: vscode.DiagnosticCollection
 ) => {
-  e.files.forEach(async (file) => {
-    if (
-      (await vscode.workspace.fs.stat(file.newUri)).type ===
-      vscode.FileType.Directory
-    ) {
-      diagnosticCollection.forEach((uri) => {
-        if (uri.path.startsWith(file.oldUri.path)) {
-          const newUri = vscode.Uri.file(
-            uri.path.replace(file.oldUri.path, file.newUri.path)
-          );
-          diagnosticCollection.set(newUri, diagnosticCollection.get(uri));
-          diagnosticCollection.delete(uri);
-        }
-      });
-    } else if (diagnosticCollection.has(file.oldUri)) {
-      diagnosticCollection.set(
-        file.newUri,
-        diagnosticCollection.get(file.oldUri)
-      );
-      diagnosticCollection.delete(file.oldUri);
-    }
-  });
+  await Promise.all(
+    e.files.map(async (file) => {
+      if (
+        (await vscode.workspace.fs.stat(file.newUri)).type ===
+        vscode.FileType.Directory
+      ) {
+        diagnosticCollection.forEach((uri) => {
+          if (uri.path.startsWith(file.oldUri.path)) {
+            const newUri = vscode.Uri.file(
+              uri.path.replace(file.oldUri.path, file.newUri.path)
+            );
+            diagnosticCollection.set(newUri, diagnosticCollection.get(uri));
+            diagnosticCollection.delete(uri);
+          }
+        });
+      } else if (diagnosticCollection.has(file.oldUri)) {
+        diagnosticCollection.set(
+          file.newUri,
+          diagnosticCollection.get(file.oldUri)
+        );
+        diagnosticCollection.delete(file.oldUri);
+      }
+    })
+  );
 };
 
 export const handleWillDeleteFiles = async (
   e: vscode.FileDeleteEvent,
   diagnosticCollection: vscode.DiagnosticCollection
 ) => {
-  e.files.forEach(async (file) => {
-    if (
-      (await vscode.workspace.fs.stat(file)).type === vscode.FileType.Directory
-    ) {
-      diagnosticCollection.forEach((uri) => {
-        if (uri.fsPath.startsWith(file.fsPath)) {
-          diagnosticCollection.delete(uri);
-        }
-      });
-    } else if (diagnosticCollection.has(file)) {
-      diagnosticCollection.delete(file);
-    }
-  });
+  await Promise.all(
+    e.files.map(async (file) => {
+      if (
+        (await vscode.workspace.fs.stat(file)).type === vscode.FileType.Directory
+      ) {
+        diagnosticCollection.forEach((uri) => {
+          if (uri.fsPath.startsWith(file.fsPath)) {
+            diagnosticCollection.delete(uri);
+          }
+        });
+      } else if (diagnosticCollection.has(file)) {
+        diagnosticCollection.delete(file);
+      }
+    })
+  );
 };
 
 export const getSchemaUri = async (

@@ -15,12 +15,12 @@ jobs:
  
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Install Node 20
-        uses: actions/setup-node@v4
+      - name: Install Node 24
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install XVFB for testing with VS Code
@@ -29,19 +29,19 @@ jobs:
           sudo apt-get -y install --fix-missing xvfb
 
       - name: Cache wasm-pack binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/bin/wasm-pack
-          key: wasm-pack-${{ runner.os }}-v0.14.0
+          key: wasm-pack-${{ runner.os }}-v0.15.0
 
       - name: Update rust and install wasm-pack
         run: |
           rustup update stable && rustup default stable
-          which wasm-pack || cargo install wasm-pack --version 0.14.0
+          which wasm-pack || cargo install wasm-pack --version 0.15.0
 
       - name: Cache cargo build artifacts
         # https://doc.rust-lang.org/cargo/guide/build-cache.html
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             vscode-cedar-wasm/target
@@ -59,7 +59,7 @@ jobs:
           echo "VSCODE_VERSION=`curl --silent https://update.code.visualstudio.com/api/releases/stable | jq -r '.[0]'`" >> "$GITHUB_OUTPUT"
 
       - name: Cache VS Code download
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             .vscode-test
@@ -85,7 +85,7 @@ jobs:
           fi
 
       - name: Upload VSIX as a workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vsix
           path: ./*.vsix

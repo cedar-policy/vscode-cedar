@@ -28,13 +28,13 @@ curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
 ### macOS wasm build support
 
-Install `llvm`
+Install `llvm` on Apple Silicon Macs
 
 ```bash
 brew install llvm
-export PATH="/usr/local/opt/llvm/bin/:$PATH"
-export CC=/usr/local/opt/llvm/bin/clang
-export AR=/usr/local/opt/llvm/bin/llvm-ar
+export PATH="/opt/homebrew/opt/llvm/bin/:$PATH"
+export CC=/opt/homebrew/opt/llvm/bin/clang
+export AR=/opt/homebrew/opt/llvm/bin/llvm-ar
 ```
 
 ```bash

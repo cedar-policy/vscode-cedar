@@ -19,6 +19,7 @@ import {
   UNRECOGNIZED_REGEX,
 } from '../../regex';
 
+import { before } from 'mocha';
 import { determineEntityTypes } from '../../validate';
 
 const readTestDataFile = (dirname: string, filename: string): string => {
@@ -27,6 +28,13 @@ const readTestDataFile = (dirname: string, filename: string): string => {
 };
 
 suite('Validation Schema Cedar Test Suite', () => {
+  before(async () => {
+    const ext = vscode.extensions.getExtension('cedar-policy.vscode-cedar');
+    if (ext && !ext.isActive) {
+      await ext.activate();
+    }
+  });
+
   test('validate shadow warnings', async () => {
     const schema = readTestDataFile('shadow', 'Demo.cedarschema');
     const result: cedar.ValidateSchemaResult =

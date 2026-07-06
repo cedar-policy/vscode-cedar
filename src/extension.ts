@@ -94,6 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
   cedar.setPanicHook();
 
   let diagnosticCollection = createDiagnosticCollection();
+  context.subscriptions.push(diagnosticCollection);
 
   vscode.window.visibleTextEditors.forEach((editor) => {
     if (editor) {
@@ -309,28 +310,30 @@ export async function activate(context: vscode.ExtensionContext) {
         );
         if (results) {
           const cedarDoc = textEditor.document;
-          results.forEach(async (result) => {
-            const exportFilename = cedarDoc.uri.fsPath.replace(
-              /\.cedar$/,
-              `(${result.label}).cedar.json`
-            );
-            const exportJson = await exportCedarDocPolicyById(
-              cedarDoc,
-              result.label,
-              exportFilename
-            );
+          await Promise.all(
+            results.map(async (result) => {
+              const exportFilename = cedarDoc.uri.fsPath.replace(
+                /\.cedar$/,
+                `(${result.label}).cedar.json`
+              );
+              const exportJson = await exportCedarDocPolicyById(
+                cedarDoc,
+                result.label,
+                exportFilename
+              );
 
-            if (!exportJson) {
-              vscode.window.showErrorMessage(
-                `Unable to export Cedar policy: ${result.label}`
-              );
-            } else if (results.length === 1) {
-              vscode.commands.executeCommand(
-                'vscode.open',
-                vscode.Uri.file(exportFilename)
-              );
-            }
-          });
+              if (!exportJson) {
+                vscode.window.showErrorMessage(
+                  `Unable to export Cedar policy: ${result.label}`
+                );
+              } else if (results.length === 1) {
+                vscode.commands.executeCommand(
+                  'vscode.open',
+                  vscode.Uri.file(exportFilename)
+                );
+              }
+            })
+          );
         }
       }
     )

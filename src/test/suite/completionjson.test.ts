@@ -11,6 +11,10 @@ import { parseCedarSchemaDoc, SchemaCacheItem } from '../../parser';
 suite('snippetify Suite', () => {
   let schema: SchemaCacheItem;
   before(async () => {
+    const ext = vscode.extensions.getExtension('cedar-policy.vscode-cedar');
+    if (ext && !ext.isActive) {
+      await ext.activate();
+    }
     const schemaDoc = await vscode.workspace.openTextDocument(
       path.join(process.cwd(), 'testdata', 'datatypes', 'cedarschema')
     );
