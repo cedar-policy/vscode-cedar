@@ -231,59 +231,65 @@ export const validateCedarDoc = async (
   const syntaxResult: cedar.ValidateSyntaxResult = cedar.validateSyntax(
     cedarDoc.getText()
   );
-  let success = syntaxResult.success;
-  if (syntaxResult.errors) {
-    addSyntaxDiagnosticErrors(diagnostics, syntaxResult.errors, cedarDoc);
-  } else {
-    const schemaDoc = await getSchemaTextDocument(cedarDoc);
-    if (schemaDoc) {
-      if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
-        validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
+  try {
+    let success = syntaxResult.success;
+    if (syntaxResult.errors) {
+      addSyntaxDiagnosticErrors(diagnostics, syntaxResult.errors, cedarDoc);
+    } else {
+      const schemaDoc = await getSchemaTextDocument(cedarDoc);
+      if (schemaDoc) {
+        if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
+          validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
 
-        parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
-          let policyResult: cedar.ValidatePolicyResult;
-          if (schemaDoc.languageId === 'cedarschema') {
-            policyResult = cedar.validatePolicySchemaCedar(
-              schemaDoc.getText(),
-              policyText
-            );
-          } else {
-            policyResult = cedar.validatePolicySchemaJSON(
-              schemaDoc.getText(),
-              policyText
-            );
-          }
-          if (policyResult.warnings) {
-            addPolicyResultMessages(
-              diagnostics,
-              policyResult.warnings,
-              policyText,
-              policyRange.effectRange,
-              policyRange.range.start.line,
-              true
-            );
-          }
-          if (policyResult.success === false && policyResult.errors) {
-            addPolicyResultMessages(
-              diagnostics,
-              policyResult.errors,
-              policyText,
-              policyRange.effectRange,
-              policyRange.range.start.line,
-              false
-            );
-          }
-          policyResult.free();
-        });
+          parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
+            let policyResult: cedar.ValidatePolicyResult;
+            if (schemaDoc.languageId === 'cedarschema') {
+              policyResult = cedar.validatePolicySchemaCedar(
+                schemaDoc.getText(),
+                policyText
+              );
+            } else {
+              policyResult = cedar.validatePolicySchemaJSON(
+                schemaDoc.getText(),
+                policyText
+              );
+            }
+            try {
+              if (policyResult.warnings) {
+                addPolicyResultMessages(
+                  diagnostics,
+                  policyResult.warnings,
+                  policyText,
+                  policyRange.effectRange,
+                  policyRange.range.start.line,
+                  true
+                );
+              }
+              if (policyResult.success === false && policyResult.errors) {
+                addPolicyResultMessages(
+                  diagnostics,
+                  policyResult.errors,
+                  policyText,
+                  policyRange.effectRange,
+                  policyRange.range.start.line,
+                  false
+                );
+              }
+            } finally {
+              policyResult.free();
+            }
+          });
+        }
       }
     }
+    diagnosticCollection.set(cedarDoc.uri, diagnostics);
+
+    validationCache.store(cedarDoc, success);
+
+    return Promise.resolve(success);
+  } finally {
+    syntaxResult.free();
   }
-  diagnosticCollection.set(cedarDoc.uri, diagnostics);
-  syntaxResult.free();
-
-  validationCache.store(cedarDoc, success);
-
-  return Promise.resolve(success);
 };
 
 export const validateSchemaDoc = (
@@ -307,46 +313,49 @@ export const validateSchemaDoc = (
   } else {
     schemaResult = cedar.validateSchemaJSON(schema);
   }
-  const success = schemaResult.success;
-  if (schemaResult.success === false && schemaResult.errors) {
-    let schemaDiagnostics: vscode.Diagnostic[] = [];
-    let vse = schemaResult.errors.map((e) => {
-      return { message: e.message, offset: e.offset, length: e.length };
-    });
-    addSyntaxDiagnosticErrors(schemaDiagnostics, vse, schemaDoc);
-    diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
-  } else {
-    // reset any errors for the schema from a previous validateSchema
-    diagnosticCollection.delete(schemaDoc.uri);
-
-    if (schemaResult.warnings) {
+  try {
+    const success = schemaResult.success;
+    if (schemaResult.success === false && schemaResult.errors) {
       let schemaDiagnostics: vscode.Diagnostic[] = [];
-      schemaResult.warnings.map((w) => {
-        const range = determineRangeFromOffset(schemaDoc, w.offset, w.length);
-        addValidationDiagnosticWarning(schemaDiagnostics, w.message, range);
+      let vse = schemaResult.errors.map((e) => {
+        return { message: e.message, offset: e.offset, length: e.length };
       });
+      addSyntaxDiagnosticErrors(schemaDiagnostics, vse, schemaDoc);
       diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
+    } else {
+      // reset any errors for the schema from a previous validateSchema
+      diagnosticCollection.delete(schemaDoc.uri);
+
+      if (schemaResult.warnings) {
+        let schemaDiagnostics: vscode.Diagnostic[] = [];
+        schemaResult.warnings.map((w) => {
+          const range = determineRangeFromOffset(schemaDoc, w.offset, w.length);
+          addValidationDiagnosticWarning(schemaDiagnostics, w.message, range);
+        });
+        diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
+      }
+
+      // determine applicable principal and resource types
+      const principalTypes = determineEntityTypes(schemaDoc, 'principal');
+      const resourceTypes = determineEntityTypes(schemaDoc, 'resource');
+      const actionIds = determineEntityTypes(schemaDoc, 'action');
+      validationCache.storeEntityTypes(
+        schemaDoc,
+        principalTypes,
+        resourceTypes,
+        actionIds
+      );
+
+      // revalidate any Cedar files using this schema
+      validationCache.revalidateSchema(schemaDoc, diagnosticCollection);
     }
 
-    // determine applicable principal and resource types
-    const principalTypes = determineEntityTypes(schemaDoc, 'principal');
-    const resourceTypes = determineEntityTypes(schemaDoc, 'resource');
-    const actionIds = determineEntityTypes(schemaDoc, 'action');
-    validationCache.storeEntityTypes(
-      schemaDoc,
-      principalTypes,
-      resourceTypes,
-      actionIds
-    );
+    validationCache.store(schemaDoc, success);
 
-    // revalidate any Cedar files using this schema
-    validationCache.revalidateSchema(schemaDoc, diagnosticCollection);
+    return success;
+  } finally {
+    schemaResult.free();
   }
-  schemaResult.free();
-
-  validationCache.store(schemaDoc, success);
-
-  return success;
 };
 
 // TODO: find a real API to call for determineEntityTypes
@@ -375,21 +384,24 @@ export const determineEntityTypes = (
       tmpPolicy
     );
   }
-  if (policyResult.success === false && policyResult.errors) {
-    policyResult.errors.forEach((e) => {
-      let found =
-        scope === 'action'
-          ? e.message.match(ATTRIBUTE_REGEX)
-          : e.message.match(UNEXPECTED_REGEX);
+  try {
+    if (policyResult.success === false && policyResult.errors) {
+      policyResult.errors.forEach((e) => {
+        let found =
+          scope === 'action'
+            ? e.message.match(ATTRIBUTE_REGEX)
+            : e.message.match(UNEXPECTED_REGEX);
 
-      if (found?.groups && found?.groups.suggestion) {
-        if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
-          types.push(found.groups.suggestion);
+        if (found?.groups && found?.groups.suggestion) {
+          if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
+            types.push(found.groups.suggestion);
+          }
         }
-      }
-    });
+      });
+    }
+  } finally {
+    policyResult.free();
   }
-  policyResult.free();
   return types.sort();
 };
 
@@ -428,15 +440,18 @@ export const validateEntitiesDoc = async (
           entities
         );
       }
-      success = entitiesResult.success;
-      if (entitiesResult.success === false && entitiesResult.errors) {
-        addSyntaxDiagnosticErrors(
-          entitiesDiagnostics,
-          entitiesResult.errors,
-          entitiesDoc
-        );
+      try {
+        success = entitiesResult.success;
+        if (entitiesResult.success === false && entitiesResult.errors) {
+          addSyntaxDiagnosticErrors(
+            entitiesDiagnostics,
+            entitiesResult.errors,
+            entitiesDoc
+          );
+        }
+      } finally {
+        entitiesResult.free();
       }
-      entitiesResult.free();
     }
   } else {
     if (userInitiated) {
