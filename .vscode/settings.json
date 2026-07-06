@@ -7,7 +7,7 @@
     "out": true // set this to false to include "out" folder in search results
   },
   // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-  "typescript.tsc.autoDetect": "off",
+  "js/ts.tsc.autoDetect": "off",
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,
@@ -30,9 +30,9 @@
     "Dockerfile": ".dockerignore"
   },
   "terminal.integrated.env.osx": {
-    "PATH": "/usr/local/opt/llvm/bin/:$PATH",
-    "CC": "/usr/local/opt/llvm/bin/clang",
-    "AR": "/usr/local/opt/llvm/bin/llvm-ar"
+    "PATH": "/opt/homebrew/opt/llvm/bin/:$PATH",
+    "CC": "/opt/homebrew/opt/llvm/bin/clang",
+    "AR": "/opt/homebrew/opt/llvm/bin/llvm-ar"
   },
   "git.alwaysSignOff": true
 }
