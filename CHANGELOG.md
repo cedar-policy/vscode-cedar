@@ -1,3 +1,8 @@
+## v0.10.5 (Preview) 2026-08-06
+
+- Update to Cedar SDK 4.12.0
+- Update syntax highlighting
+
 ## v0.10.4 (Preview) 2026-07-06
 
 - Update to Cedar SDK 4.11.2
