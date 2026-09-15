@@ -73,7 +73,7 @@ suite('Validation Schema Cedar Test Suite', () => {
     if (result.errors) {
       let e = result.errors[0];
       assert.ok(
-        e.message.includes('this uses a reserved schema keyword: `Set`')
+        e.message.includes('this uses a reserved schema keyword: `Set`'),
       );
       assert.equal(e.offset, 188);
       assert.equal(e.length, 3);
@@ -106,7 +106,7 @@ suite('Validation RegEx Test Suite', () => {
 
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schema,
-      policy
+      policy,
     );
     assert.equal(result.success, true);
     assert.equal(result.warnings?.length, 1);
@@ -126,12 +126,12 @@ suite('Validation RegEx Test Suite', () => {
 
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schema,
-      policy
+      policy,
     );
     assert.equal(result.success, false);
 
     if (result.errors) {
-      assert.equal(result.errors.length, 3);
+      assert.equal(result.errors.length, 2);
 
       // for policy `policy0`, unable to find an applicable action given the policy scope constraints
       // for policy `policy0`, unrecognized entity type `Tst`\ndid you mean `Test`?
@@ -183,7 +183,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate policy schema JSON undeclared entity type', async () => {
     const schema = readTestDataFile(
       'undeclared',
-      'entitytype.cedarschema.json'
+      'entitytype.cedarschema.json',
     );
 
     const result: cedar.ValidateSchemaResult = cedar.validateSchemaJSON(schema);
@@ -251,7 +251,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate entity expected attributes', async () => {
     const entities = readTestDataFile(
       'entityattr',
-      'expected.cedarentities.json'
+      'expected.cedarentities.json',
     );
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
@@ -266,7 +266,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'expected entity `Test::"expected"` to have attribute `test`, but it does not'
+        'expected entity `Test::"expected"` to have attribute `test`, but it does not',
       );
       let found = errorMsg.match(EXPECTED_ATTR_REGEX);
       assert.ok(found?.groups);
@@ -283,7 +283,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate entity expected nested attributes', async () => {
     const entities = readTestDataFile(
       'entityattr',
-      'expected2.cedarentities.json'
+      'expected2.cedarentities.json',
     );
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
@@ -298,7 +298,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not'
+        'in attribute `nested` on `Test::"expected"`, expected the record to have an attribute `test`, but it does not',
       );
       let found = errorMsg.match(EXPECTED_ATTR2_REGEX);
       assert.ok(found?.groups);
@@ -316,7 +316,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate entity mismatch type attributes', async () => {
     const entities = readTestDataFile(
       'entityattr',
-      'mismatch.cedarentities.json'
+      'mismatch.cedarentities.json',
     );
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
@@ -331,7 +331,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but it actually has type long: `1`'
+        'in attribute `test` on `Test::"mismatch"`, type mismatch: value was expected to have type string, but it actually has type long: `1`',
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert.ok(found?.groups);
@@ -348,7 +348,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate entity mismatch entity type attributes', async () => {
     const entities = readTestDataFile(
       'entityattr',
-      'mismatchentity.cedarentities.json'
+      'mismatchentity.cedarentities.json',
     );
     const schema = readTestDataFile('entityattr', 'cedarschema.json');
 
@@ -363,7 +363,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but it actually has type (entity of type `Tst`): `Tst::"mismatchtype"`'
+        'in attribute `self` on `Test::"mismatchentity"`, type mismatch: value was expected to have type `Test`, but it actually has type (entity of type `Tst`): `Tst::"mismatchtype"`',
       );
       let found = errorMsg.match(MISMATCH_ATTR_REGEX);
       assert.ok(found?.groups);
@@ -392,7 +392,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'attribute `tst` on `Test::"exist"` should not exist according to the schema'
+        'attribute `tst` on `Test::"exist"` should not exist according to the schema',
       );
       let found = errorMsg.match(EXIST_ATTR_REGEX);
       assert.ok(found?.groups);
@@ -409,7 +409,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate entity exist type', async () => {
     const entities = readTestDataFile(
       'entitytype',
-      'missingnamespace.cedarentities.json'
+      'missingnamespace.cedarentities.json',
     );
     const schema = readTestDataFile('entitytype', 'cedarschema.json');
 
@@ -424,7 +424,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema'
+        'entity `Employee::"12UA45"` has type `Employee` which is not declared in the schema',
       );
       let found = errorMsg.match(NOTDECLARED_TYPE_REGEX);
       assert.ok(found?.groups);
@@ -440,7 +440,7 @@ suite('Validation RegEx Test Suite', () => {
   test('validate entity parent type', async () => {
     const entities = readTestDataFile(
       'entitytype',
-      'notallowedparent.cedarentities.json'
+      'notallowedparent.cedarentities.json',
     );
     const schema = readTestDataFile('entitytype', 'cedarschema.json');
 
@@ -455,7 +455,7 @@ suite('Validation RegEx Test Suite', () => {
       errorMsg = errorMsg.substring(errorMsg.indexOf(': ') + 2);
       assert.equal(
         errorMsg,
-        '`XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema'
+        '`XYZCorp::Employee::"12UA45"` is not allowed to have an ancestor of type `XYZCorp::Employee` according to the schema',
       );
       let found = errorMsg.match(NOTALLOWED_PARENT_REGEX);
       assert.ok(found?.groups);
@@ -471,14 +471,14 @@ suite('Validation RegEx Test Suite', () => {
 
 suite('Validate Policy Entities Test Suite', () => {
   const fetchEntityTypes = async (
-    head: string
+    head: string,
   ): Promise<{
     principals: string[];
     resources: string[];
     actions: string[];
   }> => {
     const schemaDoc = await vscode.workspace.openTextDocument(
-      path.join(process.cwd(), 'testdata', 'narrow', 'cedarschema.json')
+      path.join(process.cwd(), 'testdata', 'narrow', 'cedarschema.json'),
     );
 
     const principalTypes = determineEntityTypes(schemaDoc, 'principal', head);
