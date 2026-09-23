@@ -6,13 +6,13 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cedar-policy/vscode-cedar"
+    "url": "https://github.com/cedar-policy/vscode-cedar.git"
   },
   "bugs": {
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.10.4",
+  "version": "0.10.6",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -294,7 +294,8 @@
     "package": "vsce package --follow-symlinks",
     "package-prerelease": "vsce package --pre-release --follow-symlinks",
     "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",
-    "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../.."
+    "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../..",
+    "test:grammar": "npm run compile && mocha --ui tdd out/test/suite/tmgrammar.test.js"
   },
   "dependencies": {
     "jsonc-parser": "^3.3.1",
@@ -304,20 +305,22 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "=18.15.0",
     "@types/vscode": "=1.83.0",
-    "@typescript-eslint/eslint-plugin": "^8.62.1",
-    "@typescript-eslint/parser": "^8.62.1",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
     "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
-    "eslint": "^9.39.4",
-    "js-yaml": "^4.3.0",
-    "mocha": "^11.7.6",
-    "typescript": "^5.9.3"
+    "eslint": "^9.39.5",
+    "js-yaml": "^4.3.2",
+    "mocha": "^11.8.0",
+    "typescript": "^5.9.3",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   },
   "allowScripts": {
     "fsevents@2.3.3": true,
-    "@vscode/vsce-sign@2.0.9": true,
-    "keytar@7.9.0": true
+    "keytar@7.9.0": true,
+    "@vscode/vsce-sign@2.1.0": true
   },
   "overrides": {
     "diff": ">=8.0.3",

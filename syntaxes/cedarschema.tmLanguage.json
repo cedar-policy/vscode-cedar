@@ -1,16 +1,29 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "Cedar Schema",
+	"comment": "Grammar reference: https://docs.cedarpolicy.com/schema/human-readable-schema-grammar.html",
 	"patterns": [
 		{
 			"include": "#comment"
 		},
 		{
+			"include": "#stringProperties"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#annotations"
+		},
+		{
 			"include": "#namespace"
 		},
 		{
+			"include": "#builtinTypes"
+		},
+		{
 			"include": "#keywords"
-		},	
+		},
 		{
 			"include": "#sections"
 		},
@@ -18,7 +31,13 @@
 			"include": "#properties"
 		},
 		{
-			"include": "#strings"
+			"include": "#entityTypes"
+		},
+		{
+			"include": "#operators"
+		},
+		{
+			"include": "#punctuation"
 		}
 	],
 	"repository": {
@@ -26,12 +45,25 @@
 			"name": "comment.line.double-slash.cedarschema",
 			"match": "//.*(?=$)"
 		},
+		"annotations": {
+			"comment": "Annotation := '@' IDENT '(' STR ')' -- legal before a namespace, an entity, an action, a type declaration and each attribute declaration. The value is optional in practice.",
+			"patterns": [{
+				"name": "meta.decorator.cedarschema",
+				"match": "([@][_a-zA-Z][_a-zA-Z0-9]*)",
+				"captures": {
+					"1" : {
+						"name": "entity.name.function.decorator.cedarschema"
+					}
+				}
+			}]
+		},
 		"namespace": {
+			"comment": "Namespace := (Annotations 'namespace' Path '{' {Decl} '}') | Decl",
 			"patterns": [{
 				"match": "\\b(namespace)\\s+(([_a-zA-Z][_a-zA-Z0-9]*::)*[_a-zA-Z][_a-zA-Z0-9]*)",
 				"captures": {
 					"1" : {
-						"name": "keyword.cedarschema"
+						"name": "keyword.control.cedarschema"
 					},
 					"2" : {
 						"name": "entity.name.namespace.cedarschema"
@@ -40,34 +72,54 @@
 			}]
 		},
 		"sections": {
+			"comment": "not anchored to the start of a line: the grammar is not line oriented, so `namespace N { entity U; }` must work too",
 			"patterns": [{
-				"name": "keyword.cedarschema",
-				"match": "^\\s*(type|entity|action)(?=\\s+)"
+				"name": "keyword.control.cedarschema",
+				"match": "\\b(type|entity|action)\\b(?=\\s+)"
 			}]
 		},
 		"keywords": {
 			"patterns": [{
-				"name": "keyword.cedarschema",
-				"match": "\\b(appliesTo)\\b"
+				"name": "keyword.control.cedarschema",
+				"match": "\\b(appliesTo)\\b(?=\\s*\\{)",
+				"comment": "AppliesTo := 'appliesTo' '{' AppDecls '}'"
 			},
 			{
-				"match": "\\b(enum|in)\\s*\\[",
-				"captures": {
-					"1" : {
-						"name": "keyword.cedarschema"
-					}
-				}
+				"name": "keyword.control.cedarschema",
+				"match": "\\benum\\b(?=\\s*\\[)",
+				"comment": "Entity := ... 'entity' Idents 'enum' '[' STR+ ']' ';'"
 			},
 			{
-				"match": "}\\s*(tags)\\b",
+				"name": "keyword.control.cedarschema",
+				"match": "\\bin\\b",
+				"comment": "['in' EntOrTyps] where EntOrTyps := EntType | '[' [EntTypes] ']', so a bare parent needs no bracket"
+			},
+			{
+				"name": "keyword.control.cedarschema",
+				"match": "(?<!\\b(?:entity|action|type)\\s+)(?<!,\\s*)\\btags\\b(?!\\s*[?]?[:;,=})\\]])",
+				"comment": "Entity := ... [['='] RecType] ['tags' Type] ';' -- RecType is optional, so tags is not gated on a preceding '}'. The negative assertion rules out tags used as an attribute, entity, action or type name."
+			}]
+		},
+		"builtinTypes": {
+			"comment": "PRIMTYPE := 'Long' | 'String' | 'Bool'; RESERVED adds Boolean, Entity, Extension, Record and Set; the extension types are ipaddr, decimal, datetime and duration. Restricted to type position so that `entity String;` and an attribute named `Set` keep their own meaning.",
+			"patterns": [{
+				"name": "support.type.cedarschema",
+				"match": "(?<=[:=<]\\s*|\\btags\\s+)(?<!::\\s*)(Boolean|Bool|Long|String|Record|Entity|Extension|Set|ipaddr|decimal|datetime|duration)\\b"
+			}]
+		},
+		"entityTypes": {
+			"comment": "EntType := Path",
+			"patterns": [{
+				"match": "\\b(([_a-zA-Z][_a-zA-Z0-9]*::)+[_a-zA-Z][_a-zA-Z0-9]*)\\b",
 				"captures": {
 					"1" : {
-						"name": "keyword.cedarschema"
+						"name": "entity.name.type.cedarschema"
 					}
 				}
 			}]
 		},
 		"properties": {
+			"comment": "AttrDecls := Annotations Name ['?'] ':' Type",
 			"patterns": [{
 				"match": "\\b([_a-zA-Z][_a-zA-Z0-9]*)(?=[?]?:(?!:))",
 				"captures": {
@@ -77,13 +129,62 @@
 				}
 			}]
 		},
+		"stringProperties": {
+			"comment": "Name := IDENT | STR, so a quoted attribute name is a property rather than a string value. Included before #strings, which would otherwise claim it.",
+			"patterns": [{
+				"match": "(\"(?:[^\"\\\\]|\\\\.)*\")(?=\\s*[?]?:(?!:))",
+				"captures": {
+					"1" : {
+						"name": "variable.other.property.cedarschema"
+					}
+				}
+			}]
+		},
+		"operators": {
+			"patterns": [{
+				"name": "keyword.operator.assignment.cedarschema",
+				"match": "="
+			}]
+		},
+		"punctuation": {
+			"patterns": [{
+				"name": "punctuation.separator.namespace.cedarschema",
+				"match": "::"
+			},
+			{
+				"name": "punctuation.definition.typeparameters.cedarschema",
+				"match": "[<>]",
+				"comment": "SetType := 'Set' '<' Type '>'"
+			},
+			{
+				"name": "punctuation.separator.comma.cedarschema",
+				"match": ","
+			},
+			{
+				"name": "punctuation.terminator.cedarschema",
+				"match": ";"
+			},
+			{
+				"name": "punctuation.separator.key-value.cedarschema",
+				"match": ":"
+			},
+			{
+				"name": "punctuation.section.brackets.cedarschema",
+				"match": "[\\[\\]{}()]"
+			}]
+		},
 		"strings": {
+			"comment": "STR := Fully-escaped Unicode surrounded by '\"'s, adopting the policy grammar's escaping rules. A string cannot span a line, so the rule also ends at end of line.",
 			"name": "string.quoted.double.cedarschema",
 			"begin": "\"",
-			"end": "\"",
+			"end": "\"|$",
 			"patterns": [
 				{
 					"name": "constant.character.escape.cedarschema",
+					"match": "\\\\([\"\\\\nrt0]|x[0-9A-Fa-f]{2}|u\\{[0-9A-Fa-f]{1,6}\\})"
+				},
+				{
+					"name": "invalid.illegal.unknown-escape.cedarschema",
 					"match": "\\\\."
 				}
 			]

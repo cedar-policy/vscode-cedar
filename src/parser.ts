@@ -182,14 +182,6 @@ export const parseCedarPoliciesDoc = (
           }
         }
       }
-      const end = textLine.indexOf('(');
-      if (end > -1) {
-        const range = new vscode.Range(
-          new vscode.Position(i, textLine.indexOf('@')),
-          new vscode.Position(i, end),
-        );
-        tokensBuilder.push(range, 'decorator', []);
-      }
     } else if (trimmed.startsWith('permit') || trimmed.startsWith('forbid')) {
       const startPos = Math.max(
         0,
@@ -1564,16 +1556,6 @@ const parseCedarSchemaCedarDoc = (
         namespace = '';
       }
 
-      if (linePreComment.startsWith('@')) {
-        const end = textLine.indexOf('(');
-        if (end > -1) {
-          const range = new vscode.Range(
-            new vscode.Position(i, textLine.indexOf('@')),
-            new vscode.Position(i, end),
-          );
-          tokensBuilder.push(range, 'decorator', []);
-        }
-      }
       // https://docs.cedarpolicy.com/schema/human-readable-schema.html#schema-commonTypes
       if (linePreComment.startsWith('type')) {
         declarationStartLine = i;
@@ -1697,10 +1679,8 @@ const parseCedarSchemaCedarDoc = (
           ) {
             const idx = textLine.indexOf(type, colonIndex);
             if (idx > -1) {
-              const range = makeRange(i, idx, type.length);
-              if (EXTENSIONS.includes(type)) {
-                tokensBuilder.push(range, 'function', []);
-              } else {
+              if (!EXTENSIONS.includes(type)) {
+                const range = makeRange(i, idx, type.length);
                 tokensBuilder.push(range, 'type', []);
 
                 referencedTypes.push({
