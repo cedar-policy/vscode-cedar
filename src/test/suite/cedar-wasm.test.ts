@@ -14,7 +14,7 @@ suite('Cedar WASM format Suite', () => {
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       rawPolicy,
       80,
-      4
+      4,
     );
     assert.equal(result.success, true);
     assert.equal(result.policy, 'permit (principal, action, resource);\n');
@@ -35,7 +35,7 @@ when
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       rawPolicy,
       80,
-      4
+      4,
     );
     assert.equal(result.success, true);
 
@@ -49,7 +49,7 @@ when
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       formattedPolicy,
       80,
-      4
+      4,
     );
     assert.equal(result.success, true);
     assert.equal(result.policy, formattedPolicy);
@@ -63,7 +63,7 @@ when
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       formattedPolicy,
       80,
-      4
+      4,
     );
     assert.equal(result.success, true);
     assert.equal(result.policy, formattedPolicy);
@@ -81,7 +81,7 @@ when
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       formattedPolicy,
       80,
-      4
+      4,
     );
     assert.equal(result.success, true);
     assert.equal(result.policy, formattedPolicy);
@@ -100,7 +100,7 @@ when
     const result: cedar.FormatPoliciesResult = cedar.formatPolicies(
       formattedPolicy,
       80,
-      4
+      4,
     );
     assert.equal(result.success, true);
     assert.equal(result.policy, formattedPolicy);
@@ -163,7 +163,7 @@ suite('Cedar WASM validate Suite', () => {
     assert.equal(result.errors?.length, 1);
     assert.equal(
       result.errors?.[0].message,
-      'invalid policy condition: whenless\ncondition must be either `when` or `unless`'
+      'invalid policy condition: whenless\ncondition must be either `when` or `unless`',
     );
     assert.equal(result.errors?.[0].offset, 37);
     assert.equal(result.errors?.[0].length, 8);
@@ -295,7 +295,7 @@ action "view" appliesTo {
     const policy = 'permit(principal, action, resource);';
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schemaJSON,
-      policy
+      policy,
     );
     assert.equal(result.success, false);
     result.free();
@@ -320,7 +320,7 @@ action "view" appliesTo {
     const policy = `permit(principal == User::"Kevin", action == Action::"view", resource == User::"Kevin");`;
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schemaJSON,
-      policy
+      policy,
     );
     assert.equal(result.success, true);
 
@@ -371,7 +371,7 @@ action "view" appliesTo {
     assert.equal(result.success, false);
     assert.equal(
       result.errors?.[0].message,
-      'error during entity deserialization: in uid field of <unknown entity>, expected a literal entity reference, but got `"User::\\"JaneDoe\\""`'
+      'error during entity deserialization: in uid field of <unknown entity>, expected a literal entity reference, but got `"User::\\"JaneDoe\\""`',
     );
 
     result.free();
@@ -416,7 +416,7 @@ action "view" appliesTo {
     assert.equal(result.success, false);
     assert.equal(
       result.errors?.[0].message,
-      'error during entity deserialization: attribute `tags` on `User::"JaneDoe"` should not exist according to the schema'
+      'error during entity deserialization: attribute `tags` on `User::"JaneDoe"` should not exist according to the schema',
     );
 
     result.free();
@@ -454,7 +454,7 @@ when {
 };`;
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schemaJSON,
-      policy
+      policy,
     );
     assert.equal(result.success, false);
     assert.equal(result.errors?.length, 4);
@@ -593,7 +593,7 @@ when {
 };`;
     const result: cedar.ValidatePolicyResult = cedar.validatePolicySchemaJSON(
       schemaJSON,
-      policy
+      policy,
     );
     assert.equal(result.success, false);
     assert.equal(result.errors?.length, 9);

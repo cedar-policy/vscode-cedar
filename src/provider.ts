@@ -6,7 +6,7 @@ import * as cedar from 'vscode-cedar-wasm';
 
 class CedarJSONDocumentCodeLensProvider implements vscode.CodeLensProvider {
   async provideCodeLenses(
-    document: vscode.TextDocument
+    document: vscode.TextDocument,
   ): Promise<vscode.CodeLens[]> {
     const fileUri = document.uri.with({
       scheme: 'file',
@@ -26,7 +26,7 @@ class CedarJSONDocumentCodeLensProvider implements vscode.CodeLensProvider {
 
     const codeLens = new vscode.CodeLens(
       new vscode.Range(0, 0, 0, 0),
-      openCommand
+      openCommand,
     );
 
     return Promise.resolve([codeLens]);
@@ -70,7 +70,7 @@ class CedarJSONDocument {
           exportJson = JSON.stringify(
             JSON.parse(translateResult.schema),
             null,
-            2
+            2,
           );
         } else {
           exportJson = 'Invalid Cedar schema';
@@ -97,7 +97,7 @@ export class CedarTextDocumentContentProvider
     // clear the corresponding model object - `CedarJSONDocument`
     this._subscriptions = vscode.Disposable.from(
       vscode.workspace.onDidCloseTextDocument((doc) =>
-        this._documents.delete(doc.uri.toString())
+        this._documents.delete(doc.uri.toString()),
       ),
       vscode.workspace.onDidSaveTextDocument((doc) => {
         if (doc.languageId === 'cedar' || doc.languageId === 'cedarschema') {
@@ -110,8 +110,8 @@ export class CedarTextDocumentContentProvider
       }),
       vscode.languages.registerCodeLensProvider(
         { scheme: CedarTextDocumentContentProvider.scheme },
-        new CedarJSONDocumentCodeLensProvider()
-      )
+        new CedarJSONDocumentCodeLensProvider(),
+      ),
     );
   }
 

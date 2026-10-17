@@ -4,7 +4,9 @@
 import * as vscode from 'vscode';
 import * as cedar from 'vscode-cedar-wasm';
 
-export async function aboutExtension(context: vscode.ExtensionContext): Promise<void> {
+export async function aboutExtension(
+  context: vscode.ExtensionContext,
+): Promise<void> {
   const pkg = context.extension.packageJSON;
   const extensionDetails =
     `${pkg.publisher}.${pkg.name}: ${pkg.version}\n` +
@@ -15,7 +17,7 @@ export async function aboutExtension(context: vscode.ExtensionContext): Promise<
   const result = await vscode.window.showInformationMessage(
     extensionDetails,
     { modal: true },
-    'Copy'
+    'Copy',
   );
   if (result === 'Copy') {
     void vscode.env.clipboard.writeText(extensionDetails);

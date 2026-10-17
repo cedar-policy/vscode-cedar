@@ -42,7 +42,7 @@ suite('splitPropertyChain Suite', () => {
 
   test('validate principal["some"]["nested"]["attribute"]', () => {
     const parts = splitPropertyChain(
-      'principal["some"]["nested"]["attribute"]'
+      'principal["some"]["nested"]["attribute"]',
     );
     assert.deepEqual(parts, ['principal', 'some', 'nested', 'attribute']);
   });
