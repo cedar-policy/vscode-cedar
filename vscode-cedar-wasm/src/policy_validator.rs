@@ -99,7 +99,7 @@ fn validate_policy_schema(schema: Schema, input_policies_str: &str) -> ValidateP
         }
     };
     let result = validator.validate(&pset, ValidationMode::Strict);
-    
+
     let mut validate_warnings = Vec::new();
     result.validation_warnings().for_each(|w| {
         w.labels().iter_mut().for_each(|labels| {
@@ -122,11 +122,15 @@ fn validate_policy_schema(schema: Schema, input_policies_str: &str) -> ValidateP
             });
         });
     });
-    
+
     if result.validation_passed() {
         return ValidatePolicyResult {
             success: true,
-            warnings: if validate_warnings.is_empty() { None } else { Some(validate_warnings) },
+            warnings: if validate_warnings.is_empty() {
+                None
+            } else {
+                Some(validate_warnings)
+            },
             errors: None,
         };
     } else {
@@ -152,10 +156,14 @@ fn validate_policy_schema(schema: Schema, input_policies_str: &str) -> ValidateP
                 });
             });
         });
-        
+
         return ValidatePolicyResult {
             success: false,
-            warnings: if validate_warnings.is_empty() { None } else { Some(validate_warnings) },
+            warnings: if validate_warnings.is_empty() {
+                None
+            } else {
+                Some(validate_warnings)
+            },
             errors: Some(validate_errs),
         };
     }

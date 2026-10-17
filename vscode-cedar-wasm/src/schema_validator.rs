@@ -90,8 +90,16 @@ pub fn validate_schema_json(input_schema_str: &str) -> ValidateSchemaResult {
 
                 ValidateSchemaResult {
                     success: errors.is_empty(),
-                    warnings: if warnings.is_empty() { None } else { Some(warnings) },
-                    errors: if errors.is_empty() { None } else { Some(errors) },
+                    warnings: if warnings.is_empty() {
+                        None
+                    } else {
+                        Some(warnings)
+                    },
+                    errors: if errors.is_empty() {
+                        None
+                    } else {
+                        Some(errors)
+                    },
                 }
             }
         };
@@ -115,7 +123,11 @@ pub fn validate_schema_cedar(input_schema_str: &str) -> ValidateSchemaResult {
                 }
                 ValidateSchemaResult {
                     success: true,
-                    warnings: if warnings_vec.is_empty() { None } else { Some(warnings_vec) },
+                    warnings: if warnings_vec.is_empty() {
+                        None
+                    } else {
+                        Some(warnings_vec)
+                    },
                     errors: None,
                 }
             }
@@ -138,8 +150,16 @@ pub fn validate_schema_cedar(input_schema_str: &str) -> ValidateSchemaResult {
 
                 ValidateSchemaResult {
                     success: errors.is_empty(),
-                    warnings: if warnings.is_empty() { None } else { Some(warnings) },
-                    errors: if errors.is_empty() { None } else { Some(errors) },
+                    warnings: if warnings.is_empty() {
+                        None
+                    } else {
+                        Some(warnings)
+                    },
+                    errors: if errors.is_empty() {
+                        None
+                    } else {
+                        Some(errors)
+                    },
                 }
             }
         };
