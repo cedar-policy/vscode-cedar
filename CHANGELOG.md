@@ -1,3 +1,8 @@
+## v0.12.0 (Preview) 2026-10-17
+
+- Cedar tests validation, navigation, and IntelliSense
+- Run Cedar tests from the Testing view
+
 ## v0.10.6 (Preview) 2026-09-15
 
 - Update to Cedar SDK 4.13.0

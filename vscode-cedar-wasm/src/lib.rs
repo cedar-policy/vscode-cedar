@@ -1,6 +1,7 @@
 // Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+mod authorizer;
 mod entities_validator;
 mod format;
 mod policy;

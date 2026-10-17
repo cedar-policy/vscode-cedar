@@ -1,0 +1,35 @@
+[
+  {
+    "name": "missing request and bad decision",
+    "decision": "ALLOW"
+  },
+  {
+    "name": "reason is not an array of strings",
+    "request": {
+      "principal": "PhotoApp::User::\"JaneDoe\"",
+      "action": "PhotoApp::Action::\"viewPhoto\"",
+      "resource": "PhotoApp::Photo::\"JaneDoe.jpg\"",
+      "context": {}
+    },
+    "decision": "allow",
+    "reason": [7],
+    "num_errors": "none"
+  },
+  {
+    "name": "entity does not conform to the schema",
+    "request": {
+      "principal": "PhotoApp::User::\"JaneDoe\"",
+      "action": "PhotoApp::Action::\"viewPhoto\"",
+      "resource": "PhotoApp::Photo::\"JaneDoe.jpg\"",
+      "context": {}
+    },
+    "entities": [
+      {
+        "uid": { "type": "PhotoApp::User", "id": "JaneDoe" },
+        "parents": [],
+        "attrs": { "notInSchema": true }
+      }
+    ],
+    "decision": "deny"
+  }
+]

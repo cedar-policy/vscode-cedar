@@ -8,7 +8,7 @@ import { parseCedarEntitiesDoc, parseCedarSchemaDoc } from './parser';
 const SOURCE_CEDAR = 'Cedar';
 export const DEFAULT_RANGE = new vscode.Range(
   new vscode.Position(0, 0),
-  new vscode.Position(0, 0)
+  new vscode.Position(0, 0),
 );
 import {
   EXIST_ATTR_REGEX,
@@ -35,12 +35,12 @@ const addDiagnosticsError = (
   diagnostics: vscode.Diagnostic[],
   range: vscode.Range,
   message: string,
-  code?: string
+  code?: string,
 ) => {
   const diagnostic = new vscode.Diagnostic(
     range,
     message,
-    vscode.DiagnosticSeverity.Error
+    vscode.DiagnosticSeverity.Error,
   );
   if (code) {
     diagnostic.code = code;
@@ -53,7 +53,7 @@ const determineRangeFromPolicyMessage = (
   vpm: cedar.ValidateMessage,
   policy: string,
   defaultErrorRange: vscode.Range,
-  startLine: number
+  startLine: number,
 ): vscode.Range => {
   let range = defaultErrorRange;
   let startCharacter = vpm.offset;
@@ -78,7 +78,7 @@ const determineRangeFromPolicyMessage = (
       ) {
         range = new vscode.Range(
           new vscode.Position(startLine + i, startCharacter - lineStart),
-          new vscode.Position(startLine + i, endCharacter - lineStart)
+          new vscode.Position(startLine + i, endCharacter - lineStart),
         );
         break;
       }
@@ -91,7 +91,7 @@ const determineRangeFromPolicyMessage = (
 export const determineRangeFromOffset = (
   document: vscode.TextDocument,
   offset: number,
-  length: number
+  length: number,
 ): vscode.Range => {
   let range = DEFAULT_RANGE;
   const startCharacter = offset;
@@ -107,7 +107,7 @@ export const determineRangeFromOffset = (
     ) {
       range = new vscode.Range(
         new vscode.Position(i, startCharacter - lineStart),
-        new vscode.Position(i, endCharacter - lineStart)
+        new vscode.Position(i, endCharacter - lineStart),
       );
       break;
     }
@@ -122,7 +122,7 @@ const determineRangeFromError = (
     offset: number;
     length: number;
   },
-  document: vscode.TextDocument
+  document: vscode.TextDocument,
 ): { error: string; range: vscode.Range } => {
   let error = vse.message;
   let range = DEFAULT_RANGE;
@@ -140,7 +140,7 @@ const determineRangeFromError = (
         if (line && column) {
           range = new vscode.Range(
             new vscode.Position(line - 1, column - 1),
-            new vscode.Position(line - 1, column - 1)
+            new vscode.Position(line - 1, column - 1),
           );
         }
       }
@@ -167,7 +167,7 @@ const addUndeclaredDiagnosticErrors = (
   diagnostics: vscode.Diagnostic[],
   document: vscode.TextDocument,
   undeclaredName: string,
-  undeclaredType: string
+  undeclaredType: string,
 ): vscode.Range => {
   let parentRange = DEFAULT_RANGE;
   const undeclaredNames = [undeclaredName];
@@ -184,7 +184,7 @@ const addUndeclaredDiagnosticErrors = (
               diagnostics,
               referencedType.range,
               `undeclared ${undeclaredType.replace('Types', ' type')}: ${t}`,
-              'undeclared'
+              'undeclared',
             );
           }
         }
@@ -202,7 +202,7 @@ const addUndeclaredDiagnosticErrors = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const len = pathSupplier().length;
       if (len === 0 && property) {
@@ -210,7 +210,7 @@ const addUndeclaredDiagnosticErrors = (
       } else if (len === 1 && property === undeclaredType) {
         parentRange = new vscode.Range(
           new vscode.Position(startLine, startCharacter + 1),
-          new vscode.Position(startLine, startCharacter + length - 1)
+          new vscode.Position(startLine, startCharacter + length - 1),
         );
       }
     },
@@ -220,12 +220,12 @@ const addUndeclaredDiagnosticErrors = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const jsonPathLen = pathSupplier().length;
       const range = new vscode.Range(
         new vscode.Position(startLine, startCharacter + 1),
-        new vscode.Position(startLine, startCharacter + length - 1)
+        new vscode.Position(startLine, startCharacter + length - 1),
       );
       if (
         (jsonPathLen === 5 &&
@@ -244,7 +244,7 @@ const addUndeclaredDiagnosticErrors = (
                 diagnostics,
                 range,
                 `undeclared entity type: ${value}`,
-                'undeclared'
+                'undeclared',
               );
             }
           });
@@ -263,7 +263,7 @@ const addUndeclaredDiagnosticErrors = (
               diagnostics,
               range,
               `undeclared action: ${value}`,
-              'undeclared'
+              'undeclared',
             );
           }
         });
@@ -277,7 +277,7 @@ const addUndeclaredDiagnosticErrors = (
               diagnostics,
               range,
               `undeclared common type: ${value}`,
-              'undeclared'
+              'undeclared',
             );
           }
         });
@@ -290,7 +290,7 @@ const addUndeclaredDiagnosticErrors = (
 
 const rangeFromParseError = (
   document: vscode.TextDocument,
-  undeclaredType: string
+  undeclaredType: string,
 ): vscode.Range => {
   let parentRange = DEFAULT_RANGE;
 
@@ -301,7 +301,7 @@ const rangeFromParseError = (
       length,
       startLine,
       startCharacter,
-      pathSupplier
+      pathSupplier,
     ) {
       const len = pathSupplier().length;
       if (
@@ -315,7 +315,7 @@ const rangeFromParseError = (
       ) {
         parentRange = new vscode.Range(
           new vscode.Position(startLine, startCharacter + 1),
-          new vscode.Position(startLine, startCharacter + length - 1)
+          new vscode.Position(startLine, startCharacter + length - 1),
         );
       }
     },
@@ -327,7 +327,7 @@ const rangeFromParseError = (
 const handleEntitiesDiagnosticError = (
   diagnostics: vscode.Diagnostic[],
   document: vscode.TextDocument,
-  error: string
+  error: string,
 ): boolean => {
   let uid = '';
   let attribute = '';
@@ -379,7 +379,7 @@ const handleEntitiesDiagnosticError = (
     entityRanges.forEach((entityRange, index) => {
       if (entityRange.uid === uid) {
         const attributeRange = entityRange.attrsNameRanges.hasOwnProperty(
-          attribute
+          attribute,
         )
           ? entityRange.attrsNameRanges[attribute]
           : null;
@@ -408,7 +408,7 @@ export const addSyntaxDiagnosticErrors = (
     offset: number;
     length: number;
   }>,
-  document: vscode.TextDocument
+  document: vscode.TextDocument,
 ) => {
   // create an error for each of the syntax validator errors
   errors.forEach((vse) => {
@@ -451,7 +451,7 @@ export const addSyntaxDiagnosticErrors = (
         diagnostics,
         document,
         undeclaredName,
-        undeclaredType
+        undeclaredType,
       );
       addDiagnosticsError(diagnostics, endOfDocRange, e);
       return;
@@ -469,7 +469,7 @@ export const addSyntaxDiagnosticErrors = (
 
     const { error, range } = determineRangeFromError(
       { ...vse, message: e },
-      document
+      document,
     );
     if (
       error === 'EOF while parsing a value' &&
@@ -484,26 +484,34 @@ export const addSyntaxDiagnosticErrors = (
 
 export const addValidationDiagnosticInfo = (
   diagnostics: vscode.Diagnostic[],
-  info: string
+  info: string,
 ) => {
   const diagnostic = new vscode.Diagnostic(
     DEFAULT_RANGE,
     info,
-    vscode.DiagnosticSeverity.Information
+    vscode.DiagnosticSeverity.Information,
   );
   diagnostic.source = SOURCE_CEDAR;
   diagnostics.push(diagnostic);
 };
 
+export const addValidationDiagnosticError = (
+  diagnostics: vscode.Diagnostic[],
+  message: string,
+  range: vscode.Range = DEFAULT_RANGE,
+) => {
+  addDiagnosticsError(diagnostics, range, message);
+};
+
 export const addValidationDiagnosticWarning = (
   diagnostics: vscode.Diagnostic[],
   message: string,
-  range: vscode.Range = DEFAULT_RANGE
+  range: vscode.Range = DEFAULT_RANGE,
 ) => {
   const diagnostic = new vscode.Diagnostic(
     range,
     message,
-    vscode.DiagnosticSeverity.Warning
+    vscode.DiagnosticSeverity.Warning,
   );
   diagnostic.source = SOURCE_CEDAR;
   diagnostics.push(diagnostic);
@@ -515,7 +523,7 @@ export const addPolicyResultMessages = (
   policy: string,
   effectRange: vscode.Range,
   startLine: number,
-  areWarnings: boolean
+  areWarnings: boolean,
 ) => {
   // create an error for each of the errors
   messages.forEach((vpm) => {
@@ -525,7 +533,7 @@ export const addPolicyResultMessages = (
       vpm,
       policy,
       effectRange,
-      startLine
+      startLine,
     );
     if (
       e.startsWith('validation error on policy `policy0`') ||
@@ -546,14 +554,14 @@ export const addPolicyResultMessages = (
         // unrecognized Actions end in "
         const suffix = found?.groups.unrecognized.endsWith('"') ? '' : '::';
         const startCharacter = lines[i].indexOf(
-          found?.groups.unrecognized + suffix
+          found?.groups.unrecognized + suffix,
         );
         if (startCharacter > -1) {
           const endCharacter =
             startCharacter + found?.groups.unrecognized.length;
           range = new vscode.Range(
             new vscode.Position(startLine + i, startCharacter),
-            new vscode.Position(startLine + i, endCharacter)
+            new vscode.Position(startLine + i, endCharacter),
           );
 
           diagnosticCode = 'unrecognized';
@@ -567,7 +575,7 @@ export const addPolicyResultMessages = (
       e,
       areWarnings
         ? vscode.DiagnosticSeverity.Warning
-        : vscode.DiagnosticSeverity.Error
+        : vscode.DiagnosticSeverity.Error,
     );
     diagnostic.source = SOURCE_CEDAR;
     if (diagnosticCode) {
@@ -579,7 +587,7 @@ export const addPolicyResultMessages = (
 
 export const reportFormatterOff = (
   document: vscode.TextDocument,
-  diagnostics: vscode.Diagnostic[]
+  diagnostics: vscode.Diagnostic[],
 ): boolean => {
   let { skipFormatting, formatterDirectiveRange } =
     scanLeadingComments(document);
@@ -588,7 +596,7 @@ export const reportFormatterOff = (
     const diagnostic = new vscode.Diagnostic(
       formatterDirectiveRange,
       'Cedar formatting disabled by @formatter:off',
-      vscode.DiagnosticSeverity.Information
+      vscode.DiagnosticSeverity.Information,
     );
     diagnostic.source = SOURCE_CEDAR;
     diagnostics.push(diagnostic);
@@ -598,7 +606,7 @@ export const reportFormatterOff = (
 };
 
 export const scanLeadingComments = (
-  document: vscode.TextDocument
+  document: vscode.TextDocument,
 ): {
   firstNonCommentLine: number;
   skipFormatting: boolean;
@@ -619,7 +627,7 @@ export const scanLeadingComments = (
       if (idx > 0) {
         formatterDirectiveRange = new vscode.Range(
           new vscode.Position(i, idx),
-          new vscode.Position(i, idx + OFF.length)
+          new vscode.Position(i, idx + OFF.length),
         );
         skipFormatting = true;
       }

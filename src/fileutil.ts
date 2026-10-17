@@ -4,6 +4,8 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 
+const CEDAR_EXTENSION = `.cedar`;
+
 const CEDAR_SCHEMA_JSON_FILE = `cedarschema.json`;
 const CEDAR_SCHEMA_JSON_EXTENSION = `.cedarschema.json`;
 const CEDAR_SCHEMA_FILE = `cedarschema`;
@@ -14,9 +16,15 @@ const CEDAR_ENTITIES_FILE = `cedarentities.json`;
 const CEDAR_ENTITIES_EXTENSION_JSON = `.cedarentities.json`;
 export const CEDAR_ENTITIES_GLOB = `{**/cedarentities.json,**/*.cedarentities.json,**/avpentities.json,**/*.avpentities.json}`;
 
+const CEDAR_TEMPLATELINKS_FILE = `cedartemplatelinks.json`;
+const CEDAR_TEMPLATELINKS_EXTENSION_JSON = `.cedartemplatelinks.json`;
 export const CEDAR_TEMPLATELINKS_GLOB = `{**/cedartemplatelinks.json,**/*.cedartemplatelinks.json,**/cedarlinks.json,**/*.cedarlinks.json}`;
 export const CEDAR_AUTH_GLOB = `{**/cedarauth.json,**/*.cedarauth.json,**/cedarparc.json,**/*.cedarparc.json}`;
 export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
+
+const CEDAR_TESTS_FILE = `cedartests.json`;
+const CEDAR_TESTS_EXTENSION_JSON = `.cedartests.json`;
+export const CEDAR_TESTS_GLOB = `{**/cedartests.json,**/*.cedartests.json}`;
 
 export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
   const result =
@@ -35,42 +43,65 @@ export const detectEntitiesDoc = (doc: vscode.TextDocument): boolean => {
   return result;
 };
 
+export const detectTestsDoc = (doc: vscode.TextDocument): boolean => {
+  const result =
+    doc.fileName.endsWith(path.sep + CEDAR_TESTS_FILE) ||
+    doc.fileName.endsWith(CEDAR_TESTS_EXTENSION_JSON);
+
+  return result;
+};
+
+// read a folder and return the names of the files matching a predicate
+const findFileNamesInFolder = async (
+  filepath: string,
+  matches: (filename: string) => boolean,
+): Promise<string[]> => {
+  let files: [string, vscode.FileType][] = [];
+  try {
+    files = await vscode.workspace.fs.readDirectory(vscode.Uri.file(filepath));
+  } catch {
+    // folder cannot be read, such as a document outside of the filesystem
+    return Promise.resolve([]);
+  }
+
+  return Promise.resolve(
+    files
+      .filter((file) => file[1] === vscode.FileType.File && matches(file[0]))
+      .map((file) => file[0]),
+  );
+};
+
 const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
-  const schemaFiles = new Set<string>();
-  const files = await vscode.workspace.fs.readDirectory(
-    vscode.Uri.file(filepath)
+  // first find Cedar schema files
+  const schemaFiles = new Set<string>(
+    await findFileNamesInFolder(
+      filepath,
+      (filename) =>
+        filename === CEDAR_SCHEMA_FILE ||
+        filename.endsWith(CEDAR_SCHEMA_EXTENSION),
+    ),
   );
 
-  // first find Cedar schema files
-  for (const file of files) {
-    if (
-      (file[1] === vscode.FileType.File && file[0] === CEDAR_SCHEMA_FILE) ||
-      file[0].endsWith(CEDAR_SCHEMA_EXTENSION)
-    ) {
-      schemaFiles.add(file[0]);
-    }
-  }
-
   // then look for Cedar schema JSON files that aren't translated versions
-  for (const file of files) {
-    if (
-      (file[1] === vscode.FileType.File &&
-        file[0] === CEDAR_SCHEMA_JSON_FILE) ||
-      file[0].endsWith(CEDAR_SCHEMA_JSON_EXTENSION)
-    ) {
-      if (!schemaFiles.has(file[0].substring(0, file[0].length - 5))) {
-        // .json
-        schemaFiles.add(file[0]);
-      }
+  const schemaJsonFiles = await findFileNamesInFolder(
+    filepath,
+    (filename) =>
+      filename === CEDAR_SCHEMA_JSON_FILE ||
+      filename.endsWith(CEDAR_SCHEMA_JSON_EXTENSION),
+  );
+  schemaJsonFiles.forEach((filename) => {
+    if (!schemaFiles.has(filename.substring(0, filename.length - 5))) {
+      // .json
+      schemaFiles.add(filename);
     }
-  }
+  });
 
   return Promise.resolve(Array.from(schemaFiles));
 };
 
 export const handleDidRenameFiles = async (
   e: vscode.FileRenameEvent,
-  diagnosticCollection: vscode.DiagnosticCollection
+  diagnosticCollection: vscode.DiagnosticCollection,
 ) => {
   await Promise.all(
     e.files.map(async (file) => {
@@ -81,7 +112,7 @@ export const handleDidRenameFiles = async (
         diagnosticCollection.forEach((uri) => {
           if (uri.path.startsWith(file.oldUri.path)) {
             const newUri = vscode.Uri.file(
-              uri.path.replace(file.oldUri.path, file.newUri.path)
+              uri.path.replace(file.oldUri.path, file.newUri.path),
             );
             diagnosticCollection.set(newUri, diagnosticCollection.get(uri));
             diagnosticCollection.delete(uri);
@@ -90,22 +121,23 @@ export const handleDidRenameFiles = async (
       } else if (diagnosticCollection.has(file.oldUri)) {
         diagnosticCollection.set(
           file.newUri,
-          diagnosticCollection.get(file.oldUri)
+          diagnosticCollection.get(file.oldUri),
         );
         diagnosticCollection.delete(file.oldUri);
       }
-    })
+    }),
   );
 };
 
 export const handleWillDeleteFiles = async (
   e: vscode.FileDeleteEvent,
-  diagnosticCollection: vscode.DiagnosticCollection
+  diagnosticCollection: vscode.DiagnosticCollection,
 ) => {
   await Promise.all(
     e.files.map(async (file) => {
       if (
-        (await vscode.workspace.fs.stat(file)).type === vscode.FileType.Directory
+        (await vscode.workspace.fs.stat(file)).type ===
+        vscode.FileType.Directory
       ) {
         diagnosticCollection.forEach((uri) => {
           if (uri.fsPath.startsWith(file.fsPath)) {
@@ -115,12 +147,12 @@ export const handleWillDeleteFiles = async (
       } else if (diagnosticCollection.has(file)) {
         diagnosticCollection.delete(file);
       }
-    })
+    }),
   );
 };
 
 export const getSchemaUri = async (
-  doc: vscode.TextDocument | undefined = undefined
+  doc: vscode.TextDocument | undefined = undefined,
 ): Promise<vscode.Uri | undefined> => {
   let fileUri = undefined;
   const config = vscode.workspace.getConfiguration('cedar');
@@ -132,7 +164,7 @@ export const getSchemaUri = async (
   ) {
     fileUri = vscode.Uri.joinPath(
       vscode.workspace.workspaceFolders[0].uri,
-      schemaFile
+      schemaFile,
     );
   }
 
@@ -157,7 +189,7 @@ export const getSchemaUri = async (
 };
 
 export const getSchemaTextDocument = async (
-  doc: vscode.TextDocument | undefined = undefined
+  doc: vscode.TextDocument | undefined = undefined,
 ): Promise<vscode.TextDocument | undefined> => {
   let schemaDoc = undefined;
   const fileUri = await getSchemaUri(doc);
@@ -170,6 +202,90 @@ export const getSchemaTextDocument = async (
   }
 
   return Promise.resolve(schemaDoc);
+};
+
+// look next to doc first, then fallback to the workspace folder
+const findRelatedFiles = async (
+  doc: vscode.TextDocument,
+  matches: (filename: string) => boolean,
+): Promise<string[]> => {
+  const folders = [path.dirname(doc.uri.fsPath)];
+  const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
+  if (workspace?.uri) {
+    folders.push(workspace.uri.fsPath);
+  }
+
+  for (const folder of folders) {
+    const filenames = await findFileNamesInFolder(folder, matches);
+    if (filenames.length > 0) {
+      return Promise.resolve(
+        filenames.map((filename) => path.join(folder, filename)),
+      );
+    }
+  }
+
+  return Promise.resolve([]);
+};
+
+const openTextDocuments = async (
+  filepaths: string[],
+): Promise<vscode.TextDocument[]> => {
+  const docs: vscode.TextDocument[] = [];
+  for (const filepath of filepaths) {
+    try {
+      docs.push(
+        await vscode.workspace.openTextDocument(vscode.Uri.file(filepath)),
+      );
+    } catch {
+      // skip files which cannot be opened
+    }
+  }
+
+  return Promise.resolve(docs);
+};
+
+export type CedarTestFiles = {
+  schemaDoc: vscode.TextDocument | undefined;
+  policyDocs: vscode.TextDocument[];
+  templateLinksDoc: vscode.TextDocument | undefined;
+  entitiesDoc: vscode.TextDocument | undefined;
+};
+
+/**
+ * Locate the Cedar files a Cedar tests file is evaluated against.  Policies,
+ * template links, and (fallback) entities are discovered by naming convention
+ * in the folder containing the tests file, then in the workspace folder.
+ */
+export const getCedarTestFiles = async (
+  testsDoc: vscode.TextDocument,
+): Promise<CedarTestFiles> => {
+  const [schemaDoc, policyDocs, templateLinksDocs, entitiesDocs] =
+    await Promise.all([
+      getSchemaTextDocument(testsDoc),
+      findRelatedFiles(testsDoc, (filename) =>
+        filename.endsWith(CEDAR_EXTENSION),
+      ).then(openTextDocuments),
+      findRelatedFiles(
+        testsDoc,
+        (filename) =>
+          filename === CEDAR_TEMPLATELINKS_FILE ||
+          filename.endsWith(CEDAR_TEMPLATELINKS_EXTENSION_JSON),
+      ).then(openTextDocuments),
+      findRelatedFiles(
+        testsDoc,
+        (filename) =>
+          filename === CEDAR_ENTITIES_FILE ||
+          filename.endsWith(CEDAR_ENTITIES_EXTENSION_JSON),
+      ).then(openTextDocuments),
+    ]);
+
+  return Promise.resolve({
+    schemaDoc: schemaDoc,
+    // exclude exported single policy JSON (*.cedar.json) companions
+    policyDocs: policyDocs.filter((doc) => doc.languageId === 'cedar'),
+    templateLinksDoc: templateLinksDocs[0],
+    entitiesDoc: entitiesDocs[0],
+  });
 };
 
 const getJsonIndentSize = (): number => {
@@ -191,7 +307,7 @@ const formatJsonText = (text: string): string => {
 
 export const saveTextAndFormat = async (
   uri: vscode.Uri,
-  text: string
+  text: string,
 ): Promise<boolean> => {
   let targetUri = uri;
 
@@ -222,7 +338,7 @@ export const saveTextAndFormat = async (
     // File exists, use workspace edit
     const edit = new vscode.WorkspaceEdit();
     const fullRange = doc.validateRange(
-      new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE)
+      new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE),
     );
     edit.replace(targetUri, fullRange, formattedText);
     await vscode.workspace.applyEdit(edit);
@@ -230,14 +346,14 @@ export const saveTextAndFormat = async (
     // New file, write directly
     await vscode.workspace.fs.writeFile(
       targetUri,
-      new Uint8Array(Buffer.from(formattedText))
+      new Uint8Array(Buffer.from(formattedText)),
     );
   }
 
   await vscode.commands.executeCommand('vscode.open', targetUri);
   const textEdits: vscode.TextEdit[] = await vscode.commands.executeCommand(
     'vscode.executeFormatDocumentProvider',
-    targetUri
+    targetUri,
   );
   const workEdits = new vscode.WorkspaceEdit();
   workEdits.set(targetUri, textEdits);

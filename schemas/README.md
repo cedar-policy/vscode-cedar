@@ -1,6 +1,6 @@
 # JSON Schemas
 
-The [JSON Schema](https://json-schema.org/) files in this folder are **experimental** and **not enabled** in the Cedar policy language extension for Visual Studio Code.  The extension already validates Cedar schema and entities files using Cedar APIs.  These JSON Schemas perform a base level of validation, but also can enable simple auto-completion.  They include VS Code-specific schema extensions including `defaultSnippets` and `markdownDescription`.
+The [JSON Schema](https://json-schema.org/) files in this folder are **experimental** and **not enabled** in the Cedar policy language extension for Visual Studio Code.  The extension already validates Cedar schema, entities, and tests files using Cedar APIs.  These JSON Schemas perform a base level of validation, but also can enable simple auto-completion.  They include VS Code-specific schema extensions including `defaultSnippets` and `markdownDescription`.
 
 The Visual Studio Code documentation for [JSON schemas and settings](https://code.visualstudio.com/docs/languages/json#_json-schemas-and-settings) explains how to associate a JSON file with a JSON Schema.  You can edit your `.vscode/settings.json` to reference the GitHub hosted files:
 
@@ -21,6 +21,10 @@ The Visual Studio Code documentation for [JSON schemas and settings](https://cod
     {
       "fileMatch": ["*.cedarauth.json", "cedarauth.json"],
       "url": "https://raw.githubusercontent.com/cedar-policy/vscode-cedar/main/schemas/cedarauth.schema.json"
+    },
+    {
+      "fileMatch": ["*.cedartests.json", "cedartests.json"],
+      "url": "https://raw.githubusercontent.com/cedar-policy/vscode-cedar/main/schemas/cedartests.schema.json"
     }
   ],
 ```
@@ -60,6 +64,13 @@ If you are building the Cedar policy language extension for Visual Studio from s
           "cedarauth.json"
         ],
         "url": "./schemas/cedarauth.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.cedartests.json", 
+          "cedartests.json"
+        ],
+        "url": "./schemas/cedartests.schema.json"
       }
     ],
 ```

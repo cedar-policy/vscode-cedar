@@ -1,0 +1,17 @@
+[
+  {
+    "identifier": { "entityType": "PhotoApp::User", "entityId": "JaneDoe" },
+    "attributes": {
+      "department": "HardwareEngineering",
+      "manager": {
+        "entityIdentifier": {
+          "entityType": "PhotoApp::User",
+          "entityId": "alice"
+        }
+      }
+    },
+    "parents": [
+      { "entityType": "PhotoApp::UserGroup", "entityId": "AVTeam" }
+    ]
+  }
+]

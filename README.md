@@ -26,6 +26,10 @@ Files named `cedarentities.json` or matching `*.cedarentities.json` are detected
 
 ![Cedar entities validation and navigation](https://raw.githubusercontent.com/cedar-policy/vscode-cedar/main/docs/marketplace/cedar_entities.gif)
 
+### Cedar tests
+
+Files named `cedartests.json` or matching `*.cedartests.json` are detected as Cedar tests and receive additional syntax highlighting.  Validation is performed against a Cedar schema on document open, document save, and via context menu.  IntelliSense for tests and embedded entities, and add test via context menu.  Test navigation using Outline or Breadcrumb.  "Go to Definition" on Cedar entity types, action names, and `reason` policy ids.  Tests are run using the Visual Studio Code [Testing](https://code.visualstudio.com/docs/editor/testing) view, evaluated against the Cedar policy (`*.cedar`), template links (`cedartemplatelinks.json`), entities (`cedarentities.json`), and schema files alongside the tests file.
+
 ### Cedar CLI
 
 Various commands of the `cedar` CLI take JSON formatted file inputs.  Files named `cedarauth.json` or matching `*.cedarauth.json` are detected as input to the `--request-json` option for the `authorize` command.  Files named `cedartemplatelinks.json` or matching `*.cedartemplatelinks.json` are detected as input to the `--template-linked` option for the `authorize` command.  These files receive additional syntax highlighting.

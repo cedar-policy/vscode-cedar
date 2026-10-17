@@ -143,8 +143,7 @@ const ANNOTATION = /@(?<name>[_a-zA-Z][_a-zA-Z0-9]*)($|\(".*"\))/;
 export const parseCedarPoliciesDoc = (
   cedarDoc: vscode.TextDocument,
   visitPolicy?:
-    | undefined
-    | ((policyRange: PolicyRange, policyText: string) => void),
+    undefined | ((policyRange: PolicyRange, policyText: string) => void),
 ): PolicyCacheItem => {
   // policy text is not cached, so check for no visitPolicy callback
   if (visitPolicy === undefined) {
@@ -493,11 +492,148 @@ export type EntityCacheItem = {
 
 const entityCache: Record<string, EntityCacheItem> = {};
 
+// Amazon Verified Permissions entities format has a similar structure but different property names
+type EntityNames = {
+  uid: string;
+  type: string;
+  id: string;
+  entity: string;
+  attrs: string;
+  parents: string;
+  tags: string;
+};
+
+const CEDAR_ENTITY_NAMES: EntityNames = {
+  uid: 'uid',
+  type: 'type',
+  id: 'id',
+  entity: '__entity',
+  attrs: 'attrs',
+  parents: 'parents',
+  tags: 'tags',
+};
+
+const AVP_ENTITY_NAMES: EntityNames = {
+  ...CEDAR_ENTITY_NAMES,
+  uid: 'identifier',
+  type: 'entityType',
+  id: 'entityId',
+  entity: 'entityIdentifier',
+  attrs: 'attributes',
+};
+
+const determineEntityNames = (
+  entitiesDoc: vscode.TextDocument,
+): EntityNames => {
+  const uri = entitiesDoc.uri.toString();
+  const filename = uri.substring(uri.lastIndexOf('/') + 1);
+
+  return filename === 'avpentities.json' ||
+    filename.endsWith('.avpentities.json')
+    ? AVP_ENTITY_NAMES
+    : CEDAR_ENTITY_NAMES;
+};
+
+/**
+ * Push the semantic token for a property of a Cedar entity.  `entityPath` is
+ * the JSON path relative to the array of entities, so `entityPath[1]` is an
+ * entity property such as `attrs` or `tags`.  Cedar tests embed the same
+ * entities, so they pass a path shifted by the test index and `entities`.
+ *
+ * Returns the entity property whose names this property belongs to, or
+ * `undefined` when it isn't an attribute or tag name.
+ */
+const pushEntityPropertyToken = (
+  entityPath: jsonc.Segment[],
+  property: string,
+  range: vscode.Range,
+  tokensBuilder: vscode.SemanticTokensBuilder,
+  names: EntityNames = CEDAR_ENTITY_NAMES,
+): jsonc.Segment | undefined => {
+  if (
+    entityPath.length === 2 &&
+    (entityPath[1] === names.attrs || entityPath[1] === names.tags)
+  ) {
+    // anything directly under "attrs" or "tags" is a property
+    tokensBuilder.push(range, 'property', []);
+    return entityPath[1];
+  } else if (property === '__expr') {
+    // treat "__expr" as a deprecated macro
+    tokensBuilder.push(range, 'macro', ['deprecated']);
+  } else if (property === '__entity' || property === '__extn') {
+    // treat "__entity" and "__extn" as a macro
+    tokensBuilder.push(range, 'macro', []);
+  }
+
+  return undefined;
+};
+
+/**
+ * Push the semantic tokens for a literal value inside a Cedar entity, adding
+ * any referenced entity types.  `entityPath` is the JSON path relative to the
+ * array of entities, as described by `pushEntityPropertyToken`.
+ */
+const pushEntityValueTokens = (
+  entityPath: jsonc.Segment[],
+  value: any,
+  startLine: number,
+  startCharacter: number,
+  length: number,
+  tokensBuilder: vscode.SemanticTokensBuilder,
+  referencedTypes: ReferencedRange[],
+  names: EntityNames = CEDAR_ENTITY_NAMES,
+) => {
+  const range = makeRange(startLine, startCharacter, length);
+  const entityPathLen = entityPath.length;
+
+  // entities as strings under UID or string array element under PARENTS
+  if (
+    (entityPathLen === 2 && entityPath[1] === names.uid) ||
+    (entityPathLen === 3 && entityPath[1] === names.parents)
+  ) {
+    determineEntitiesInString(
+      value,
+      startLine,
+      startCharacter,
+      tokensBuilder,
+      referencedTypes,
+    );
+  }
+
+  if (
+    entityPathLen > 2 &&
+    entityPath[entityPathLen - 1] === names.type &&
+    (entityPath[1] === names.uid ||
+      entityPath[1] === names.parents ||
+      (entityPath[1] === names.attrs && entityPathLen > 3) ||
+      entityPath[entityPathLen - 2] === names.entity)
+  ) {
+    // most things directly under "type" are a type
+    tokensBuilder.push(range, 'type', []);
+    referencedTypes.push({
+      name: value,
+      range: determineReferenceRange(
+        value,
+        startLine,
+        startCharacter + 1,
+        length - 1,
+      ),
+    });
+  } else if (
+    entityPathLen > 2 &&
+    entityPath[entityPathLen - 1] === 'fn' &&
+    (entityPath[entityPathLen - 2] === '__extn' ||
+      ['ip', 'decimal', 'datetime', 'duration'].includes(value))
+  ) {
+    // things under "__extn" then "fn" are a function
+    tokensBuilder.push(range, 'function', []);
+  }
+};
+
 export const parseCedarEntitiesDoc = (
   entitiesDoc: vscode.TextDocument,
   visitEntity?:
-    | undefined
-    | ((entityRange: EntityRange, entityText: string) => void),
+    undefined | ((entityRange: EntityRange, entityText: string) => void),
 ): EntityCacheItem => {
   // entity text is not cached, so check for no visitEntity callback
   if (visitEntity === undefined) {
@@ -508,28 +644,15 @@ export const parseCedarEntitiesDoc = (
     }
   }
 
-  let UID = 'uid';
-  let TYPE = 'type';
-  let ID = 'id';
-  let ENTITY = '__entity';
-  let ATTRS = 'attrs';
-  let PARENTS = 'parents';
-  let TAGS = 'tags';
-
-  // Amazon Verified Permissions entities format has a similar structure but different property names
-  const filename = entitiesDoc.uri
-    .toString()
-    .substring(entitiesDoc.uri.toString().lastIndexOf('/') + 1);
-  if (
-    filename === 'avpentities.json' ||
-    filename.endsWith('.avpentities.json')
-  ) {
-    UID = 'identifier';
-    TYPE = 'entityType';
-    ID = 'entityId';
-    ENTITY = 'entityIdentifier';
-    ATTRS = 'attributes';
-  }
+  const names = determineEntityNames(entitiesDoc);
+  const {
+    uid: UID,
+    type: TYPE,
+    id: ID,
+    attrs: ATTRS,
+    parents: PARENTS,
+    tags: TAGS,
+  } = names;
 
   const entities: EntityRange[] = [];
   const referencedTypes: ReferencedRange[] = [];
@@ -641,8 +764,8 @@ export const parseCedarEntitiesDoc = (
     ) {
       const range = makeRange(startLine, startCharacter, length);
       const innerRange = makeRange(startLine, startCharacter, length, 1);
-      const jsonPathLen = pathSupplier().length;
-      if (jsonPathLen === 1) {
+      const jsonPath = pathSupplier();
+      if (jsonPath.length === 1) {
         depth1Property = property;
         if (property === UID) {
           uidKeyRange = innerRange;
@@ -653,20 +776,19 @@ export const parseCedarEntitiesDoc = (
         } else if (property === TAGS) {
           tagsKeyRange = innerRange;
         }
-      } else if (jsonPathLen === 2 && pathSupplier()[1] === ATTRS) {
-        // anything directly under "attrs" is an property
-        tokensBuilder.push(range, 'property', []);
-        attrsNameRanges[property] = innerRange;
-      } else if (jsonPathLen === 2 && pathSupplier()[1] === TAGS) {
-        // anything directly under "tags" is an property
-        tokensBuilder.push(range, 'property', []);
-        tagsNameRanges[property] = innerRange;
-      } else if (property === '__expr') {
-        // treat "__expr" as a deprecated macro
-        tokensBuilder.push(range, 'macro', ['deprecated']);
-      } else if (property === '__entity' || property === '__extn') {
-        // treat "__entity" and "__extn" as a macro
-        tokensBuilder.push(range, 'macro', []);
+      } else {
+        const collection = pushEntityPropertyToken(
+          jsonPath,
+          property,
+          range,
+          tokensBuilder,
+          names,
+        );
+        if (collection === ATTRS) {
+          attrsNameRanges[property] = innerRange;
+        } else if (collection === TAGS) {
+          tagsNameRanges[property] = innerRange;
+        }
       }
     },
     onLiteralValue(
@@ -677,66 +799,35 @@ export const parseCedarEntitiesDoc = (
       startCharacter,
       pathSupplier,
     ) {
-      const range = makeRange(startLine, startCharacter, length);
-      const jsonPathLen = pathSupplier().length;
-      if (pathSupplier()[1] === UID) {
-        if (pathSupplier()[jsonPathLen - 1] === TYPE) {
+      const jsonPath = pathSupplier();
+      const jsonPathLen = jsonPath.length;
+      if (jsonPath[1] === UID) {
+        if (jsonPath[jsonPathLen - 1] === TYPE) {
           uidType = value;
           uid = `${uidType}::"${uidId}"`;
           uidTypeRange = makeRange(startLine, startCharacter, length, 1);
         }
-        if (pathSupplier()[jsonPathLen - 1] === ID) {
+        if (jsonPath[jsonPathLen - 1] === ID) {
           uidId = value;
           uid = `${uidType}::"${uidId}"`;
         }
-      }
-
-      // entities as strings under UID or string array element under PARENTS
-      if (
-        (jsonPathLen === 2 && pathSupplier()[1] === UID) ||
-        (jsonPathLen === 3 && pathSupplier()[1] === PARENTS)
-      ) {
-        if (pathSupplier()[1] === UID) {
+        if (jsonPathLen === 2) {
+          // entity as a string under UID
           uid = value;
           uidTypeRange = makeRange(startLine, startCharacter, length);
         }
-        determineEntitiesInString(
-          value,
-          startLine,
-          startCharacter,
-          tokensBuilder,
-          referencedTypes,
-        );
       }
 
-      if (
-        jsonPathLen > 2 &&
-        pathSupplier()[jsonPathLen - 1] === TYPE &&
-        (pathSupplier()[1] === UID ||
-          pathSupplier()[1] === PARENTS ||
-          (pathSupplier()[1] === ATTRS && jsonPathLen > 3) ||
-          pathSupplier()[jsonPathLen - 2] === ENTITY)
-      ) {
-        // most things directly under "type" are a type
-        tokensBuilder.push(range, 'type', []);
-        referencedTypes.push({
-          name: value,
-          range: determineReferenceRange(
-            value,
-            startLine,
-            startCharacter + 1,
-            length - 1,
-          ),
-        });
-      } else if (
-        jsonPathLen > 2 &&
-        pathSupplier()[jsonPathLen - 1] === 'fn' &&
-        (pathSupplier()[jsonPathLen - 2] === '__extn' ||
-          ['ip', 'decimal', 'datetime', 'duration'].includes(value))
-      ) {
-        // things under "__extn" then "fn" are a function
-        tokensBuilder.push(range, 'function', []);
-      }
+      pushEntityValueTokens(
+        jsonPath,
+        value,
+        startLine,
+        startCharacter,
+        length,
+        tokensBuilder,
+        referencedTypes,
+        names,
+      );
     },
   });
 
@@ -882,6 +973,290 @@ export const templateLinksTokensProvider: vscode.DocumentSemanticTokensProvider 
       return parseCedarTemplateLinksDoc(cedarTemplateLinksDoc).tokens;
     },
   };
+
+/*
+ * Cedar tests
+ */
+
+export type TestRange = {
+  name: string;
+  index: number;
+  range: vscode.Range;
+  nameKeyRange: vscode.Range | null;
+  nameRange: vscode.Range | null;
+  decision: string;
+  requestKeyRange: vscode.Range | null;
+  requestRange: vscode.Range | null;
+  entitiesKeyRange: vscode.Range | null;
+  entitiesRange: vscode.Range | null;
+};
+
+export type TestsCacheItem = {
+  version: number;
+  tests: TestRange[];
+  tokens: vscode.SemanticTokens;
+  referencedTypes: ReferencedRange[];
+  actionIds: ReferencedRange[];
+  policyIds: ReferencedRange[];
+};
+
+const testsCache: Record<string, TestsCacheItem> = {};
+
+export const parseCedarTestsDoc = (
+  cedarTestsDoc: vscode.TextDocument,
+): TestsCacheItem => {
+  let cachedItem = testsCache[cedarTestsDoc.uri.toString()];
+  if (cachedItem && cachedItem.version === cedarTestsDoc.version) {
+    // console.log("parseCedarTestsDoc (cached)");
+    return cachedItem;
+  }
+
+  const tokensBuilder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
+  const tests: TestRange[] = [];
+  const referencedTypes: ReferencedRange[] = [];
+  const actionIds: ReferencedRange[] = [];
+  const policyIds: ReferencedRange[] = [];
+
+  let name: string = '';
+  let decision: string = '';
+  let testStart: vscode.Position | null = null;
+  let nameKeyRange: vscode.Range | null = null;
+  let nameRange: vscode.Range | null = null;
+  let requestKeyRange: vscode.Range | null = null;
+  let requestRange: vscode.Range | null = null;
+  let entitiesKeyRange: vscode.Range | null = null;
+  let entitiesRange: vscode.Range | null = null;
+  let depth = 0;
+  let arrayDepth = 0;
+  let depth1Property = '';
+
+  const resetTest = () => {
+    name = '';
+    decision = '';
+    testStart = null;
+    nameKeyRange = null;
+    nameRange = null;
+    requestKeyRange = null;
+    requestRange = null;
+    entitiesKeyRange = null;
+    entitiesRange = null;
+    depth1Property = '';
+  };
+
+  jsonc.visit(cedarTestsDoc.getText(), {
+    onObjectBegin(offset, length, startLine, startCharacter, pathSupplier) {
+      depth++;
+      if (pathSupplier().length === 1) {
+        testStart = new vscode.Position(startLine, startCharacter);
+      }
+    },
+    onObjectEnd(offset, length, startLine, startCharacter) {
+      depth--;
+      if (depth === 0) {
+        if (testStart) {
+          tests.push({
+            name: name || `test${tests.length}`,
+            index: tests.length,
+            range: new vscode.Range(
+              testStart,
+              new vscode.Position(startLine, startCharacter + length),
+            ),
+            nameKeyRange: nameKeyRange,
+            nameRange: nameRange,
+            decision: decision,
+            requestKeyRange: requestKeyRange,
+            requestRange: requestRange,
+            entitiesKeyRange: entitiesKeyRange,
+            entitiesRange: entitiesRange,
+          });
+        }
+        resetTest();
+      } else if (
+        depth === 1 &&
+        depth1Property === 'request' &&
+        requestKeyRange
+      ) {
+        requestRange = new vscode.Range(
+          requestKeyRange.start,
+          new vscode.Position(startLine, startCharacter + length),
+        );
+      }
+    },
+    onArrayBegin(offset, length, startLine, startCharacter, pathSupplier) {
+      arrayDepth++;
+    },
+    onArrayEnd(offset, length, startLine, startCharacter) {
+      arrayDepth--;
+      if (
+        arrayDepth === 1 &&
+        depth1Property === 'entities' &&
+        entitiesKeyRange
+      ) {
+        entitiesRange = new vscode.Range(
+          entitiesKeyRange.start,
+          new vscode.Position(startLine, startCharacter + length),
+        );
+      }
+    },
+    onObjectProperty(
+      property,
+      offset,
+      length,
+      startLine,
+      startCharacter,
+      pathSupplier,
+    ) {
+      const range = makeRange(startLine, startCharacter, length);
+      const innerRange = makeRange(startLine, startCharacter, length, 1);
+      const jsonPath = pathSupplier();
+      const jsonPathLen = jsonPath.length;
+
+      if (jsonPathLen === 1) {
+        // properties of a test
+        depth1Property = property;
+        if (
+          ['name', 'request', 'entities', 'decision', 'reason'].includes(
+            property,
+          )
+        ) {
+          tokensBuilder.push(range, 'variable', ['readonly']);
+        }
+        if (property === 'name') {
+          nameKeyRange = innerRange;
+        } else if (property === 'request') {
+          requestKeyRange = innerRange;
+        } else if (property === 'entities') {
+          entitiesKeyRange = innerRange;
+        }
+      } else if (jsonPathLen === 2 && jsonPath[1] === 'request') {
+        if (['principal', 'action', 'resource', 'context'].includes(property)) {
+          tokensBuilder.push(range, 'variable', []);
+        }
+      } else if (jsonPath[1] === 'entities') {
+        // paths inside "entities" match a Cedar entities JSON document
+        // shifted by the test index and the "entities" property
+        pushEntityPropertyToken(
+          jsonPath.slice(2),
+          property,
+          range,
+          tokensBuilder,
+        );
+      }
+    },
+    onLiteralValue(
+      value,
+      offset,
+      length,
+      startLine,
+      startCharacter,
+      pathSupplier,
+    ) {
+      const range = makeRange(startLine, startCharacter, length);
+      const jsonPath = pathSupplier();
+      const jsonPathLen = jsonPath.length;
+
+      if (jsonPathLen === 1) {
+        // not a test object, but keep the test indexes aligned
+        tests.push({
+          name: `test${tests.length}`,
+          index: tests.length,
+          range: range,
+          nameKeyRange: null,
+          nameRange: null,
+          decision: '',
+          requestKeyRange: null,
+          requestRange: null,
+          entitiesKeyRange: null,
+          entitiesRange: null,
+        });
+      } else if (jsonPathLen === 2 && jsonPath[1] === 'name') {
+        name = value;
+        nameRange = makeRange(startLine, startCharacter, length, 1);
+      } else if (jsonPathLen === 2 && jsonPath[1] === 'decision') {
+        decision = value;
+        tokensBuilder.push(range, 'keyword', []);
+      } else if (jsonPathLen === 3 && jsonPath[1] === 'reason') {
+        // policy ids which determined the decision
+        tokensBuilder.push(range, 'function', []);
+        policyIds.push({
+          name: value,
+          range: makeRange(startLine, startCharacter, length, 1),
+        });
+      } else if (jsonPathLen === 3 && jsonPath[1] === 'request') {
+        const property = jsonPath[2] as string;
+        if (['principal', 'action', 'resource'].includes(property)) {
+          let foundArray = [...value.matchAll(ENTITY_REGEXG)];
+          foundArray.forEach((found) => {
+            if (found?.groups) {
+              const type = found?.groups.type;
+              tokensBuilder.push(
+                makeRange(startLine, startCharacter + 1, type.length),
+                'type',
+                [],
+              );
+
+              if (property === 'action') {
+                const actionId = found?.groups.id;
+                const pos = value.lastIndexOf(actionId);
+                if (pos > -1) {
+                  actionIds.push({
+                    name: value,
+                    range: makeRange(
+                      startLine,
+                      startCharacter + pos + 2,
+                      actionId.length,
+                    ),
+                  });
+                }
+              } else {
+                referencedTypes.push({
+                  name: type,
+                  range: determineReferenceRange(
+                    type,
+                    startLine,
+                    startCharacter + 1,
+                    type.length + 1,
+                  ),
+                });
+              }
+            }
+          });
+        }
+      } else if (jsonPath[1] === 'entities') {
+        pushEntityValueTokens(
+          jsonPath.slice(2),
+          value,
+          startLine,
+          startCharacter,
+          length,
+          tokensBuilder,
+          referencedTypes,
+        );
+      }
+    },
+  });
+
+  cachedItem = {
+    version: cedarTestsDoc.version,
+    tests: tests,
+    tokens: tokensBuilder.build(),
+    referencedTypes: referencedTypes,
+    actionIds: actionIds,
+    policyIds: policyIds,
+  };
+  testsCache[cedarTestsDoc.uri.toString()] = cachedItem;
+
+  return cachedItem;
+};
+
+// analyze the Cedar tests JSON documents and return semantic tokens
+export const testsTokensProvider: vscode.DocumentSemanticTokensProvider = {
+  provideDocumentSemanticTokens(
+    cedarTestsDoc: vscode.TextDocument,
+  ): vscode.ProviderResult<vscode.SemanticTokens> {
+    return parseCedarTestsDoc(cedarTestsDoc).tokens;
+  },
+};
 
 /*
  * Cedar authorization requests (PARC)
@@ -1046,8 +1421,7 @@ const schemaCache: Record<string, SchemaCacheItem> = {};
 export const parseCedarSchemaDoc = (
   schemaDoc: vscode.TextDocument,
   visitSchema?:
-    | undefined
-    | ((schemaRange: SchemaRange, schemaText: string) => void),
+    undefined | ((schemaRange: SchemaRange, schemaText: string) => void),
 ): SchemaCacheItem => {
   // schema text is not cached, so check for no visitSchema callback
   if (visitSchema === undefined) {
@@ -1445,8 +1819,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
 const parseCedarSchemaCedarDoc = (
   schemaDoc: vscode.TextDocument,
   visitSchema?:
-    | undefined
-    | ((schemaRange: SchemaRange, schemaText: string) => void),
+    undefined | ((schemaRange: SchemaRange, schemaText: string) => void),
 ): SchemaCacheItem => {
   // schema text is not cached, so check for no visitSchema callback
   if (visitSchema === undefined) {
@@ -1671,12 +2044,10 @@ const parseCedarSchemaCedarDoc = (
         );
         if (match && match.groups?.type) {
           let type = match.groups?.type;
-          if (
-            !(
-              type.startsWith('__cedar::') ||
-              ['Long', 'String', 'Bool', 'Set'].includes(type)
-            )
-          ) {
+          if (!(
+            type.startsWith('__cedar::') ||
+            ['Long', 'String', 'Bool', 'Set'].includes(type)
+          )) {
             const idx = textLine.indexOf(type, colonIndex);
             if (idx > -1) {
               if (!EXTENSIONS.includes(type)) {

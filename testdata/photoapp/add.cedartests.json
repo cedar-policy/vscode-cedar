@@ -1,0 +1,12 @@
+[
+  {
+    "name": "existing",
+    "request": {
+      "principal": "PhotoApp::User::\"JaneDoe\"",
+      "action": "PhotoApp::Action::\"viewPhoto\"",
+      "resource": "PhotoApp::Photo::\"JaneDoe.jpg\"",
+      "context": {}
+    },
+    "decision": "allow"
+  }
+]

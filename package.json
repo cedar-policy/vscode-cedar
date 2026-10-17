@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.10.6",
+  "version": "0.12.0",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -36,7 +36,9 @@
     "workspaceContains:**/*.cedarschema.json",
     "workspaceContains:**/cedarschema.json",
     "workspaceContains:**/*.cedarentities.json",
-    "workspaceContains:**/cedarentities.json"
+    "workspaceContains:**/cedarentities.json",
+    "workspaceContains:**/*.cedartests.json",
+    "workspaceContains:**/cedartests.json"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -143,6 +145,16 @@
         "title": "Add Cedar entity"
       },
       {
+        "command": "cedar.testsvalidate",
+        "category": "Cedar",
+        "title": "Validate Cedar tests"
+      },
+      {
+        "command": "cedar.testsadd",
+        "category": "Cedar",
+        "title": "Add Cedar test"
+      },
+      {
         "command": "cedar.clearproblems",
         "category": "Cedar",
         "title": "Clear problems"
@@ -168,7 +180,7 @@
           "group": "y_commands"
         },
         {
-          "when": "editorLangId == cedar || resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "when": "editorLangId == cedar || resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/ || resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/",
           "command": "cedar.schemaopen",
           "group": "navigation"
         },
@@ -195,6 +207,16 @@
         {
           "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
           "command": "cedar.entitiesadd",
+          "group": "1_modification"
+        },
+        {
+          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/",
+          "command": "cedar.testsvalidate",
+          "group": "1_modification"
+        },
+        {
+          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/",
+          "command": "cedar.testsadd",
           "group": "1_modification"
         }
       ],
@@ -230,6 +252,14 @@
         {
           "command": "cedar.entitiesadd",
           "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+        },
+        {
+          "command": "cedar.testsvalidate",
+          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/"
+        },
+        {
+          "command": "cedar.testsadd",
+          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/"
         }
       ]
     },
@@ -287,13 +317,19 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
+    "pretest": "npm run compile && npm run lint && npm run format:check",
     "lint": "eslint src --ext ts",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "test": "vscode-test",
     "test:file": "vscode-test --files",
     "package": "vsce package --follow-symlinks",
     "package-prerelease": "vsce package --pre-release --follow-symlinks",
+    "prewasm-build": "npm run wasm-format:check",
     "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",
+    "wasm-format": "cd vscode-cedar-wasm && cargo fmt",
+    "wasm-format:check": "cd vscode-cedar-wasm && cargo fmt --check",
+    "wasm-test": "cd vscode-cedar-wasm && cargo test --lib",
     "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../..",
     "test:grammar": "npm run compile && mocha --ui tdd out/test/suite/tmgrammar.test.js"
   },
@@ -313,6 +349,7 @@
     "eslint": "^9.39.5",
     "js-yaml": "^4.3.2",
     "mocha": "^11.8.0",
+    "prettier": "^3.9.10",
     "typescript": "^5.9.3",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"

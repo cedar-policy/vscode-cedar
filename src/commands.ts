@@ -14,4 +14,6 @@ export const COMMAND_CEDAR_SCHEMAEXPORT = 'cedar.schemaexport';
 export const COMMAND_CEDAR_SCHEMAOPEN = 'cedar.schemaopen';
 export const COMMAND_CEDAR_ENTITIESVALIDATE = 'cedar.entitiesvalidate';
 export const COMMAND_CEDAR_ENTITIESADD = 'cedar.entitiesadd';
+export const COMMAND_CEDAR_TESTSVALIDATE = 'cedar.testsvalidate';
+export const COMMAND_CEDAR_TESTSADD = 'cedar.testsadd';
 export const COMMAND_CEDAR_CLEARPROBLEMS = 'cedar.clearproblems';

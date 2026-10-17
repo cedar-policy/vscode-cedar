@@ -3,10 +3,13 @@
 
 import * as vscode from 'vscode';
 import * as cedar from 'vscode-cedar-wasm';
+import * as jsonc from 'jsonc-parser';
 import {
   addPolicyResultMessages,
   addSyntaxDiagnosticErrors,
+  addValidationDiagnosticError,
   addValidationDiagnosticWarning,
+  DEFAULT_RANGE,
   determineRangeFromOffset,
   reportFormatterOff,
 } from './diagnostics';
@@ -14,8 +17,9 @@ import {
   getSchemaTextDocument,
   detectEntitiesDoc,
   detectSchemaDoc,
+  detectTestsDoc,
 } from './fileutil';
-import { parseCedarPoliciesDoc } from './parser';
+import { parseCedarPoliciesDoc, parseCedarTestsDoc, TestRange } from './parser';
 
 type ValidationCacheItem = {
   version: number;
@@ -54,7 +58,7 @@ class ValidationCache {
     schemaDoc: vscode.TextDocument,
     principals: string[],
     resources: string[],
-    actions: string[]
+    actions: string[],
   ) {
     this.entityTypes[schemaDoc.uri.toString()] = {
       version: schemaDoc.version,
@@ -65,7 +69,7 @@ class ValidationCache {
   }
 
   checkEntityTypes(
-    schemaDoc: vscode.TextDocument
+    schemaDoc: vscode.TextDocument,
   ): EntityTypesCacheItem | null {
     const cachedItem = this.entityTypes[schemaDoc.uri.toString()];
     if (cachedItem && cachedItem.version === schemaDoc.version) {
@@ -102,7 +106,7 @@ class ValidationCache {
 
   associateSchemaWithDoc(
     schemaDoc: vscode.TextDocument,
-    doc: vscode.TextDocument
+    doc: vscode.TextDocument,
   ) {
     const s = this.docsBySchema[schemaDoc.uri.toString()] || new Set();
     s.add(doc.uri.toString());
@@ -111,14 +115,14 @@ class ValidationCache {
 
   revalidateSchema(
     schemaDoc: vscode.TextDocument,
-    diagnosticCollection: vscode.DiagnosticCollection
+    diagnosticCollection: vscode.DiagnosticCollection,
   ) {
     const docs = this.docsBySchema[schemaDoc.uri.toString()];
     if (docs) {
       docs.forEach((docUri) => {
         delete this.cache[docUri];
         const textDoc = vscode.workspace.openTextDocument(
-          vscode.Uri.parse(docUri)
+          vscode.Uri.parse(docUri),
         );
         textDoc.then((doc) => {
           validateTextDocument(doc, diagnosticCollection);
@@ -131,7 +135,7 @@ const HEAD_REGEX = /(?:(permit|forbid)\s*\((.|\n)*?\))(?<!\s*(;|when|unless))/;
 export const fetchEntityTypes = (
   schemaDoc: vscode.TextDocument,
   cedarDoc: vscode.TextDocument,
-  position: vscode.Position
+  position: vscode.Position,
 ): {
   principals: string[];
   resources: string[];
@@ -148,7 +152,7 @@ export const fetchEntityTypes = (
         const principalTypes = determineEntityTypes(
           schemaDoc,
           'principal',
-          head
+          head,
         );
         const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
         const actionIds = determineEntityTypes(schemaDoc, 'action', head);
@@ -175,12 +179,12 @@ export const narrowEntityTypes = (
   schemaDoc: vscode.TextDocument,
   scope: string,
   cedarDoc: vscode.TextDocument,
-  position: vscode.Position
+  position: vscode.Position,
 ): string[] => {
   const { principals, resources, actions } = fetchEntityTypes(
     schemaDoc,
     cedarDoc,
-    position
+    position,
   );
   let entities: string[] = [];
   if (scope === 'principal') {
@@ -198,7 +202,7 @@ export const narrowEntityTypes = (
 
 export const validateTextDocument = (
   doc: vscode.TextDocument,
-  diagnosticCollection: vscode.DiagnosticCollection
+  diagnosticCollection: vscode.DiagnosticCollection,
 ) => {
   if (doc.uri.scheme !== 'file') {
     // don't validate vscode-local-history or other non-file URIs
@@ -210,13 +214,15 @@ export const validateTextDocument = (
     validateSchemaDoc(doc, diagnosticCollection);
   } else if (detectEntitiesDoc(doc)) {
     validateEntitiesDoc(doc, diagnosticCollection);
+  } else if (detectTestsDoc(doc)) {
+    validateTestsDoc(doc, diagnosticCollection);
   }
 };
 
 export const validateCedarDoc = async (
   cedarDoc: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection,
-  userInitiated: boolean = false
+  userInitiated: boolean = false,
 ): Promise<boolean> => {
   if (!userInitiated) {
     const cachedItem = validationCache.check(cedarDoc);
@@ -229,7 +235,7 @@ export const validateCedarDoc = async (
   const diagnostics: vscode.Diagnostic[] = [];
   reportFormatterOff(cedarDoc, diagnostics);
   const syntaxResult: cedar.ValidateSyntaxResult = cedar.validateSyntax(
-    cedarDoc.getText()
+    cedarDoc.getText(),
   );
   try {
     let success = syntaxResult.success;
@@ -246,12 +252,12 @@ export const validateCedarDoc = async (
             if (schemaDoc.languageId === 'cedarschema') {
               policyResult = cedar.validatePolicySchemaCedar(
                 schemaDoc.getText(),
-                policyText
+                policyText,
               );
             } else {
               policyResult = cedar.validatePolicySchemaJSON(
                 schemaDoc.getText(),
-                policyText
+                policyText,
               );
             }
             try {
@@ -262,7 +268,7 @@ export const validateCedarDoc = async (
                   policyText,
                   policyRange.effectRange,
                   policyRange.range.start.line,
-                  true
+                  true,
                 );
               }
               if (policyResult.success === false && policyResult.errors) {
@@ -272,7 +278,7 @@ export const validateCedarDoc = async (
                   policyText,
                   policyRange.effectRange,
                   policyRange.range.start.line,
-                  false
+                  false,
                 );
               }
             } finally {
@@ -295,7 +301,7 @@ export const validateCedarDoc = async (
 export const validateSchemaDoc = (
   schemaDoc: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection,
-  userInitiated: boolean = false
+  userInitiated: boolean = false,
 ): boolean => {
   if (!userInitiated) {
     const cachedItem = validationCache.check(schemaDoc);
@@ -343,7 +349,7 @@ export const validateSchemaDoc = (
         schemaDoc,
         principalTypes,
         resourceTypes,
-        actionIds
+        actionIds,
       );
 
       // revalidate any Cedar files using this schema
@@ -367,7 +373,7 @@ const ATTRIBUTE_REGEX =
 export const determineEntityTypes = (
   schemaDoc: vscode.TextDocument,
   scope: 'principal' | 'resource' | 'action',
-  head: string = 'permit (principal, action, resource)'
+  head: string = 'permit (principal, action, resource)',
 ): string[] => {
   const types: string[] = [];
   const expr = scope === 'action' ? 'context.__vscode__' : scope;
@@ -376,12 +382,12 @@ export const determineEntityTypes = (
   if (schemaDoc.languageId === 'cedarschema') {
     policyResult = cedar.validatePolicySchemaCedar(
       schemaDoc.getText(),
-      tmpPolicy
+      tmpPolicy,
     );
   } else {
     policyResult = cedar.validatePolicySchemaJSON(
       schemaDoc.getText(),
-      tmpPolicy
+      tmpPolicy,
     );
   }
   try {
@@ -405,10 +411,249 @@ export const determineEntityTypes = (
   return types.sort();
 };
 
+/*
+ * Cedar tests
+ */
+
+export type CedarTest = {
+  name?: string;
+  request?: {
+    principal?: string;
+    action?: string;
+    resource?: string;
+    context?: object;
+  };
+  entities?: object[];
+  decision?: string;
+  reason?: string[];
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  num_errors?: number;
+};
+
+export const DECISIONS = ['allow', 'deny'];
+
+// anchor a diagnostic on the test name when available
+const testRangeOrDefault = (
+  testRange: TestRange | undefined,
+  range: vscode.Range | null | undefined = undefined,
+): vscode.Range => {
+  if (range) {
+    return range;
+  }
+  if (testRange) {
+    return testRange.nameRange || testRange.range;
+  }
+  return DEFAULT_RANGE;
+};
+
+/**
+ * Parse a Cedar tests document, reporting JSON and structural problems as
+ * diagnostics.  Returns `undefined` when the document cannot be used.
+ */
+export const parseTestsDocText = (
+  testsDoc: vscode.TextDocument,
+  diagnostics: vscode.Diagnostic[],
+): CedarTest[] | undefined => {
+  const jsonErrors: jsonc.ParseError[] = [];
+  const parsed = jsonc.parse(testsDoc.getText(), jsonErrors, {
+    allowTrailingComma: false,
+  });
+
+  if (jsonErrors.length > 0) {
+    jsonErrors.forEach((e) => {
+      addValidationDiagnosticError(
+        diagnostics,
+        jsonc.printParseErrorCode(e.error),
+        determineRangeFromOffset(testsDoc, e.offset, e.length),
+      );
+    });
+    return undefined;
+  }
+
+  if (!Array.isArray(parsed)) {
+    addValidationDiagnosticError(
+      diagnostics,
+      'Cedar tests file must contain an array of tests',
+    );
+    return undefined;
+  }
+
+  const testRanges = parseCedarTestsDoc(testsDoc).tests;
+  const tests: CedarTest[] = [];
+  parsed.forEach((test: CedarTest, index: number) => {
+    const testRange = testRanges[index];
+    if (typeof test !== 'object' || test === null || Array.isArray(test)) {
+      addValidationDiagnosticError(
+        diagnostics,
+        'expected a Cedar test object',
+        testRangeOrDefault(testRange),
+      );
+      // keep the returned tests aligned with the parsed ranges
+      tests.push({});
+      return;
+    }
+
+    if (typeof test.name !== 'string' || test.name.length === 0) {
+      addValidationDiagnosticWarning(
+        diagnostics,
+        'Cedar test is missing a "name"',
+        testRangeOrDefault(testRange),
+      );
+    }
+
+    const request = test.request;
+    if (typeof request !== 'object' || request === null) {
+      addValidationDiagnosticError(
+        diagnostics,
+        'Cedar test is missing a "request"',
+        testRangeOrDefault(testRange),
+      );
+    } else {
+      (['principal', 'action', 'resource'] as const).forEach((scope) => {
+        if (typeof request[scope] !== 'string') {
+          addValidationDiagnosticError(
+            diagnostics,
+            `"request" is missing "${scope}"`,
+            testRangeOrDefault(testRange, testRange?.requestKeyRange),
+          );
+        }
+      });
+    }
+
+    if (!DECISIONS.includes(test.decision as string)) {
+      addValidationDiagnosticError(
+        diagnostics,
+        `"decision" must be ${DECISIONS.map((d) => `"${d}"`).join(' or ')}`,
+        testRangeOrDefault(testRange),
+      );
+    }
+
+    if (test.reason !== undefined) {
+      if (
+        !Array.isArray(test.reason) ||
+        test.reason.some((id) => typeof id !== 'string')
+      ) {
+        addValidationDiagnosticError(
+          diagnostics,
+          '"reason" must be an array of policy id strings',
+          testRangeOrDefault(testRange),
+        );
+      }
+    }
+
+    if (test.num_errors !== undefined && typeof test.num_errors !== 'number') {
+      addValidationDiagnosticError(
+        diagnostics,
+        '"num_errors" must be a number',
+        testRangeOrDefault(testRange),
+      );
+    }
+
+    if (test.entities !== undefined && !Array.isArray(test.entities)) {
+      addValidationDiagnosticError(
+        diagnostics,
+        '"entities" must be an array of Cedar entities',
+        testRangeOrDefault(testRange, testRange?.entitiesKeyRange),
+      );
+    }
+
+    tests.push(test);
+  });
+
+  return tests;
+};
+
+export const validateTestsDoc = async (
+  testsDoc: vscode.TextDocument,
+  diagnosticCollection: vscode.DiagnosticCollection,
+  userInitiated: boolean = false,
+): Promise<boolean> => {
+  if (!userInitiated) {
+    const cachedItem = validationCache.check(testsDoc);
+    if (cachedItem) {
+      // console.log(`validateTestsDoc (cached) ${testsDoc.uri.toString()}`);
+      return Promise.resolve(cachedItem.valid);
+    }
+  }
+  // console.log(`validateTestsDoc ${testsDoc.uri.toString()}`);
+
+  const testsDiagnostics: vscode.Diagnostic[] = [];
+  const tests = parseTestsDocText(testsDoc, testsDiagnostics);
+  // warnings (such as a missing test name) don't fail validation
+  let success =
+    tests !== undefined &&
+    !testsDiagnostics.some(
+      (d) => d.severity === vscode.DiagnosticSeverity.Error,
+    );
+
+  if (tests) {
+    const schemaDoc = await getSchemaTextDocument(testsDoc);
+    if (schemaDoc) {
+      if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
+        validationCache.associateSchemaWithDoc(schemaDoc, testsDoc);
+
+        const testRanges = parseCedarTestsDoc(testsDoc).tests;
+        // the same entities are often repeated in every test
+        const validated: Record<string, string[]> = {};
+        tests.forEach((test, index) => {
+          if (!Array.isArray(test.entities)) {
+            return;
+          }
+
+          const entities = JSON.stringify(test.entities);
+          if (validated[entities] === undefined) {
+            let entitiesResult: cedar.ValidateEntitiesResult;
+            if (schemaDoc.languageId === 'cedarschema') {
+              entitiesResult = cedar.validateEntitiesSchemaCedar(
+                schemaDoc.getText(),
+                entities,
+              );
+            } else {
+              entitiesResult = cedar.validateEntitiesSchemaJSON(
+                schemaDoc.getText(),
+                entities,
+              );
+            }
+            try {
+              validated[entities] = entitiesResult.success
+                ? []
+                : (entitiesResult.errors || []).map((e) => e.message);
+            } finally {
+              entitiesResult.free();
+            }
+          }
+
+          validated[entities].forEach((message) => {
+            success = false;
+            addValidationDiagnosticError(
+              testsDiagnostics,
+              message,
+              testRangeOrDefault(
+                testRanges[index],
+                testRanges[index]?.entitiesKeyRange,
+              ),
+            );
+          });
+        });
+      }
+    } else if (userInitiated) {
+      vscode.window.showErrorMessage(
+        `Cedar schema file not found or configured in settings.json`,
+      );
+    }
+  }
+
+  diagnosticCollection.set(testsDoc.uri, testsDiagnostics);
+
+  validationCache.store(testsDoc, success);
+
+  return Promise.resolve(success);
+};
+
 export const validateEntitiesDoc = async (
   entitiesDoc: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection,
-  userInitiated: boolean = false
+  userInitiated: boolean = false,
 ): Promise<boolean> => {
   if (!userInitiated) {
     const cachedItem = validationCache.check(entitiesDoc);
@@ -432,12 +677,12 @@ export const validateEntitiesDoc = async (
       if (schemaDoc.languageId === 'cedarschema') {
         entitiesResult = cedar.validateEntitiesSchemaCedar(
           schemaDoc.getText(),
-          entities
+          entities,
         );
       } else {
         entitiesResult = cedar.validateEntitiesSchemaJSON(
           schemaDoc.getText(),
-          entities
+          entities,
         );
       }
       try {
@@ -446,7 +691,7 @@ export const validateEntitiesDoc = async (
           addSyntaxDiagnosticErrors(
             entitiesDiagnostics,
             entitiesResult.errors,
-            entitiesDoc
+            entitiesDoc,
           );
         }
       } finally {
@@ -456,7 +701,7 @@ export const validateEntitiesDoc = async (
   } else {
     if (userInitiated) {
       vscode.window.showErrorMessage(
-        `Cedar schema file not found or configured in settings.json`
+        `Cedar schema file not found or configured in settings.json`,
       );
     }
   }
