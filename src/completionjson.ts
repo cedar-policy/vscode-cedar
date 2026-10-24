@@ -10,7 +10,6 @@ import {
 } from './parser';
 import { DECISIONS, determineEntityTypes, validateSchemaDoc } from './validate';
 import { getSchemaTextDocument } from './fileutil';
-import { createDiagnosticCollection } from './diagnostics';
 
 const isTopLevelJSON = (
   document: vscode.TextDocument,
@@ -138,6 +137,8 @@ export const snippetify = (
 export class CedarEntitiesJSONCompletionItemProvider
   implements vscode.CompletionItemProvider
 {
+  constructor(private diagnosticCollection: vscode.DiagnosticCollection) {}
+
   async provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
@@ -148,7 +149,7 @@ export class CedarEntitiesJSONCompletionItemProvider
     if (isTopLevelJSON(document, position)) {
       const schemaDoc = await getSchemaTextDocument(document);
       if (schemaDoc) {
-        if (validateSchemaDoc(schemaDoc, createDiagnosticCollection())) {
+        if (validateSchemaDoc(schemaDoc, this.diagnosticCollection)) {
           const schema = parseCedarSchemaDoc(schemaDoc);
           const entityTypes = schema.entityTypes;
 
@@ -280,6 +281,8 @@ const braced = (body: string, braces: boolean): string =>
 export class CedarTestsJSONCompletionItemProvider
   implements vscode.CompletionItemProvider
 {
+  constructor(private diagnosticCollection: vscode.DiagnosticCollection) {}
+
   async provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
@@ -316,7 +319,7 @@ export class CedarTestsJSONCompletionItemProvider
     const schemaDoc = await getSchemaTextDocument(document);
     if (
       !schemaDoc ||
-      !validateSchemaDoc(schemaDoc, createDiagnosticCollection())
+      !validateSchemaDoc(schemaDoc, this.diagnosticCollection)
     ) {
       return items;
     }

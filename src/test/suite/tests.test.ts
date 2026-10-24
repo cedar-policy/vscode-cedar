@@ -422,16 +422,13 @@ suite('Cedar Tests Suite', () => {
     testsDoc: vscode.TextDocument,
     position: vscode.Position,
   ) => {
-    const items =
-      await new CedarTestsJSONCompletionItemProvider().provideCompletionItems(
-        testsDoc,
-        position,
-        mockToken,
-        {
-          triggerKind: vscode.CompletionTriggerKind.Invoke,
-          triggerCharacter: undefined,
-        },
-      );
+    const diagnosticCollection = createDiagnosticCollection();
+    const items = await new CedarTestsJSONCompletionItemProvider(
+      diagnosticCollection,
+    ).provideCompletionItems(testsDoc, position, mockToken, {
+      triggerKind: vscode.CompletionTriggerKind.Invoke,
+      triggerCharacter: undefined,
+    });
     const labels = items.map(
       (item) => (item.label as vscode.CompletionItemLabel).label,
     );

@@ -32,6 +32,25 @@ type EntityTypesCacheItem = {
   actions: string[];
 };
 
+/*
+ * Revalidation of the documents using a Cedar schema outlives the call which
+ * triggered it, so a document which can no longer be opened, or a diagnostic
+ * collection which has since been disposed, is not an error
+ */
+const revalidateDoc = async (
+  docUri: string,
+  diagnosticCollection: vscode.DiagnosticCollection,
+): Promise<void> => {
+  try {
+    const doc = await vscode.workspace.openTextDocument(
+      vscode.Uri.parse(docUri),
+    );
+    await validateTextDocument(doc, diagnosticCollection);
+  } catch {
+    // the document or the diagnostic collection is gone
+  }
+};
+
 class ValidationCache {
   docsBySchema: Record<string, Set<string>> = {};
   cache: Record<string, ValidationCacheItem> = {};
@@ -121,12 +140,7 @@ class ValidationCache {
     if (docs) {
       docs.forEach((docUri) => {
         delete this.cache[docUri];
-        const textDoc = vscode.workspace.openTextDocument(
-          vscode.Uri.parse(docUri),
-        );
-        textDoc.then((doc) => {
-          validateTextDocument(doc, diagnosticCollection);
-        });
+        void revalidateDoc(docUri, diagnosticCollection);
       });
     }
   }
@@ -200,22 +214,22 @@ export const narrowEntityTypes = (
   return entities;
 };
 
-export const validateTextDocument = (
+export const validateTextDocument = async (
   doc: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection,
-) => {
+): Promise<void> => {
   if (doc.uri.scheme !== 'file') {
     // don't validate vscode-local-history or other non-file URIs
     return;
   }
   if (doc.languageId === 'cedar') {
-    validateCedarDoc(doc, diagnosticCollection);
+    await validateCedarDoc(doc, diagnosticCollection);
   } else if (detectSchemaDoc(doc)) {
     validateSchemaDoc(doc, diagnosticCollection);
   } else if (detectEntitiesDoc(doc)) {
-    validateEntitiesDoc(doc, diagnosticCollection);
+    await validateEntitiesDoc(doc, diagnosticCollection);
   } else if (detectTestsDoc(doc)) {
-    validateTestsDoc(doc, diagnosticCollection);
+    await validateTestsDoc(doc, diagnosticCollection);
   }
 };
 

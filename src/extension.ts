@@ -791,7 +791,7 @@ export async function activate(context: vscode.ExtensionContext) {
     push(
       vscode.languages.registerCompletionItemProvider(
         { language: 'json', pattern: cedarKindGlob('cedarentities') },
-        new CedarEntitiesJSONCompletionItemProvider(),
+        new CedarEntitiesJSONCompletionItemProvider(diagnosticCollection),
         '{',
       ),
     );
@@ -875,7 +875,7 @@ export async function activate(context: vscode.ExtensionContext) {
     push(
       vscode.languages.registerCompletionItemProvider(
         testsSelector,
-        new CedarTestsJSONCompletionItemProvider(),
+        new CedarTestsJSONCompletionItemProvider(diagnosticCollection),
         '{',
       ),
     );
