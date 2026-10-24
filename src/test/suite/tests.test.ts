@@ -10,7 +10,7 @@ import { before } from 'mocha';
 
 import { parseCedarTestsDoc } from '../../parser';
 import {
-  CEDAR_TESTS_GLOB,
+  cedarKindGlob,
   detectTestsDoc,
   getCedarTestFiles,
 } from '../../fileutil';
@@ -59,7 +59,7 @@ suite('Cedar Tests Suite', () => {
   });
 
   test('document selector matches Cedar tests files', async () => {
-    const selector = { language: 'json', pattern: CEDAR_TESTS_GLOB };
+    const selector = { language: 'json', pattern: cedarKindGlob('cedartests') };
 
     for (const filename of ['cedartests.json', 'invalid.cedartests.json']) {
       const doc = await openPhotoapp(filename);

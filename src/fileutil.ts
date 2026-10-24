@@ -6,47 +6,166 @@ import * as path from 'node:path';
 
 const CEDAR_EXTENSION = `.cedar`;
 
-const CEDAR_SCHEMA_JSON_FILE = `cedarschema.json`;
-const CEDAR_SCHEMA_JSON_EXTENSION = `.cedarschema.json`;
 const CEDAR_SCHEMA_FILE = `cedarschema`;
 const CEDAR_SCHEMA_EXTENSION = `.cedarschema`;
-export const CEDAR_SCHEMA_GLOB = `{**/cedarschema.json,**/*.cedarschema.json}`;
 
-const CEDAR_ENTITIES_FILE = `cedarentities.json`;
-const CEDAR_ENTITIES_EXTENSION_JSON = `.cedarentities.json`;
-export const CEDAR_ENTITIES_GLOB = `{**/cedarentities.json,**/*.cedarentities.json,**/avpentities.json,**/*.avpentities.json}`;
+/*
+ * Cedar JSON file kinds, which are also the values of the
+ * cedar.fileAssociations setting
+ */
 
-const CEDAR_TEMPLATELINKS_FILE = `cedartemplatelinks.json`;
-const CEDAR_TEMPLATELINKS_EXTENSION_JSON = `.cedartemplatelinks.json`;
-export const CEDAR_TEMPLATELINKS_GLOB = `{**/cedartemplatelinks.json,**/*.cedartemplatelinks.json,**/cedarlinks.json,**/*.cedarlinks.json}`;
-export const CEDAR_AUTH_GLOB = `{**/cedarauth.json,**/*.cedarauth.json,**/cedarparc.json,**/*.cedarparc.json}`;
-export const CEDAR_JSON_GLOB = `**/*.cedar.json`;
+export type CedarKind =
+  | 'cedarschema.json'
+  | 'cedarentities'
+  | 'avpentities'
+  | 'cedartemplatelinks'
+  | 'cedarauth'
+  | 'cedartests'
+  | 'cedar.json';
 
-const CEDAR_TESTS_FILE = `cedartests.json`;
-const CEDAR_TESTS_EXTENSION_JSON = `.cedartests.json`;
-export const CEDAR_TESTS_GLOB = `{**/cedartests.json,**/*.cedartests.json}`;
+// the filenames each kind is detected by, without a configured association
+const BUILTIN_FILENAMES: Record<CedarKind, string[]> = {
+  'cedarschema.json': ['cedarschema.json', '*.cedarschema.json'],
+  cedarentities: ['cedarentities.json', '*.cedarentities.json'],
+  avpentities: ['avpentities.json', '*.avpentities.json'],
+  cedartemplatelinks: [
+    'cedartemplatelinks.json',
+    '*.cedartemplatelinks.json',
+    'cedarlinks.json',
+    '*.cedarlinks.json',
+  ],
+  cedarauth: [
+    'cedarauth.json',
+    '*.cedarauth.json',
+    'cedarparc.json',
+    '*.cedarparc.json',
+  ],
+  cedartests: ['cedartests.json', '*.cedartests.json'],
+  'cedar.json': ['*.cedar.json'],
+};
+
+export const CEDAR_KINDS = Object.keys(BUILTIN_FILENAMES) as CedarKind[];
+
+// a pattern without a path separator matches that filename in any folder, the
+// same as the files.associations setting
+const toGlobPattern = (pattern: string): string =>
+  pattern.startsWith('**') || pattern.startsWith('/')
+    ? pattern
+    : `**/${pattern}`;
+
+const toGlob = (patterns: string[]): string =>
+  patterns.length === 1 ? patterns[0] : `{${patterns.join(',')}}`;
+
+/**
+ * The `cedar.fileAssociations` setting, which maps a glob pattern to a Cedar
+ * JSON file kind for users whose files don't follow the `cedar*.json` naming
+ * convention.  Unrecognized kinds are ignored.
+ */
+const getFileAssociations = (
+  doc: vscode.TextDocument | undefined = undefined,
+): [string, CedarKind][] =>
+  Object.entries(
+    vscode.workspace
+      .getConfiguration('cedar', doc?.uri)
+      .get<Record<string, string>>('fileAssociations', {}),
+  ).filter(([, kind]) => CEDAR_KINDS.includes(kind as CedarKind)) as [
+    string,
+    CedarKind,
+  ][];
+
+const configuredPatterns = (
+  kind: CedarKind,
+  doc: vscode.TextDocument | undefined = undefined,
+): string[] =>
+  getFileAssociations(doc)
+    .filter(([, value]) => value === kind)
+    .map(([pattern]) => toGlobPattern(pattern));
+
+/**
+ * Glob for a Cedar JSON file kind, combining the built-in filenames with any
+ * `cedar.fileAssociations` patterns.  Used for document selectors, which only
+ * accept a static glob, and for `findFiles` and file watchers.
+ */
+export const cedarKindGlob = (
+  kind: CedarKind | CedarKind[],
+  doc: vscode.TextDocument | undefined = undefined,
+): string => {
+  const kinds = Array.isArray(kind) ? kind : [kind];
+  const patterns = new Set<string>();
+  kinds.forEach((k) => {
+    BUILTIN_FILENAMES[k].forEach((filename) =>
+      patterns.add(toGlobPattern(filename)),
+    );
+    configuredPatterns(k, doc).forEach((pattern) => patterns.add(pattern));
+  });
+
+  return toGlob(Array.from(patterns));
+};
+
+/**
+ * Determine which kind of Cedar JSON file a document is, from the built-in
+ * filenames first, then the `cedar.fileAssociations` setting in declaration
+ * order.  Returns `undefined` for any other document.
+ */
+export const determineCedarKind = (
+  doc: vscode.TextDocument,
+): CedarKind | undefined => {
+  for (const kind of CEDAR_KINDS) {
+    const glob = toGlob(BUILTIN_FILENAMES[kind].map(toGlobPattern));
+    if (vscode.languages.match({ pattern: glob }, doc) > 0) {
+      return kind;
+    }
+  }
+
+  for (const [pattern, kind] of getFileAssociations(doc)) {
+    if (vscode.languages.match({ pattern: toGlobPattern(pattern) }, doc) > 0) {
+      return kind;
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * Match a filename against the built-in filenames for a Cedar JSON file kind
+ * and any `cedar.fileAssociations` patterns.  Only the last segment of a
+ * pattern is used, since this discovers files already known to be in a folder
+ * alongside another Cedar file.
+ */
+const cedarKindFilenameMatcher = (
+  kind: CedarKind | CedarKind[],
+  doc: vscode.TextDocument | undefined = undefined,
+): ((filename: string) => boolean) => {
+  const kinds = Array.isArray(kind) ? kind : [kind];
+  const regexes = kinds.flatMap((k) =>
+    [...BUILTIN_FILENAMES[k], ...configuredPatterns(k, doc)].map((pattern) => {
+      const name = pattern.substring(pattern.lastIndexOf('/') + 1);
+      return new RegExp(
+        `^${name.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+      );
+    }),
+  );
+
+  return (filename: string) => regexes.some((regex) => regex.test(filename));
+};
 
 export const detectSchemaDoc = (doc: vscode.TextDocument): boolean => {
   const result =
     doc.languageId === 'cedarschema' ||
-    doc.fileName.endsWith(path.sep + CEDAR_SCHEMA_JSON_FILE) ||
-    doc.fileName.endsWith(CEDAR_SCHEMA_JSON_EXTENSION);
+    determineCedarKind(doc) === 'cedarschema.json';
 
   return result;
 };
 
 export const detectEntitiesDoc = (doc: vscode.TextDocument): boolean => {
-  const result =
-    doc.fileName.endsWith(path.sep + CEDAR_ENTITIES_FILE) ||
-    doc.fileName.endsWith(CEDAR_ENTITIES_EXTENSION_JSON);
+  const kind = determineCedarKind(doc);
+  const result = kind === 'cedarentities' || kind === 'avpentities';
 
   return result;
 };
 
 export const detectTestsDoc = (doc: vscode.TextDocument): boolean => {
-  const result =
-    doc.fileName.endsWith(path.sep + CEDAR_TESTS_FILE) ||
-    doc.fileName.endsWith(CEDAR_TESTS_EXTENSION_JSON);
+  const result = determineCedarKind(doc) === 'cedartests';
 
   return result;
 };
@@ -71,7 +190,10 @@ const findFileNamesInFolder = async (
   );
 };
 
-const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
+const findSchemaFilesInFolder = async (
+  filepath: string,
+  doc: vscode.TextDocument | undefined = undefined,
+): Promise<string[]> => {
   // first find Cedar schema files
   const schemaFiles = new Set<string>(
     await findFileNamesInFolder(
@@ -85,9 +207,7 @@ const findSchemaFilesInFolder = async (filepath: string): Promise<string[]> => {
   // then look for Cedar schema JSON files that aren't translated versions
   const schemaJsonFiles = await findFileNamesInFolder(
     filepath,
-    (filename) =>
-      filename === CEDAR_SCHEMA_JSON_FILE ||
-      filename.endsWith(CEDAR_SCHEMA_JSON_EXTENSION),
+    cedarKindFilenameMatcher('cedarschema.json', doc),
   );
   schemaJsonFiles.forEach((filename) => {
     if (!schemaFiles.has(filename.substring(0, filename.length - 5))) {
@@ -171,13 +291,13 @@ export const getSchemaUri = async (
   const autodetect = config.get<boolean>('autodetectSchemaFile', true);
   if (doc && autodetect) {
     const cedarDocPath = path.dirname(doc.uri.fsPath);
-    const files = await findSchemaFilesInFolder(cedarDocPath);
+    const files = await findSchemaFilesInFolder(cedarDocPath, doc);
     if (files.length === 1) {
       fileUri = vscode.Uri.file(path.join(cedarDocPath, files[0]));
     } else {
       const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
       if (workspace?.uri) {
-        const files = await findSchemaFilesInFolder(workspace.uri.fsPath);
+        const files = await findSchemaFilesInFolder(workspace.uri.fsPath, doc);
         if (files.length === 1) {
           fileUri = vscode.Uri.file(path.join(workspace.uri.fsPath, files[0]));
         }
@@ -254,7 +374,8 @@ export type CedarTestFiles = {
 /**
  * Locate the Cedar files a Cedar tests file is evaluated against.  Policies,
  * template links, and (fallback) entities are discovered by naming convention
- * in the folder containing the tests file, then in the workspace folder.
+ * (or `cedar.fileAssociations`) in the folder containing the tests file, then
+ * in the workspace folder.
  */
 export const getCedarTestFiles = async (
   testsDoc: vscode.TextDocument,
@@ -267,15 +388,11 @@ export const getCedarTestFiles = async (
       ).then(openTextDocuments),
       findRelatedFiles(
         testsDoc,
-        (filename) =>
-          filename === CEDAR_TEMPLATELINKS_FILE ||
-          filename.endsWith(CEDAR_TEMPLATELINKS_EXTENSION_JSON),
+        cedarKindFilenameMatcher('cedartemplatelinks', testsDoc),
       ).then(openTextDocuments),
       findRelatedFiles(
         testsDoc,
-        (filename) =>
-          filename === CEDAR_ENTITIES_FILE ||
-          filename.endsWith(CEDAR_ENTITIES_EXTENSION_JSON),
+        cedarKindFilenameMatcher('cedarentities', testsDoc),
       ).then(openTextDocuments),
     ]);
 

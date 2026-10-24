@@ -437,11 +437,8 @@ export const addSyntaxDiagnosticErrors = (
       const undeclaredName = found.groups.undeclared;
       const mappings = {
         action: 'actions',
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         'an action': 'actions',
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         'an entity type': 'entityTypes',
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         'a common type': 'commonTypes',
       };
       const undeclaredType =

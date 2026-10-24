@@ -13,12 +13,8 @@ import {
   handleDidRenameFiles,
   getSchemaTextDocument,
   getSchemaUri,
-  CEDAR_SCHEMA_GLOB,
-  CEDAR_ENTITIES_GLOB,
-  CEDAR_TEMPLATELINKS_GLOB,
-  CEDAR_AUTH_GLOB,
-  CEDAR_JSON_GLOB,
-  CEDAR_TESTS_GLOB,
+  cedarKindGlob,
+  determineCedarKind,
   saveTextAndFormat,
 } from './fileutil';
 import { createDiagnosticCollection } from './diagnostics';
@@ -94,6 +90,21 @@ import {
   CedarTestsJSONCompletionItemProvider,
 } from './completionjson';
 import { CedarTextDocumentContentProvider } from './provider';
+
+/*
+ * Menu "when" clauses can't read settings, so the kind of Cedar JSON file in
+ * the active editor is published as context keys instead
+ */
+const updateCedarKindContext = (editor: vscode.TextEditor | undefined) => {
+  const kind = editor ? determineCedarKind(editor.document) : undefined;
+  const setContext = (key: string, value: boolean) =>
+    vscode.commands.executeCommand('setContext', key, value);
+
+  setContext('cedar.schemaJsonFile', kind === 'cedarschema.json');
+  setContext('cedar.entitiesFile', kind === 'cedarentities');
+  setContext('cedar.avpEntitiesFile', kind === 'avpentities');
+  setContext('cedar.testsFile', kind === 'cedartests');
+};
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -179,22 +190,17 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.languages.registerCodeActionsProvider(
-      { pattern: CEDAR_SCHEMA_GLOB, scheme: 'file' },
-      new CedarSchemaJSONQuickFix(),
-      {
-        providedCodeActionKinds:
-          CedarSchemaJSONQuickFix.providedCodeActionKinds,
-      },
-    ),
-  );
-
-  context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(
       (e: vscode.ConfigurationChangeEvent) => {
         if (e.affectsConfiguration('cedar.schemaFile')) {
           // no need to await to invoke vscode.window.showErrorMessage
           getSchemaTextDocument();
+        }
+        if (e.affectsConfiguration('cedar.fileAssociations')) {
+          // document selectors only accept a static glob, so the Cedar JSON
+          // providers are re-registered when the associations change
+          registerCedarJsonProviders();
+          updateCedarKindContext(vscode.window.activeTextEditor);
         }
       },
     ),
@@ -214,6 +220,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
+      updateCedarKindContext(editor);
       if (editor) {
         validateTextDocument(editor.document, diagnosticCollection);
       }
@@ -617,20 +624,8 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   /*
-   * Cedar schema (JSON) file providers
+   * Cedar schema (Cedar syntax) file providers
    */
-  const schemaSelector = {
-    language: 'json',
-    pattern: CEDAR_SCHEMA_GLOB,
-  };
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider(
-      schemaSelector,
-      schemaTokensProvider,
-      semanticTokensLegend,
-    ),
-  );
   context.subscriptions.push(
     vscode.languages.registerDocumentSemanticTokensProvider(
       { language: 'cedarschema' },
@@ -638,33 +633,16 @@ export async function activate(context: vscode.ExtensionContext) {
       semanticTokensLegend,
     ),
   );
-
-  // display uid strings in outline and breadcrumb
-  const schemaSymbolProvider = new CedarSchemaDocumentSymbolProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSymbolProvider(
-      schemaSelector,
-      schemaSymbolProvider,
-    ),
-  );
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
       { language: 'cedarschema' },
-      schemaSymbolProvider,
-    ),
-  );
-
-  const schemaDefinitionProvider = new CedarSchemaDefinitionProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider(
-      schemaSelector,
-      schemaDefinitionProvider,
+      new CedarSchemaDocumentSymbolProvider(),
     ),
   );
   context.subscriptions.push(
     vscode.languages.registerDefinitionProvider(
       { language: 'cedarschema' },
-      schemaDefinitionProvider,
+      new CedarSchemaDefinitionProvider(),
     ),
   );
   context.subscriptions.push(
@@ -682,201 +660,256 @@ export async function activate(context: vscode.ExtensionContext) {
   // );
 
   /*
-   * Cedar entities (JSON) file providers
+   * Cedar JSON file providers.  A document selector only accepts a static
+   * glob, so these are disposed and re-registered when the globs change
+   * because of the cedar.fileAssociations setting.
    */
-  const entitiesSelector = {
-    language: 'json',
-    pattern: CEDAR_ENTITIES_GLOB,
+  let jsonDisposables: vscode.Disposable[] = [];
+  const registerCedarJsonProviders = () => {
+    jsonDisposables.forEach((disposable) => disposable.dispose());
+    jsonDisposables = [];
+    const push = (disposable: vscode.Disposable) =>
+      jsonDisposables.push(disposable);
+
+    /*
+     * Cedar schema (JSON) file providers
+     */
+    const schemaSelector = {
+      language: 'json',
+      pattern: cedarKindGlob('cedarschema.json'),
+    };
+
+    push(
+      vscode.languages.registerCodeActionsProvider(
+        { pattern: schemaSelector.pattern, scheme: 'file' },
+        new CedarSchemaJSONQuickFix(),
+        {
+          providedCodeActionKinds:
+            CedarSchemaJSONQuickFix.providedCodeActionKinds,
+        },
+      ),
+    );
+
+    push(
+      vscode.languages.registerDocumentSemanticTokensProvider(
+        schemaSelector,
+        schemaTokensProvider,
+        semanticTokensLegend,
+      ),
+    );
+
+    // display uid strings in outline and breadcrumb
+    push(
+      vscode.languages.registerDocumentSymbolProvider(
+        schemaSelector,
+        new CedarSchemaDocumentSymbolProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerDefinitionProvider(
+        schemaSelector,
+        new CedarSchemaDefinitionProvider(),
+      ),
+    );
+
+    /*
+     * Cedar entities (JSON) file providers
+     */
+    const entitiesSelector = {
+      language: 'json',
+      pattern: cedarKindGlob(['cedarentities', 'avpentities']),
+    };
+
+    push(
+      vscode.languages.registerDocumentSemanticTokensProvider(
+        entitiesSelector,
+        entitiesTokensProvider,
+        semanticTokensLegend,
+      ),
+    );
+
+    // display uid strings in outline and breadcrumb
+    push(
+      vscode.languages.registerDocumentSymbolProvider(
+        entitiesSelector,
+        new CedarEntitiesDocumentSymbolProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerDefinitionProvider(
+        entitiesSelector,
+        new CedarEntitiesDefinitionProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerCodeLensProvider(
+        entitiesSelector,
+        new ValidateWithSchemaCodeLensProvider(),
+      ),
+    );
+
+    // snippets are the Cedar entities format, so not avpentities.json
+    push(
+      vscode.languages.registerCompletionItemProvider(
+        { language: 'json', pattern: cedarKindGlob('cedarentities') },
+        new CedarEntitiesJSONCompletionItemProvider(),
+        '{',
+      ),
+    );
+
+    push(
+      vscode.languages.registerHoverProvider(
+        entitiesSelector,
+        new CedarEntitiesJSONHoverProvider(),
+      ),
+    );
+
+    /*
+     * Cedar template links (JSON) file providers
+     */
+    const templateLinksSelector = {
+      language: 'json',
+      pattern: cedarKindGlob('cedartemplatelinks'),
+    };
+
+    push(
+      vscode.languages.registerDocumentSemanticTokensProvider(
+        templateLinksSelector,
+        templateLinksTokensProvider,
+        semanticTokensLegend,
+      ),
+    );
+
+    // display template link id strings in outline and breadcrumb
+    push(
+      vscode.languages.registerDocumentSymbolProvider(
+        templateLinksSelector,
+        new CedarTemplateLinksDocumentSymbolProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerDefinitionProvider(
+        templateLinksSelector,
+        new CedarTemplateLinksDefinitionProvider(),
+      ),
+    );
+
+    /*
+     * Cedar tests (JSON) file providers
+     */
+    const testsSelector = {
+      language: 'json',
+      pattern: cedarKindGlob('cedartests'),
+    };
+
+    push(
+      vscode.languages.registerDocumentSemanticTokensProvider(
+        testsSelector,
+        testsTokensProvider,
+        semanticTokensLegend,
+      ),
+    );
+
+    // display test name strings in outline and breadcrumb
+    push(
+      vscode.languages.registerDocumentSymbolProvider(
+        testsSelector,
+        new CedarTestsDocumentSymbolProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerDefinitionProvider(
+        testsSelector,
+        new CedarTestsDefinitionProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerCodeLensProvider(
+        testsSelector,
+        new ValidateWithSchemaCodeLensProvider(),
+      ),
+    );
+
+    push(
+      vscode.languages.registerCompletionItemProvider(
+        testsSelector,
+        new CedarTestsJSONCompletionItemProvider(),
+        '{',
+      ),
+    );
+
+    // Cedar tests embed Cedar entities, so reuse the entities hover
+    push(
+      vscode.languages.registerHoverProvider(
+        testsSelector,
+        new CedarEntitiesJSONHoverProvider(),
+      ),
+    );
+
+    /*
+     * Cedar authorization request (JSON) file providers
+     */
+    const authSelector = {
+      language: 'json',
+      pattern: cedarKindGlob('cedarauth'),
+    };
+
+    push(
+      vscode.languages.registerDocumentSemanticTokensProvider(
+        authSelector,
+        authTokensProvider,
+        semanticTokensLegend,
+      ),
+    );
+
+    push(
+      vscode.languages.registerDefinitionProvider(
+        authSelector,
+        new CedarAuthDefinitionProvider(),
+      ),
+    );
+
+    /*
+     * Cedar (JSON) file providers
+     */
+    const cedarJsonSelector = {
+      language: 'json',
+      pattern: cedarKindGlob('cedar.json'),
+    };
+
+    push(
+      vscode.languages.registerDocumentSemanticTokensProvider(
+        cedarJsonSelector,
+        cedarJsonTokensProvider,
+        semanticTokensLegend,
+      ),
+    );
+
+    push(
+      vscode.languages.registerDefinitionProvider(
+        cedarJsonSelector,
+        new CedarJsonDefinitionProvider(),
+      ),
+    );
   };
 
+  registerCedarJsonProviders();
   context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider(
-      entitiesSelector,
-      entitiesTokensProvider,
-      semanticTokensLegend,
-    ),
-  );
-
-  // display uid strings in outline and breadcrumb
-  const entitiesSymbolProvider = new CedarEntitiesDocumentSymbolProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSymbolProvider(
-      entitiesSelector,
-      entitiesSymbolProvider,
-    ),
-  );
-
-  const entitiesDefinitionProvider = new CedarEntitiesDefinitionProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider(
-      entitiesSelector,
-      entitiesDefinitionProvider,
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      entitiesSelector,
-      new ValidateWithSchemaCodeLensProvider(),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerCompletionItemProvider(
-      {
-        language: 'json',
-        pattern: `{**/cedarentities.json,**/*.cedarentities.json}`,
-      },
-      new CedarEntitiesJSONCompletionItemProvider(),
-      '{',
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerHoverProvider(
-      entitiesSelector,
-      new CedarEntitiesJSONHoverProvider(),
-    ),
-  );
-
-  /*
-   * Cedar template links (JSON) file providers
-   */
-  const templateLinksSelector = {
-    language: 'json',
-    pattern: CEDAR_TEMPLATELINKS_GLOB,
-  };
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider(
-      templateLinksSelector,
-      templateLinksTokensProvider,
-      semanticTokensLegend,
-    ),
-  );
-
-  // display template link id strings in outline and breadcrumb
-  const templateLinksSymbolProvider =
-    new CedarTemplateLinksDocumentSymbolProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSymbolProvider(
-      templateLinksSelector,
-      templateLinksSymbolProvider,
-    ),
-  );
-
-  const templateLinksDefinitionProvider =
-    new CedarTemplateLinksDefinitionProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider(
-      templateLinksSelector,
-      templateLinksDefinitionProvider,
-    ),
-  );
-
-  /*
-   * Cedar tests (JSON) file providers
-   */
-  const testsSelector = {
-    language: 'json',
-    pattern: CEDAR_TESTS_GLOB,
-  };
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider(
-      testsSelector,
-      testsTokensProvider,
-      semanticTokensLegend,
-    ),
-  );
-
-  // display test name strings in outline and breadcrumb
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSymbolProvider(
-      testsSelector,
-      new CedarTestsDocumentSymbolProvider(),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider(
-      testsSelector,
-      new CedarTestsDefinitionProvider(),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      testsSelector,
-      new ValidateWithSchemaCodeLensProvider(),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerCompletionItemProvider(
-      testsSelector,
-      new CedarTestsJSONCompletionItemProvider(),
-      '{',
-    ),
-  );
-
-  // Cedar tests embed Cedar entities, so reuse the entities hover
-  context.subscriptions.push(
-    vscode.languages.registerHoverProvider(
-      testsSelector,
-      new CedarEntitiesJSONHoverProvider(),
-    ),
+    new vscode.Disposable(() => {
+      jsonDisposables.forEach((disposable) => disposable.dispose());
+      jsonDisposables = [];
+    }),
   );
 
   createCedarTestController(context);
 
-  /*
-   * Cedar authorization request (JSON) file providers
-   */
-  const authSelector = {
-    language: 'json',
-    pattern: CEDAR_AUTH_GLOB,
-  };
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider(
-      authSelector,
-      authTokensProvider,
-      semanticTokensLegend,
-    ),
-  );
-
-  const authDefinitionProvider = new CedarAuthDefinitionProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider(
-      authSelector,
-      authDefinitionProvider,
-    ),
-  );
-
-  /*
-   * Cedar (JSON) file providers
-   */
-  const cedarJsonSelector = {
-    language: 'json',
-    pattern: CEDAR_JSON_GLOB,
-  };
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider(
-      cedarJsonSelector,
-      cedarJsonTokensProvider,
-      semanticTokensLegend,
-    ),
-  );
-
-  const cedarJsonDefinitionProvider = new CedarJsonDefinitionProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider(
-      cedarJsonSelector,
-      cedarJsonDefinitionProvider,
-    ),
-  );
+  updateCedarKindContext(vscode.window.activeTextEditor);
 }
 
 // This method is called when your extension is deactivated

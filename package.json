@@ -180,42 +180,42 @@
           "group": "y_commands"
         },
         {
-          "when": "editorLangId == cedar || resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/ || resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/",
+          "when": "editorLangId == cedar || cedar.entitiesFile || cedar.avpEntitiesFile || cedar.testsFile",
           "command": "cedar.schemaopen",
           "group": "navigation"
         },
         {
-          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
+          "when": "resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)",
           "command": "cedar.schemavalidate",
           "group": "1_modification"
         },
         {
-          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
+          "when": "resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)",
           "command": "cedar.schematranslate",
           "group": "1_modification"
         },
         {
-          "when": "resourceScheme == file && (resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
+          "when": "resourceScheme == file && cedar.schemaJsonFile",
           "command": "cedar.schemaexport",
           "group": "y_commands"
         },
         {
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "when": "cedar.entitiesFile",
           "command": "cedar.entitiesvalidate",
           "group": "1_modification"
         },
         {
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "when": "cedar.entitiesFile",
           "command": "cedar.entitiesadd",
           "group": "1_modification"
         },
         {
-          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/",
+          "when": "cedar.testsFile",
           "command": "cedar.testsvalidate",
           "group": "1_modification"
         },
         {
-          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/",
+          "when": "cedar.testsFile",
           "command": "cedar.testsadd",
           "group": "1_modification"
         }
@@ -235,31 +235,31 @@
         },
         {
           "command": "cedar.schemavalidate",
-          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+          "when": "editorLangId == cedarschema || editorLangId == json"
         },
         {
           "command": "cedar.schematranslate",
-          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)"
+          "when": "resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)"
         },
         {
           "command": "cedar.schemaexport",
-          "when": "resourceScheme == file && (resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)"
+          "when": "resourceScheme == file && cedar.schemaJsonFile"
         },
         {
           "command": "cedar.entitiesvalidate",
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+          "when": "editorLangId == json"
         },
         {
           "command": "cedar.entitiesadd",
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+          "when": "cedar.entitiesFile"
         },
         {
           "command": "cedar.testsvalidate",
-          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/"
+          "when": "editorLangId == json"
         },
         {
           "command": "cedar.testsadd",
-          "when": "resourceFilename == cedartests.json || resourceFilename =~ /\\.cedartests\\.json$/"
+          "when": "cedar.testsFile"
         }
       ]
     },
@@ -309,6 +309,34 @@
           "type": "boolean",
           "default": true,
           "description": "Auto detect Cedar schema file used for policy validation."
+        },
+        "cedar.fileAssociations": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "description": "Configure glob patterns to treat JSON files which don't follow the Cedar naming convention as Cedar files.",
+          "markdownDescription": "Configure glob patterns to treat JSON files which don't follow the Cedar naming convention as Cedar files.  A pattern without a `/` matches that filename in any folder, in the style of `#files.associations#`.",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "cedarschema.json",
+              "cedarentities",
+              "avpentities",
+              "cedartemplatelinks",
+              "cedarauth",
+              "cedartests",
+              "cedar.json"
+            ],
+            "enumDescriptions": [
+              "Cedar schema in the JSON format",
+              "Cedar entities",
+              "Amazon Verified Permissions entities",
+              "Cedar template linked policies",
+              "Cedar authorization request",
+              "Cedar tests",
+              "Cedar policies in the JSON format"
+            ]
+          }
         }
       }
     }

@@ -63,6 +63,33 @@ Sample `.vscode/settings.json` which enables `editor` settings for `cedar` files
 }
 ```
 
+### File associations
+
+JSON files are detected as Cedar files by the `cedar*.json` naming convention described above.  `cedar.fileAssociations` maps glob patterns to a Cedar file kind for files which don't follow that convention, in the style of [`files.associations`](https://code.visualstudio.com/docs/languages/overview#_add-a-file-extension-to-a-language).  A pattern without a `/` matches that filename in any folder.  The built-in names take precedence, then associations are matched in order.  Supported kinds are `cedarschema.json`, `cedarentities`, `avpentities`, `cedartemplatelinks`, `cedarauth`, `cedartests`, and `cedar.json`.
+
+```json
+{
+  "cedar.fileAssociations": {
+    "schema.json": "cedarschema.json",
+    "entities.json": "cedarentities",
+    "tests.json": "cedartests",
+    "links.json": "cedartemplatelinks"
+  }
+}
+```
+
+Associated files receive the same syntax highlighting, validation, navigation, and IntelliSense as the conventionally named files, and are used when locating the Cedar files a tests file is evaluated against.  An associated Cedar schema is found by `cedar.autodetectSchemaFile`, so `cedar.schemaFile` is not needed to point at it.  Since this setting is folder scoped, it can be set per folder of a multi-root workspace.
+
+Cedar schema files using the Cedar syntax don't need this setting, since `cedarschema` is a language and can be associated using `files.associations`.
+
+```json
+{
+  "files.associations": {
+    "schema.txt": "cedarschema"
+  }
+}
+```
+
 ## Troubleshooting
 
 Submit bug reports and feature requests [on our GitHub repository](https://github.com/cedar-policy/vscode-cedar/issues). For potential security issues, visit [reporting a vulnerability](https://github.com/cedar-policy/vscode-cedar/security/policy) for instructions.

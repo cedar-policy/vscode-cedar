@@ -3,7 +3,7 @@
 
 import * as vscode from 'vscode';
 import * as cedar from 'vscode-cedar-wasm';
-import { CEDAR_TESTS_GLOB, getCedarTestFiles } from './fileutil';
+import { cedarKindGlob, getCedarTestFiles } from './fileutil';
 import { parseCedarTestsDoc } from './parser';
 import { CedarTest, parseTestsDocText } from './validate';
 
@@ -205,7 +205,7 @@ export const createCedarTestController = (
       await resolveFileItem(item);
     } else {
       const uris = await vscode.workspace.findFiles(
-        CEDAR_TESTS_GLOB,
+        cedarKindGlob('cedartests'),
         '**/node_modules/**',
       );
       uris.forEach((uri) => getOrCreateFileItem(uri));
@@ -342,23 +342,46 @@ export const createCedarTestController = (
   );
 
   /*
-   * keep the test tree in sync with the workspace
+   * keep the test tree in sync with the workspace.  A file watcher only
+   * accepts a static glob, so it is recreated when the glob changes because
+   * of the cedar.fileAssociations setting.
    */
-  const watcher = vscode.workspace.createFileSystemWatcher(CEDAR_TESTS_GLOB);
-  context.subscriptions.push(watcher);
+  let watcherDisposables: vscode.Disposable[] = [];
+  const createWatcher = () => {
+    watcherDisposables.forEach((disposable) => disposable.dispose());
+
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      cedarKindGlob('cedartests'),
+    );
+    watcherDisposables = [
+      watcher,
+      watcher.onDidCreate((uri) => getOrCreateFileItem(uri)),
+      watcher.onDidChange(async (uri) => {
+        const item = controller.items.get(uri.toString());
+        if (item) {
+          await resolveFileItem(item);
+        }
+      }),
+      watcher.onDidDelete((uri) => controller.items.delete(uri.toString())),
+    ];
+  };
+
+  createWatcher();
   context.subscriptions.push(
-    watcher.onDidCreate((uri) => getOrCreateFileItem(uri)),
-  );
-  context.subscriptions.push(
-    watcher.onDidChange(async (uri) => {
-      const item = controller.items.get(uri.toString());
-      if (item) {
-        await resolveFileItem(item);
-      }
+    new vscode.Disposable(() => {
+      watcherDisposables.forEach((disposable) => disposable.dispose());
+      watcherDisposables = [];
     }),
   );
+
   context.subscriptions.push(
-    watcher.onDidDelete((uri) => controller.items.delete(uri.toString())),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('cedar.fileAssociations')) {
+        createWatcher();
+        // rediscover the Cedar tests files which now match
+        controller.items.replace([]);
+      }
+    }),
   );
 
   return controller;
