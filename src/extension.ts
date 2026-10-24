@@ -32,6 +32,11 @@ import {
   COMMAND_CEDAR_ABOUT,
   COMMAND_CEDAR_ACTIVATE,
   COMMAND_CEDAR_CLEARPROBLEMS,
+  COMMAND_CEDAR_CLIAUTHORIZE,
+  COMMAND_CEDAR_CLIENTITIESPARSE,
+  COMMAND_CEDAR_CLIRUNTESTS,
+  COMMAND_CEDAR_CLISCHEMAPARSE,
+  COMMAND_CEDAR_CLIVALIDATE,
   COMMAND_CEDAR_DOCUMENTATION,
   COMMAND_CEDAR_ENTITIESADD,
   COMMAND_CEDAR_ENTITIESVALIDATE,
@@ -80,7 +85,7 @@ import {
 } from './completion';
 import { CedarHoverProvider, CedarEntitiesJSONHoverProvider } from './hover';
 import { CedarSignatureHelpProvider } from './signaturehelp';
-import { aboutExtension } from './about';
+import { aboutExtension, detectCedarCLI } from './about';
 import * as cedar from 'vscode-cedar-wasm';
 import { ValidateWithSchemaCodeLensProvider } from './codelens';
 import {
@@ -90,6 +95,7 @@ import {
   CedarTestsJSONCompletionItemProvider,
 } from './completionjson';
 import { CedarTextDocumentContentProvider } from './provider';
+import { CedarCLICommand, runCedarCLI } from './cli';
 
 /*
  * Menu "when" clauses can't read settings, so the kind of Cedar JSON file in
@@ -104,6 +110,7 @@ const updateCedarKindContext = (editor: vscode.TextEditor | undefined) => {
   setContext('cedar.entitiesFile', kind === 'cedarentities');
   setContext('cedar.avpEntitiesFile', kind === 'avpentities');
   setContext('cedar.testsFile', kind === 'cedartests');
+  setContext('cedar.authFile', kind === 'cedarauth');
 };
 
 // This method is called when your extension is activated
@@ -113,6 +120,11 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log('Cedar extension activated');
 
   cedar.setPanicHook();
+
+  // the optional Cedar CLI, reported by the "About Cedar extension" command
+  void detectCedarCLI().then((cedarCLI) =>
+    console.log(cedarCLI ?? 'Cedar CLI not found'),
+  );
 
   let diagnosticCollection = createDiagnosticCollection();
   context.subscriptions.push(diagnosticCollection);
@@ -559,6 +571,30 @@ export async function activate(context: vscode.ExtensionContext) {
       await addEntitiesJSON(textEditor, diagnosticCollection);
     }),
   );
+
+  // the optional Cedar CLI, run in a terminal
+  (
+    [
+      [COMMAND_CEDAR_CLIVALIDATE, 'validate'],
+      [COMMAND_CEDAR_CLIRUNTESTS, 'run-tests'],
+      [COMMAND_CEDAR_CLISCHEMAPARSE, 'check-parse-schema'],
+      [COMMAND_CEDAR_CLIENTITIESPARSE, 'check-parse-entities'],
+      [COMMAND_CEDAR_CLIAUTHORIZE, 'authorize'],
+    ] as [string, CedarCLICommand][]
+  ).forEach(([command, cliCommand]) => {
+    context.subscriptions.push(
+      vscode.commands.registerTextEditorCommand(
+        command,
+        async (
+          textEditor: vscode.TextEditor,
+          edit: vscode.TextEditorEdit,
+          args: any[],
+        ) => {
+          await runCedarCLI(context, textEditor.document, cliCommand);
+        },
+      ),
+    );
+  });
 
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_CEDAR_CLEARPROBLEMS, () => {

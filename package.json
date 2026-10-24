@@ -158,6 +158,31 @@
         "command": "cedar.clearproblems",
         "category": "Cedar",
         "title": "Clear problems"
+      },
+      {
+        "command": "cedar.clivalidate",
+        "category": "Cedar",
+        "title": "Run Cedar CLI validate"
+      },
+      {
+        "command": "cedar.cliruntests",
+        "category": "Cedar",
+        "title": "Run Cedar CLI run-tests"
+      },
+      {
+        "command": "cedar.clischemaparse",
+        "category": "Cedar",
+        "title": "Run Cedar CLI check-parse on schema"
+      },
+      {
+        "command": "cedar.clientitiesparse",
+        "category": "Cedar",
+        "title": "Run Cedar CLI check-parse on entities"
+      },
+      {
+        "command": "cedar.cliauthorize",
+        "category": "Cedar",
+        "title": "Run Cedar CLI authorize"
       }
     ],
     "menus": {
@@ -218,6 +243,31 @@
           "when": "cedar.testsFile",
           "command": "cedar.testsadd",
           "group": "1_modification"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && editorLangId == cedar",
+          "command": "cedar.clivalidate",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.testsFile",
+          "command": "cedar.cliruntests",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)",
+          "command": "cedar.clischemaparse",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.entitiesFile",
+          "command": "cedar.clientitiesparse",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.authFile",
+          "command": "cedar.cliauthorize",
+          "group": "z_cedarcli"
         }
       ],
       "commandPalette": [
@@ -260,6 +310,26 @@
         {
           "command": "cedar.testsadd",
           "when": "cedar.testsFile"
+        },
+        {
+          "command": "cedar.clivalidate",
+          "when": "cedar.cedarcli && resourceScheme == file && editorLangId == cedar"
+        },
+        {
+          "command": "cedar.cliruntests",
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.testsFile"
+        },
+        {
+          "command": "cedar.clischemaparse",
+          "when": "cedar.cedarcli && resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)"
+        },
+        {
+          "command": "cedar.clientitiesparse",
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.entitiesFile"
+        },
+        {
+          "command": "cedar.cliauthorize",
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.authFile"
         }
       ]
     },

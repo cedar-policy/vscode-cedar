@@ -34,6 +34,8 @@ Files named `cedartests.json` or matching `*.cedartests.json` are detected as Ce
 
 Various commands of the `cedar` CLI take JSON formatted file inputs.  Files named `cedarauth.json` or matching `*.cedarauth.json` are detected as input to the `--request-json` option for the `authorize` command.  Files named `cedartemplatelinks.json` or matching `*.cedartemplatelinks.json` are detected as input to the `--template-linked` option for the `authorize` command.  These files receive additional syntax highlighting.
 
+The `cedar` CLI is optional and detected on the `PATH` during startup, and its version is reported by the "About Cedar extension" command.  When detected, context menu and Command Palette commands run `validate`, `run-tests`, `check-parse`, and `authorize` on the current file in a reused **Cedar CLI** terminal, using the Cedar schema, policy, template links, and entities files detected alongside it.
+
 ### Markdown
 
 Syntax highlighting of `cedar` and `cedarschema` code fence blocks within markdown (`*.md`) files.

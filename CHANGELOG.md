@@ -3,6 +3,7 @@
 - Cedar tests validation, navigation, and IntelliSense
 - Run Cedar tests from the Testing view
 - `cedar.fileAssociations` setting for JSON files not following the Cedar naming convention
+- When Cedar CLI detected, enable terminal commands for validate, check-parse, and run-tests
 
 ## v0.10.6 (Preview) 2026-09-15
 
