@@ -62,6 +62,15 @@ const EXTENSIONS: Record<string, { fn: string; arg: string }> = {
   duration: { fn: 'duration', arg: '1d2h3m4s5ms' },
 };
 
+// the escapes of a JSON string, without the surrounding quotes
+const jsonEscape = (value: string): string =>
+  JSON.stringify(value).slice(1, -1);
+
+// `\`, `$`, and `}` have their own meaning in the snippet syntax, so a value
+// already escaped for JSON is escaped again to survive snippet insertion
+const snippetEscape = (value: string): string =>
+  value.replace(/[\\$}]/g, '\\$&');
+
 export const snippetify = (
   schema: SchemaCacheItem,
   attributes: SchemaCompletionRecord,
@@ -75,7 +84,7 @@ export const snippetify = (
   Object.keys(attributes).forEach((key) => {
     const type = attributes[key].description;
     let value: string | number | boolean | object = '""';
-    if (type === 'Bool') {
+    if (type === 'Bool' || type === 'Boolean') {
       value = `$\{${tabstop++}|false,true|}`;
     } else if (type === 'String') {
       value = `"$${tabstop++}"`;
@@ -112,7 +121,7 @@ export const snippetify = (
     } else {
       value = ``; // should not get here
     }
-    s += `${prefix}"${key}": ${value},`;
+    s += `${prefix}"${snippetEscape(jsonEscape(key))}": ${value},`;
   });
 
   return {
@@ -193,6 +202,23 @@ export const entityBodySnippet = (
 // `\"` inside a JSON string, for example "PhotoApp::User::\"alice\""
 const Q = '\\"';
 
+/**
+ * A Cedar action id is `Namespace::Action::"id"`, where the id is a Cedar
+ * string using the same escapes as a JSON string.  Used when embedding an
+ * action id in Cedar policy text.
+ */
+const cedarActionId = (actionId: string): string => {
+  const start = actionId.indexOf('::"');
+  const end = actionId.lastIndexOf('"');
+  if (start === -1 || end < start + 3) {
+    return actionId;
+  }
+
+  const id = actionId.substring(start + 3, end);
+
+  return `${actionId.substring(0, start + 2)}"${jsonEscape(id)}"`;
+};
+
 // a snippet choice, or a plain tab stop when the schema offers nothing to pick
 const choice = (tabstop: number, values: string[]): string =>
   values.length > 0 ? `\${${tabstop}|${values.join(',')}|}` : `$${tabstop}`;
@@ -214,7 +240,7 @@ export const testBodySnippet = (
   schemaDoc: vscode.TextDocument,
   actionId: string,
 ): string => {
-  const head = `permit (principal, action == ${actionId}, resource)`;
+  const head = `permit (principal, action == ${cedarActionId(actionId)}, resource)`;
   const principals = determineEntityTypes(schemaDoc, 'principal', head);
   const resources = determineEntityTypes(schemaDoc, 'resource', head);
 
@@ -238,7 +264,7 @@ export const testBodySnippet = (
   "name": "$1",
   "request": {
     "principal": "${choice(2, principals)}::${Q}$3${Q}",
-    "action": "${actionId.replace(/"/g, Q)}",
+    "action": "${snippetEscape(jsonEscape(actionId))}",
     "resource": "${choice(4, resources)}::${Q}$5${Q}",
     "context": ${contextAttrs}
   },

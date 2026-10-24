@@ -474,7 +474,7 @@ suite('Cedar Tests Suite', () => {
   "name": "$1",
   "request": {
     "principal": "\${2|PhotoApp::User|}::\\"$3\\"",
-    "action": "PhotoApp::Action::\\"viewPhoto\\"",
+    "action": "PhotoApp::Action::\\\\"viewPhoto\\\\"",
     "resource": "\${4|PhotoApp::Photo|}::\\"$5\\"",
     "context": {
       "judgingSession": \${6|false,true|}
@@ -495,7 +495,7 @@ suite('Cedar Tests Suite', () => {
   "name": "$1",
   "request": {
     "principal": "\${2|PhotoApp::User|}::\\"$3\\"",
-    "action": "PhotoApp::Action::\\"editPhoto\\"",
+    "action": "PhotoApp::Action::\\\\"editPhoto\\\\"",
     "resource": "\${4|PhotoApp::Photo|}::\\"$5\\"",
     "context": {$6}
   },

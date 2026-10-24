@@ -1,0 +1,33 @@
+{
+  "Weird": {
+    "entityTypes": {
+      "User": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "quote\"attr": { "type": "String" },
+            "back\\slash": { "type": "Long" },
+            "dollar$brace}": { "type": "Boolean" },
+            "comma,pipe|": { "type": "String" }
+          }
+        }
+      },
+      "Thing": {}
+    },
+    "actions": {
+      "back\\slash\"quote": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Thing"],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "ctx\"quote": { "type": "String" },
+              "ctx\\slash": { "type": "Boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
