@@ -120,6 +120,26 @@ suite('Validation RegEx Test Suite', () => {
     result.free();
   });
 
+  test('validate policy level', async () => {
+    const schema = `entity User { manager: User };
+entity Photo { owner: User };
+action view appliesTo { principal: User, resource: Photo };`;
+    const policy =
+      'permit(principal, action, resource) when { resource.owner.manager == principal };';
+
+    let result = cedar.validatePolicySchemaCedar(schema, policy);
+    assert.equal(result.success, true);
+    assert.equal(result.level, 2);
+    assert.equal(result.levelWarnings, undefined);
+    result.free();
+
+    result = cedar.validatePolicySchemaCedar(schema, policy, 1);
+    assert.equal(result.level, 2);
+    assert.equal(result.levelWarnings?.length, 1);
+    assert.ok(result.levelWarnings?.[0].message.includes('requires level 2'));
+    result.free();
+  });
+
   test('validate policy unrecognized entity and action type', async () => {
     const policy = readTestDataFile('unrecognized', 'policy.cedar');
     const schema = readTestDataFile('unrecognized', 'cedarschema.json');

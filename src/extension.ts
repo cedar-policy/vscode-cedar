@@ -89,6 +89,10 @@ import { aboutExtension, detectCedarCLI } from './about';
 import * as cedar from 'vscode-cedar-wasm';
 import { ValidateWithSchemaCodeLensProvider } from './codelens';
 import {
+  PolicyLevelCodeLensProvider,
+  PolicyLevelInlayHintsProvider,
+} from './level';
+import {
   addEntitiesJSON,
   addTestsJSON,
   CedarEntitiesJSONCompletionItemProvider,
@@ -200,6 +204,18 @@ export async function activate(context: vscode.ExtensionContext) {
       new ValidateWithSchemaCodeLensProvider(),
     ),
   );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'cedar' },
+      new PolicyLevelCodeLensProvider(),
+    ),
+  );
+  context.subscriptions.push(
+    vscode.languages.registerInlayHintsProvider(
+      { language: 'cedar' },
+      new PolicyLevelInlayHintsProvider(),
+    ),
+  );
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(
@@ -213,6 +229,13 @@ export async function activate(context: vscode.ExtensionContext) {
           // providers are re-registered when the associations change
           registerCedarJsonProviders();
           updateCedarKindContext(vscode.window.activeTextEditor);
+        }
+        if (e.affectsConfiguration('cedar.levelValidation')) {
+          // levels and their warnings are cached with the validation results
+          clearValidationCache();
+          vscode.workspace.textDocuments
+            .filter((doc) => doc.languageId === 'cedar')
+            .forEach((doc) => validateTextDocument(doc, diagnosticCollection));
         }
       },
     ),

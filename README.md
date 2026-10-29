@@ -65,6 +65,17 @@ Sample `.vscode/settings.json` which enables `editor` settings for `cedar` files
 }
 ```
 
+### Level validation
+
+When `.cedar` files validate using a Cedar schema, the minimum entity dereference level each policy validates at (see [level validation](https://docs.cedarpolicy.com/policies/level-validation.html)) is shown, depending on `cedar.levelValidation.display`, as a CodeLens above the policy (`codeLens`), an inlay hint comment like `// Level 2` after the policy's `;` (`inlayHint`), or not at all (`none`).  Set `cedar.levelValidation.maxLevel` to warn on any policy which requires a higher level.
+
+```json
+{
+  "cedar.levelValidation.maxLevel": 2,
+  "cedar.levelValidation.display": "codeLens",
+}
+```
+
 ### File associations
 
 JSON files are detected as Cedar files by the `cedar*.json` naming convention described above.  `cedar.fileAssociations` maps glob patterns to a Cedar file kind for files which don't follow that convention, in the style of [`files.associations`](https://code.visualstudio.com/docs/languages/overview#_add-a-file-extension-to-a-language).  A pattern without a `/` matches that filename in any folder.  The built-in names take precedence, then associations are matched in order.  Supported kinds are `cedarschema.json`, `cedarentities`, `avpentities`, `cedartemplatelinks`, `cedarauth`, `cedartests`, and `cedar.json`.

@@ -188,7 +188,54 @@ export const fetchEntityTypes = (
 const validationCache = new ValidationCache();
 export const clearValidationCache = () => {
   validationCache.clear();
+  policyLevelsCache = {};
 };
+
+/*
+ * Level validation (RFC 76), where the level is the minimum entity dereference
+ * level each policy validates at, or undefined when a policy dereferences an
+ * entity literal, which isn't allowed at any level
+ */
+export type PolicyLevel = {
+  range: vscode.Range;
+  effectRange: vscode.Range;
+  level: number | undefined;
+};
+type PolicyLevelsCacheItem = {
+  version: number;
+  levels: PolicyLevel[];
+};
+let policyLevelsCache: Record<string, PolicyLevelsCacheItem> = {};
+const policyLevelsEmitter = new vscode.EventEmitter<void>();
+export const onDidChangePolicyLevels = policyLevelsEmitter.event;
+
+export const getPolicyLevels = (
+  cedarDoc: vscode.TextDocument,
+): PolicyLevel[] => {
+  const cachedItem = policyLevelsCache[cedarDoc.uri.toString()];
+  return cachedItem && cachedItem.version === cedarDoc.version
+    ? cachedItem.levels
+    : [];
+};
+
+export const getMaxLevel = (
+  doc: vscode.TextDocument | undefined = undefined,
+): number | undefined => {
+  const maxLevel = vscode.workspace
+    .getConfiguration('cedar', doc?.uri)
+    .get<number | null>('levelValidation.maxLevel', null);
+  return typeof maxLevel === 'number' && maxLevel >= 0
+    ? Math.floor(maxLevel)
+    : undefined;
+};
+
+export type LevelDisplay = 'codeLens' | 'inlayHint' | 'none';
+export const getLevelDisplay = (
+  doc: vscode.TextDocument | undefined = undefined,
+): LevelDisplay =>
+  vscode.workspace
+    .getConfiguration('cedar', doc?.uri)
+    .get<LevelDisplay>('levelValidation.display', 'inlayHint');
 export const narrowEntityTypes = (
   schemaDoc: vscode.TextDocument,
   scope: string,
@@ -247,6 +294,7 @@ export const validateCedarDoc = async (
   }
 
   const diagnostics: vscode.Diagnostic[] = [];
+  const levels: PolicyLevel[] = [];
   reportFormatterOff(cedarDoc, diagnostics);
   const syntaxResult: cedar.ValidateSyntaxResult = cedar.validateSyntax(
     cedarDoc.getText(),
@@ -260,6 +308,7 @@ export const validateCedarDoc = async (
       if (schemaDoc) {
         if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
           validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
+          const maxLevel = getMaxLevel(cedarDoc);
 
           parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
             let policyResult: cedar.ValidatePolicyResult;
@@ -267,14 +316,33 @@ export const validateCedarDoc = async (
               policyResult = cedar.validatePolicySchemaCedar(
                 schemaDoc.getText(),
                 policyText,
+                maxLevel,
               );
             } else {
               policyResult = cedar.validatePolicySchemaJSON(
                 schemaDoc.getText(),
                 policyText,
+                maxLevel,
               );
             }
             try {
+              if (policyResult.success) {
+                levels.push({
+                  range: policyRange.range,
+                  effectRange: policyRange.effectRange,
+                  level: policyResult.level,
+                });
+              }
+              if (policyResult.levelWarnings) {
+                addPolicyResultMessages(
+                  diagnostics,
+                  policyResult.levelWarnings,
+                  policyText,
+                  policyRange.effectRange,
+                  policyRange.range.start.line,
+                  true,
+                );
+              }
               if (policyResult.warnings) {
                 addPolicyResultMessages(
                   diagnostics,
@@ -305,6 +373,11 @@ export const validateCedarDoc = async (
     diagnosticCollection.set(cedarDoc.uri, diagnostics);
 
     validationCache.store(cedarDoc, success);
+    policyLevelsCache[cedarDoc.uri.toString()] = {
+      version: cedarDoc.version,
+      levels: levels,
+    };
+    policyLevelsEmitter.fire();
 
     return Promise.resolve(success);
   } finally {

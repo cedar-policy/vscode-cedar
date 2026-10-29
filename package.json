@@ -380,6 +380,32 @@
           "default": true,
           "description": "Auto detect Cedar schema file used for policy validation."
         },
+        "cedar.levelValidation.maxLevel": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null,
+          "minimum": 0,
+          "scope": "resource",
+          "markdownDescription": "Warn for Cedar policies which require an entity dereference level greater than this maximum when [level validating](https://docs.cedarpolicy.com/policies/level-validation.html), and pass it as `--level` to the Cedar CLI `validate` command.  Leave unset (`null`) to not warn."
+        },
+        "cedar.levelValidation.display": {
+          "type": "string",
+          "enum": [
+            "codeLens",
+            "inlayHint",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Show the level as a CodeLens above each policy",
+            "Show the level as an inlay hint comment after each policy's `;`",
+            "Don't show the level"
+          ],
+          "default": "inlayHint",
+          "scope": "resource",
+          "markdownDescription": "How to show the entity dereference level each Cedar policy validates at, when validated using a Cedar schema.  Inlay hints also depend on `#editor.inlayHints.enabled#`."
+        },
         "cedar.fileAssociations": {
           "type": "object",
           "default": {},

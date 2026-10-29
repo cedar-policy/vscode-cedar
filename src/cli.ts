@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { getCedarTestFiles, getSchemaTextDocument } from './fileutil';
 import { CEDAR_CLI_LABEL } from './about';
+import { getMaxLevel } from './validate';
 
 /*
  * Run the optional Cedar CLI (the cedar-policy-cli crate) in a terminal.  The
@@ -143,6 +144,7 @@ const cedarCLIArgs = async (
         return undefined;
       }
       const { templateLinksDoc } = await getCedarTestFiles(doc);
+      const maxLevel = getMaxLevel(doc);
 
       return [
         'validate',
@@ -150,6 +152,7 @@ const cedarCLIArgs = async (
         '-p',
         file,
         ...templateLinksArgs(templateLinksDoc, cwd),
+        ...(maxLevel !== undefined ? ['--level', `${maxLevel}`] : []),
       ];
     }
 
