@@ -16,7 +16,7 @@ suite('snippetify Suite', () => {
       await ext.activate();
     }
     const schemaDoc = await vscode.workspace.openTextDocument(
-      path.join(process.cwd(), 'testdata', 'datatypes', 'cedarschema')
+      path.join(process.cwd(), 'testdata', 'datatypes', 'cedarschema'),
     );
     schema = parseCedarSchemaDoc(schemaDoc);
   });
@@ -30,7 +30,7 @@ suite('snippetify Suite', () => {
       completions[entityType],
       2,
       [entityType],
-      2
+      2,
     ));
 
     const snippet = `

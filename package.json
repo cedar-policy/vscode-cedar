@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.10.6",
+  "version": "0.12.0",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -36,7 +36,9 @@
     "workspaceContains:**/*.cedarschema.json",
     "workspaceContains:**/cedarschema.json",
     "workspaceContains:**/*.cedarentities.json",
-    "workspaceContains:**/cedarentities.json"
+    "workspaceContains:**/cedarentities.json",
+    "workspaceContains:**/*.cedartests.json",
+    "workspaceContains:**/cedartests.json"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -143,9 +145,44 @@
         "title": "Add Cedar entity"
       },
       {
+        "command": "cedar.testsvalidate",
+        "category": "Cedar",
+        "title": "Validate Cedar tests"
+      },
+      {
+        "command": "cedar.testsadd",
+        "category": "Cedar",
+        "title": "Add Cedar test"
+      },
+      {
         "command": "cedar.clearproblems",
         "category": "Cedar",
         "title": "Clear problems"
+      },
+      {
+        "command": "cedar.clivalidate",
+        "category": "Cedar",
+        "title": "Run Cedar CLI validate"
+      },
+      {
+        "command": "cedar.cliruntests",
+        "category": "Cedar",
+        "title": "Run Cedar CLI run-tests"
+      },
+      {
+        "command": "cedar.clischemaparse",
+        "category": "Cedar",
+        "title": "Run Cedar CLI check-parse on schema"
+      },
+      {
+        "command": "cedar.clientitiesparse",
+        "category": "Cedar",
+        "title": "Run Cedar CLI check-parse on entities"
+      },
+      {
+        "command": "cedar.cliauthorize",
+        "category": "Cedar",
+        "title": "Run Cedar CLI authorize"
       }
     ],
     "menus": {
@@ -168,34 +205,69 @@
           "group": "y_commands"
         },
         {
-          "when": "editorLangId == cedar || resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "when": "editorLangId == cedar || cedar.entitiesFile || cedar.avpEntitiesFile || cedar.testsFile",
           "command": "cedar.schemaopen",
           "group": "navigation"
         },
         {
-          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
+          "when": "resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)",
           "command": "cedar.schemavalidate",
           "group": "1_modification"
         },
         {
-          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
+          "when": "resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)",
           "command": "cedar.schematranslate",
           "group": "1_modification"
         },
         {
-          "when": "resourceScheme == file && (resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)",
+          "when": "resourceScheme == file && cedar.schemaJsonFile",
           "command": "cedar.schemaexport",
           "group": "y_commands"
         },
         {
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "when": "cedar.entitiesFile",
           "command": "cedar.entitiesvalidate",
           "group": "1_modification"
         },
         {
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/",
+          "when": "cedar.entitiesFile",
           "command": "cedar.entitiesadd",
           "group": "1_modification"
+        },
+        {
+          "when": "cedar.testsFile",
+          "command": "cedar.testsvalidate",
+          "group": "1_modification"
+        },
+        {
+          "when": "cedar.testsFile",
+          "command": "cedar.testsadd",
+          "group": "1_modification"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && editorLangId == cedar",
+          "command": "cedar.clivalidate",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.testsFile",
+          "command": "cedar.cliruntests",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)",
+          "command": "cedar.clischemaparse",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.entitiesFile",
+          "command": "cedar.clientitiesparse",
+          "group": "z_cedarcli"
+        },
+        {
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.authFile",
+          "command": "cedar.cliauthorize",
+          "group": "z_cedarcli"
         }
       ],
       "commandPalette": [
@@ -213,23 +285,51 @@
         },
         {
           "command": "cedar.schemavalidate",
-          "when": "editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/"
+          "when": "editorLangId == cedarschema || editorLangId == json"
         },
         {
           "command": "cedar.schematranslate",
-          "when": "resourceScheme == file && (editorLangId == cedarschema || resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)"
+          "when": "resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)"
         },
         {
           "command": "cedar.schemaexport",
-          "when": "resourceScheme == file && (resourceFilename == cedarschema.json || resourceFilename =~ /\\.cedarschema\\.json$/)"
+          "when": "resourceScheme == file && cedar.schemaJsonFile"
         },
         {
           "command": "cedar.entitiesvalidate",
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+          "when": "editorLangId == json"
         },
         {
           "command": "cedar.entitiesadd",
-          "when": "resourceFilename == cedarentities.json || resourceFilename =~ /\\.cedarentities\\.json$/"
+          "when": "cedar.entitiesFile"
+        },
+        {
+          "command": "cedar.testsvalidate",
+          "when": "editorLangId == json"
+        },
+        {
+          "command": "cedar.testsadd",
+          "when": "cedar.testsFile"
+        },
+        {
+          "command": "cedar.clivalidate",
+          "when": "cedar.cedarcli && resourceScheme == file && editorLangId == cedar"
+        },
+        {
+          "command": "cedar.cliruntests",
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.testsFile"
+        },
+        {
+          "command": "cedar.clischemaparse",
+          "when": "cedar.cedarcli && resourceScheme == file && (editorLangId == cedarschema || cedar.schemaJsonFile)"
+        },
+        {
+          "command": "cedar.clientitiesparse",
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.entitiesFile"
+        },
+        {
+          "command": "cedar.cliauthorize",
+          "when": "cedar.cedarcli && resourceScheme == file && cedar.authFile"
         }
       ]
     },
@@ -279,6 +379,60 @@
           "type": "boolean",
           "default": true,
           "description": "Auto detect Cedar schema file used for policy validation."
+        },
+        "cedar.levelValidation.maxLevel": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null,
+          "minimum": 0,
+          "scope": "resource",
+          "markdownDescription": "Warn for Cedar policies which require an entity dereference level greater than this maximum when [level validating](https://docs.cedarpolicy.com/policies/level-validation.html), and pass it as `--level` to the Cedar CLI `validate` command.  Leave unset (`null`) to not warn."
+        },
+        "cedar.levelValidation.display": {
+          "type": "string",
+          "enum": [
+            "codeLens",
+            "inlayHint",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Show the level as a CodeLens above each policy",
+            "Show the level as an inlay hint comment after each policy's `;`",
+            "Don't show the level"
+          ],
+          "default": "inlayHint",
+          "scope": "resource",
+          "markdownDescription": "How to show the entity dereference level each Cedar policy validates at, when validated using a Cedar schema.  Inlay hints also depend on `#editor.inlayHints.enabled#`."
+        },
+        "cedar.fileAssociations": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "description": "Configure glob patterns to treat JSON files which don't follow the Cedar naming convention as Cedar files.",
+          "markdownDescription": "Configure glob patterns to treat JSON files which don't follow the Cedar naming convention as Cedar files.  A pattern without a `/` matches that filename in any folder, in the style of `#files.associations#`.",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "cedarschema.json",
+              "cedarentities",
+              "avpentities",
+              "cedartemplatelinks",
+              "cedarauth",
+              "cedartests",
+              "cedar.json"
+            ],
+            "enumDescriptions": [
+              "Cedar schema in the JSON format",
+              "Cedar entities",
+              "Amazon Verified Permissions entities",
+              "Cedar template linked policies",
+              "Cedar authorization request",
+              "Cedar tests",
+              "Cedar policies in the JSON format"
+            ]
+          }
         }
       }
     }
@@ -287,13 +441,19 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
+    "pretest": "npm run compile && npm run lint && npm run format:check",
     "lint": "eslint src --ext ts",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "test": "vscode-test",
     "test:file": "vscode-test --files",
     "package": "vsce package --follow-symlinks",
     "package-prerelease": "vsce package --pre-release --follow-symlinks",
+    "prewasm-build": "npm run wasm-format:check",
     "wasm-build": "cd vscode-cedar-wasm && wasm-pack build --target nodejs",
+    "wasm-format": "cd vscode-cedar-wasm && cargo fmt",
+    "wasm-format:check": "cd vscode-cedar-wasm && cargo fmt --check",
+    "wasm-test": "cd vscode-cedar-wasm && cargo test --lib",
     "wasm-pkg": "cd vscode-cedar-wasm/pkg && npm pack && mv *.tgz ../..",
     "test:grammar": "npm run compile && mocha --ui tdd out/test/suite/tmgrammar.test.js"
   },
@@ -305,14 +465,15 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "=18.15.0",
     "@types/vscode": "=1.83.0",
-    "@typescript-eslint/eslint-plugin": "^8.70.0",
-    "@typescript-eslint/parser": "^8.70.0",
+    "@typescript-eslint/eslint-plugin": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "eslint": "^9.39.5",
     "js-yaml": "^4.3.2",
     "mocha": "^11.8.0",
+    "prettier": "^3.9.10",
     "typescript": "^5.9.3",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"

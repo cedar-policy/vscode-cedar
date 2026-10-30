@@ -9,7 +9,7 @@ export class ValidateWithSchemaCodeLensProvider
   implements vscode.CodeLensProvider
 {
   async provideCodeLenses(
-    document: vscode.TextDocument
+    document: vscode.TextDocument,
   ): Promise<vscode.CodeLens[]> {
     const schemaDoc = await getSchemaTextDocument(document);
     if (schemaDoc) {
@@ -17,7 +17,7 @@ export class ValidateWithSchemaCodeLensProvider
       const workspace = vscode.workspace.getWorkspaceFolder(document.uri);
       if (workspace?.uri) {
         schemaFileName = schemaFileName.substring(
-          workspace.uri.fsPath.length + 1
+          workspace.uri.fsPath.length + 1,
         );
       }
 
@@ -30,7 +30,7 @@ export class ValidateWithSchemaCodeLensProvider
 
       const codeLens = new vscode.CodeLens(
         new vscode.Range(0, 0, 0, 0),
-        openCommand
+        openCommand,
       );
 
       return Promise.resolve([codeLens]);
@@ -44,7 +44,7 @@ export class TranslateSchemaCodeLensProvider
   implements vscode.CodeLensProvider
 {
   async provideCodeLenses(
-    document: vscode.TextDocument
+    document: vscode.TextDocument,
   ): Promise<vscode.CodeLens[]> {
     const translateCommand: vscode.Command = {
       command: COMMAND_CEDAR_SCHEMATRANSLATE,
@@ -53,7 +53,7 @@ export class TranslateSchemaCodeLensProvider
 
     const codeLens = new vscode.CodeLens(
       new vscode.Range(0, 0, 0, 0),
-      translateCommand
+      translateCommand,
     );
 
     return Promise.resolve([codeLens]);

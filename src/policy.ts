@@ -7,7 +7,7 @@ import { parseCedarPoliciesDoc } from './parser';
 
 export const getPolicyQuickPickItems = (
   cedarDoc: vscode.TextDocument,
-  selection: vscode.Range
+  selection: vscode.Range,
 ): vscode.QuickPickItem[] => {
   const items: vscode.QuickPickItem[] = [];
   const policyRanges = parseCedarPoliciesDoc(cedarDoc).policies;
@@ -30,7 +30,7 @@ export const getPolicyQuickPickItems = (
 export const exportCedarDocPolicyById = async (
   cedarDoc: vscode.TextDocument,
   policyId: string,
-  exportFilename: string
+  exportFilename: string,
 ): Promise<string> => {
   let exportJson = '';
   const policyRanges = parseCedarPoliciesDoc(cedarDoc).policies;
@@ -51,7 +51,7 @@ export const exportCedarDocPolicyById = async (
 
         vscode.workspace.fs.writeFile(
           vscode.Uri.file(exportFilename),
-          new Uint8Array(Buffer.from(exportJson))
+          new Uint8Array(Buffer.from(exportJson)),
         );
       }
 

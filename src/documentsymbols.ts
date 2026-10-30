@@ -7,6 +7,7 @@ import {
   parseCedarPoliciesDoc,
   parseCedarSchemaDoc,
   parseCedarTemplateLinksDoc,
+  parseCedarTestsDoc,
 } from './parser';
 
 export class CedarDocumentSymbolProvider
@@ -14,7 +15,7 @@ export class CedarDocumentSymbolProvider
 {
   async provideDocumentSymbols(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.DocumentSymbol[]> {
     try {
       const symbols: vscode.DocumentSymbol[] = [];
@@ -26,8 +27,8 @@ export class CedarDocumentSymbolProvider
             '',
             vscode.SymbolKind.Function,
             policyRange.range,
-            policyRange.effectRange
-          )
+            policyRange.effectRange,
+          ),
         );
       });
 
@@ -42,7 +43,7 @@ export class CedarFoldingRangeProvider implements vscode.FoldingRangeProvider {
   provideFoldingRanges(
     document: vscode.TextDocument,
     context: vscode.FoldingContext,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.FoldingRange[] {
     const ranges: vscode.FoldingRange[] = [];
     const policyRanges = parseCedarPoliciesDoc(document).policies;
@@ -51,16 +52,16 @@ export class CedarFoldingRangeProvider implements vscode.FoldingRangeProvider {
         new vscode.FoldingRange(
           policyRange.range.start.line,
           policyRange.range.end.line,
-          vscode.FoldingRangeKind.Region
-        )
+          vscode.FoldingRangeKind.Region,
+        ),
       );
 
       if (policyRange.effectRange.start.line > policyRange.range.start.line) {
         ranges.push(
           new vscode.FoldingRange(
             policyRange.effectRange.start.line,
-            policyRange.range.end.line
-          )
+            policyRange.range.end.line,
+          ),
         );
       }
     });
@@ -74,7 +75,7 @@ export class CedarEntitiesDocumentSymbolProvider
 {
   async provideDocumentSymbols(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.DocumentSymbol[]> {
     try {
       const symbols: vscode.DocumentSymbol[] = [];
@@ -86,7 +87,7 @@ export class CedarEntitiesDocumentSymbolProvider
           '',
           vscode.SymbolKind.Object,
           entityRange.range,
-          entityRange.uidKeyRange
+          entityRange.uidKeyRange,
         );
         if (entityRange.attrsRange && entityRange.attrsKeyRange) {
           symbol.children.push(
@@ -95,8 +96,8 @@ export class CedarEntitiesDocumentSymbolProvider
               '',
               vscode.SymbolKind.Object,
               entityRange.attrsRange,
-              entityRange.attrsKeyRange
-            )
+              entityRange.attrsKeyRange,
+            ),
           );
         }
         if (entityRange.parentsRange && entityRange.parentsKeyRange) {
@@ -106,8 +107,8 @@ export class CedarEntitiesDocumentSymbolProvider
               '',
               vscode.SymbolKind.Array,
               entityRange.parentsRange,
-              entityRange.parentsKeyRange
-            )
+              entityRange.parentsKeyRange,
+            ),
           );
         }
         if (entityRange.tagsRange && entityRange.tagsKeyRange) {
@@ -117,8 +118,8 @@ export class CedarEntitiesDocumentSymbolProvider
               '',
               vscode.SymbolKind.Object,
               entityRange.tagsRange,
-              entityRange.tagsKeyRange
-            )
+              entityRange.tagsKeyRange,
+            ),
           );
         }
         symbols.push(symbol);
@@ -136,13 +137,13 @@ export class CedarTemplateLinksDocumentSymbolProvider
 {
   async provideDocumentSymbols(
     cedarTemplateLinksDoc: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.DocumentSymbol[]> {
     try {
       const symbols: vscode.DocumentSymbol[] = [];
 
       const templateLinkRanges = parseCedarTemplateLinksDoc(
-        cedarTemplateLinksDoc
+        cedarTemplateLinksDoc,
       ).links;
       templateLinkRanges.forEach((templateLinkRange, index) => {
         symbols.push(
@@ -151,9 +152,60 @@ export class CedarTemplateLinksDocumentSymbolProvider
             '',
             vscode.SymbolKind.Object,
             templateLinkRange.range,
-            templateLinkRange.linkIdRange
-          )
+            templateLinkRange.linkIdRange,
+          ),
         );
+      });
+
+      return Promise.resolve(symbols);
+    } catch (error) {
+      return Promise.resolve([]);
+    }
+  }
+}
+
+export class CedarTestsDocumentSymbolProvider
+  implements vscode.DocumentSymbolProvider
+{
+  async provideDocumentSymbols(
+    cedarTestsDoc: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.DocumentSymbol[]> {
+    try {
+      const symbols: vscode.DocumentSymbol[] = [];
+
+      const testRanges = parseCedarTestsDoc(cedarTestsDoc).tests;
+      testRanges.forEach((testRange, index) => {
+        const symbol = new vscode.DocumentSymbol(
+          testRange.name,
+          testRange.decision,
+          vscode.SymbolKind.Event,
+          testRange.range,
+          testRange.nameRange || testRange.nameKeyRange || testRange.range,
+        );
+        if (testRange.requestRange && testRange.requestKeyRange) {
+          symbol.children.push(
+            new vscode.DocumentSymbol(
+              'request',
+              '',
+              vscode.SymbolKind.Object,
+              testRange.requestRange,
+              testRange.requestKeyRange,
+            ),
+          );
+        }
+        if (testRange.entitiesRange && testRange.entitiesKeyRange) {
+          symbol.children.push(
+            new vscode.DocumentSymbol(
+              'entities',
+              '',
+              vscode.SymbolKind.Array,
+              testRange.entitiesRange,
+              testRange.entitiesKeyRange,
+            ),
+          );
+        }
+        symbols.push(symbol);
       });
 
       return Promise.resolve(symbols);
@@ -168,7 +220,7 @@ export class CedarSchemaDocumentSymbolProvider
 {
   async provideDocumentSymbols(
     cedarSchemaDoc: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.DocumentSymbol[]> {
     try {
       const symbols: vscode.DocumentSymbol[] = [];
@@ -182,8 +234,8 @@ export class CedarSchemaDocumentSymbolProvider
             '',
             entityRange.symbol,
             entityRange.range,
-            entityRange.etypeRange
-          )
+            entityRange.etypeRange,
+          ),
         );
       });
 

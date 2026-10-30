@@ -8,13 +8,12 @@ import {
   SchemaCompletionRecord,
   parseCedarSchemaDoc,
 } from './parser';
-import { validateSchemaDoc } from './validate';
+import { DECISIONS, determineEntityTypes, validateSchemaDoc } from './validate';
 import { getSchemaTextDocument } from './fileutil';
-import { createDiagnosticCollection } from './diagnostics';
 
 const isTopLevelJSON = (
   document: vscode.TextDocument,
-  position: vscode.Position
+  position: vscode.Position,
 ): boolean => {
   let depth = 0;
   let inString = false;
@@ -62,12 +61,21 @@ const EXTENSIONS: Record<string, { fn: string; arg: string }> = {
   duration: { fn: 'duration', arg: '1d2h3m4s5ms' },
 };
 
+// the escapes of a JSON string, without the surrounding quotes
+const jsonEscape = (value: string): string =>
+  JSON.stringify(value).slice(1, -1);
+
+// `\`, `$`, and `}` have their own meaning in the snippet syntax, so a value
+// already escaped for JSON is escaped again to survive snippet insertion
+const snippetEscape = (value: string): string =>
+  value.replace(/[\\$}]/g, '\\$&');
+
 export const snippetify = (
   schema: SchemaCacheItem,
   attributes: SchemaCompletionRecord,
   tabstop: number,
   stack: string[], // recursive loop safety
-  indent: number = 1
+  indent: number = 1,
 ): { value: string; tabstop: number } => {
   const completions = schema.completions;
   const prefix = '\n' + ' '.repeat(indent * 2);
@@ -75,7 +83,7 @@ export const snippetify = (
   Object.keys(attributes).forEach((key) => {
     const type = attributes[key].description;
     let value: string | number | boolean | object = '""';
-    if (type === 'Bool') {
+    if (type === 'Bool' || type === 'Boolean') {
       value = `$\{${tabstop++}|false,true|}`;
     } else if (type === 'String') {
       value = `"$${tabstop++}"`;
@@ -93,7 +101,7 @@ export const snippetify = (
         attributes[key].children as SchemaCompletionRecord,
         tabstop++,
         stack,
-        indent + 1
+        indent + 1,
       ));
     } else if (schema.entityTypes.includes(type)) {
       value = `{ "type": "${type}", "id": "$${tabstop++}" }`;
@@ -107,12 +115,12 @@ export const snippetify = (
         completions[type],
         tabstop++,
         [...stack, type],
-        indent + 1
+        indent + 1,
       ));
     } else {
       value = ``; // should not get here
     }
-    s += `${prefix}"${key}": ${value},`;
+    s += `${prefix}"${snippetEscape(jsonEscape(key))}": ${value},`;
   });
 
   return {
@@ -129,43 +137,30 @@ export const snippetify = (
 export class CedarEntitiesJSONCompletionItemProvider
   implements vscode.CompletionItemProvider
 {
+  constructor(private diagnosticCollection: vscode.DiagnosticCollection) {}
+
   async provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
-    context: vscode.CompletionContext
+    context: vscode.CompletionContext,
   ) {
     const items: vscode.CompletionItem[] = [];
     if (isTopLevelJSON(document, position)) {
       const schemaDoc = await getSchemaTextDocument(document);
       if (schemaDoc) {
-        if (validateSchemaDoc(schemaDoc, createDiagnosticCollection())) {
+        if (validateSchemaDoc(schemaDoc, this.diagnosticCollection)) {
           const schema = parseCedarSchemaDoc(schemaDoc);
           const entityTypes = schema.entityTypes;
 
           entityTypes.forEach((entityType) => {
-            let attrs = '';
-            let tabstop = 2;
-            const completions = schema.completions;
-            ({ value: attrs, tabstop } = snippetify(
-              schema,
-              completions[entityType],
-              2,
-              [entityType],
-              2
-            ));
-
-            const tmpEntity = `
-  "uid": { "type": "${entityType}", "id": "$1" },
-  "attrs": ${attrs},
-  "parents": [$${tabstop}]
-`;
+            const tmpEntity = entityBodySnippet(schema, entityType);
             let item = new vscode.CompletionItem(
               {
                 label: entityType,
                 description: `"uid": { "type": "${entityType}", ...`,
               },
-              vscode.CompletionItemKind.Struct
+              vscode.CompletionItemKind.Struct,
             );
             item.range = new vscode.Range(position, position);
 
@@ -179,19 +174,209 @@ export class CedarEntitiesJSONCompletionItemProvider
   }
 }
 
-export const addEntitiesJSON = async (
-  textEditor: vscode.TextEditor,
-  diagnosticCollection: vscode.DiagnosticCollection
-): Promise<boolean> => {
+/**
+ * Build the snippet body of a Cedar entity.  The enclosing braces are supplied
+ * by the caller (or already typed by the user), and the leading indentation is
+ * relative, so Visual Studio Code re-indents it to the insert position.
+ */
+export const entityBodySnippet = (
+  schema: SchemaCacheItem,
+  entityType: string,
+): string => {
+  let attrs = '';
+  let tabstop = 2;
+  ({ value: attrs, tabstop } = snippetify(
+    schema,
+    schema.completions[entityType],
+    tabstop,
+    [entityType],
+    2,
+  ));
+
+  return `
+  "uid": { "type": "${entityType}", "id": "$1" },
+  "attrs": ${attrs},
+  "parents": [$${tabstop}]
+`;
+};
+
+// `\"` inside a JSON string, for example "PhotoApp::User::\"alice\""
+const Q = '\\"';
+
+/**
+ * A Cedar action id is `Namespace::Action::"id"`, where the id is a Cedar
+ * string using the same escapes as a JSON string.  Used when embedding an
+ * action id in Cedar policy text.
+ */
+const cedarActionId = (actionId: string): string => {
+  const start = actionId.indexOf('::"');
+  const end = actionId.lastIndexOf('"');
+  if (start === -1 || end < start + 3) {
+    return actionId;
+  }
+
+  const id = actionId.substring(start + 3, end);
+
+  return `${actionId.substring(0, start + 2)}"${jsonEscape(id)}"`;
+};
+
+// a snippet choice, or a plain tab stop when the schema offers nothing to pick
+const choice = (tabstop: number, values: string[]): string =>
+  values.length > 0 ? `\${${tabstop}|${values.join(',')}|}` : `$${tabstop}`;
+
+export const schemaActionIds = (schemaDoc: vscode.TextDocument): string[] =>
+  parseCedarSchemaDoc(schemaDoc)
+    .definitionRanges.filter(
+      (definition) => definition.collection === 'actions',
+    )
+    .map((definition) => definition.etype);
+
+/**
+ * Build the snippet body of a Cedar test for an action.  The principal and
+ * resource types are narrowed to those the action applies to, and the context
+ * is scaffolded from the attributes the schema declares for that action.
+ */
+export const testBodySnippet = (
+  schema: SchemaCacheItem,
+  schemaDoc: vscode.TextDocument,
+  actionId: string,
+): string => {
+  const head = `permit (principal, action == ${cedarActionId(actionId)}, resource)`;
+  const principals = determineEntityTypes(schemaDoc, 'principal', head);
+  const resources = determineEntityTypes(schemaDoc, 'resource', head);
+
+  // context attributes are declared per action in the Cedar schema
+  let tabstop = 6;
+  let contextAttrs: string;
+  const attributes = schema.completions[actionId];
+  if (attributes && Object.keys(attributes).length > 0) {
+    ({ value: contextAttrs, tabstop } = snippetify(
+      schema,
+      attributes,
+      tabstop,
+      [actionId],
+      3,
+    ));
+  } else {
+    contextAttrs = `{$${tabstop++}}`;
+  }
+
+  return `
+  "name": "$1",
+  "request": {
+    "principal": "${choice(2, principals)}::${Q}$3${Q}",
+    "action": "${snippetEscape(jsonEscape(actionId))}",
+    "resource": "${choice(4, resources)}::${Q}$5${Q}",
+    "context": ${contextAttrs}
+  },
+  "decision": "${choice(tabstop++, DECISIONS)}",
+  "reason": [$${tabstop++}],
+  "num_errors": \${${tabstop++}:0}
+`;
+};
+
+const braced = (body: string, braces: boolean): string =>
+  braces ? `{${body}}` : body;
+
+export class CedarTestsJSONCompletionItemProvider
+  implements vscode.CompletionItemProvider
+{
+  constructor(private diagnosticCollection: vscode.DiagnosticCollection) {}
+
+  async provideCompletionItems(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+    context: vscode.CompletionContext,
+  ) {
+    const items: vscode.CompletionItem[] = [];
+    const jsonPath = jsonc.getLocation(
+      document.getText(),
+      document.offsetAt(position),
+    ).path;
+
+    // inside the array of tests, either before or after typing the `{`
+    const newTestBraces =
+      jsonPath.length === 1 && typeof jsonPath[0] === 'number';
+    const newTest =
+      newTestBraces || (jsonPath.length === 2 && jsonPath[1] === '');
+
+    // inside the "entities" array of a test, before or after typing the `{`
+    const newEntityBraces =
+      jsonPath.length === 3 &&
+      jsonPath[1] === 'entities' &&
+      typeof jsonPath[2] === 'number';
+    const newEntity =
+      newEntityBraces ||
+      (jsonPath.length === 4 &&
+        jsonPath[1] === 'entities' &&
+        jsonPath[3] === '');
+
+    if (!newTest && !newEntity) {
+      return items;
+    }
+
+    const schemaDoc = await getSchemaTextDocument(document);
+    if (
+      !schemaDoc ||
+      !validateSchemaDoc(schemaDoc, this.diagnosticCollection)
+    ) {
+      return items;
+    }
+    const schema = parseCedarSchemaDoc(schemaDoc);
+
+    if (newTest) {
+      schemaActionIds(schemaDoc).forEach((actionId) => {
+        const item = new vscode.CompletionItem(
+          {
+            label: actionId,
+            description: `"request": { "action": "${actionId}", ...`,
+          },
+          vscode.CompletionItemKind.Event,
+        );
+        item.range = new vscode.Range(position, position);
+        item.insertText = new vscode.SnippetString(
+          braced(testBodySnippet(schema, schemaDoc, actionId), newTestBraces),
+        );
+        items.push(item);
+      });
+    } else {
+      schema.entityTypes.forEach((entityType) => {
+        const item = new vscode.CompletionItem(
+          {
+            label: entityType,
+            description: `"uid": { "type": "${entityType}", ...`,
+          },
+          vscode.CompletionItemKind.Struct,
+        );
+        item.range = new vscode.Range(position, position);
+        item.insertText = new vscode.SnippetString(
+          braced(entityBodySnippet(schema, entityType), newEntityBraces),
+        );
+        items.push(item);
+      });
+    }
+
+    return items;
+  }
+}
+
+/**
+ * Find where to insert a new object in a JSON document containing a top level
+ * array, and whether a leading comma is needed.
+ */
+const findInsertPosition = (
+  document: vscode.TextDocument,
+  cursorPosition: vscode.Position,
+): { position: vscode.Position; objects: number } => {
   let position: vscode.Position | null = null;
-  const cursorPosition = textEditor.selection.active;
   const currentLine = cursorPosition.line;
-  let entities = 0;
+  let objects = 0;
   let depth = 0;
-  jsonc.visit(textEditor.document.getText(), {
+  jsonc.visit(document.getText(), {
     onObjectBegin(offset, length, startLine, startCharacter, pathSupplier) {
       if (depth === 0) {
-        entities++;
+        objects++;
       }
       depth++;
     },
@@ -202,6 +387,54 @@ export const addEntitiesJSON = async (
       }
     },
   });
+
+  return {
+    position: position || new vscode.Position(0, 1),
+    objects: objects,
+  };
+};
+
+export const addTestsJSON = async (
+  textEditor: vscode.TextEditor,
+  diagnosticCollection: vscode.DiagnosticCollection,
+): Promise<boolean> => {
+  const { position, objects } = findInsertPosition(
+    textEditor.document,
+    textEditor.selection.active,
+  );
+
+  let body = '\n  "name": "$1"\n';
+  const schemaDoc = await getSchemaTextDocument(textEditor.document);
+  if (schemaDoc && validateSchemaDoc(schemaDoc, diagnosticCollection)) {
+    const schema = parseCedarSchemaDoc(schemaDoc);
+    const items: vscode.QuickPickItem[] = schemaActionIds(schemaDoc).map(
+      (actionId) => ({ label: actionId }),
+    );
+    if (items.length > 0) {
+      const result = await vscode.window.showQuickPick(items, {
+        title: 'Add Cedar test',
+      });
+      if (!result) {
+        return Promise.resolve(false);
+      }
+      body = testBodySnippet(schema, schemaDoc, result.label);
+    }
+  }
+
+  const snippet = (objects > 0 ? ',\n' : '\n') + braced(body, true);
+  await textEditor.insertSnippet(new vscode.SnippetString(snippet), position);
+
+  return Promise.resolve(true);
+};
+
+export const addEntitiesJSON = async (
+  textEditor: vscode.TextEditor,
+  diagnosticCollection: vscode.DiagnosticCollection,
+): Promise<boolean> => {
+  const { position, objects: entities } = findInsertPosition(
+    textEditor.document,
+    textEditor.selection.active,
+  );
 
   let entityType = '';
   // const attrs: Record<string, string | number | boolean | object> = {};
@@ -228,15 +461,11 @@ export const addEntitiesJSON = async (
             completions[entityType],
             tabstop,
             [entityType],
-            2
+            2,
           ));
         }
       }
     }
-  }
-
-  if (position === null) {
-    position = new vscode.Position(0, 1);
   }
 
   const tmpEntity = `{

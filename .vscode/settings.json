@@ -18,7 +18,13 @@
       "source.fixAll": "explicit"
     },
   },
-  "cSpell.words": ["cedarentities", "cedarlanguage", "cedarschema", "vsix"],
+  "cSpell.words": [
+    "cedarentities",
+    "cedarlanguage",
+    "cedarschema",
+    "cedartests",
+    "vsix"
+  ],
   "markdownlint.config": {
     "MD024": false
   },

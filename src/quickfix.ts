@@ -17,7 +17,7 @@ export class CedarQuickFix implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,
     context: vscode.CodeActionContext,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.CodeAction[] {
     // for each diagnostic entry that has the matching `code`, create a code action command
     const actions: vscode.CodeAction[] = [];
@@ -26,7 +26,7 @@ export class CedarQuickFix implements vscode.CodeActionProvider {
       if (diagnostic.code === 'unrecognized') {
         const action = this.createUnrecognizedQuickFixAction(
           document,
-          diagnostic
+          diagnostic,
         );
         if (action) {
           actions.push(action);
@@ -39,20 +39,20 @@ export class CedarQuickFix implements vscode.CodeActionProvider {
 
   private createUnrecognizedQuickFixAction(
     document: vscode.TextDocument,
-    diagnostic: vscode.Diagnostic
+    diagnostic: vscode.Diagnostic,
   ): vscode.CodeAction | null {
     let fix = null;
     const found = diagnostic.message.match(UNRECOGNIZED_REGEX);
     if (found?.groups && found?.groups.suggestion) {
       fix = new vscode.CodeAction(
         `Replace with ${found?.groups.suggestion}`,
-        vscode.CodeActionKind.QuickFix
+        vscode.CodeActionKind.QuickFix,
       );
       fix.edit = new vscode.WorkspaceEdit();
       fix.edit.replace(
         document.uri,
         diagnostic.range,
-        found?.groups.suggestion
+        found?.groups.suggestion,
       );
       fix.isPreferred = true;
       fix.diagnostics = [diagnostic];
@@ -82,7 +82,7 @@ export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,
     context: vscode.CodeActionContext,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.CodeAction[] {
     // for each diagnostic entry that has the matching `code`, create a code action command
     const actions: vscode.CodeAction[] = [];
@@ -91,7 +91,7 @@ export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
       if (diagnostic.code === 'undeclared') {
         const action = this.createUndeclaredCommonTypeQuickFixAction(
           document,
-          diagnostic
+          diagnostic,
         );
         if (action) {
           actions.push(action);
@@ -102,8 +102,8 @@ export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
             document,
             diagnostic,
             `Insert Cedar schema`,
-            CEDARSCHEMA_JSON
-          )
+            CEDARSCHEMA_JSON,
+          ),
         );
       }
     });
@@ -113,18 +113,18 @@ export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
 
   private createUndeclaredCommonTypeQuickFixAction(
     document: vscode.TextDocument,
-    diagnostic: vscode.Diagnostic
+    diagnostic: vscode.Diagnostic,
   ): vscode.CodeAction | null {
     let fix = null;
 
     if (diagnostic.message.startsWith('undeclared common type:')) {
       const type = diagnostic.message.substring(
-        diagnostic.message.indexOf(': ') + 2
+        diagnostic.message.indexOf(': ') + 2,
       );
       let suggestion;
 
       for (const t of 'String|Long|Boolean|Record|Set|Entity|Extension'.split(
-        '|'
+        '|',
       )) {
         if (type.toLowerCase() === t.toLowerCase()) {
           suggestion = t;
@@ -137,7 +137,7 @@ export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
           document,
           diagnostic,
           `Replace with ${suggestion}`,
-          suggestion
+          suggestion,
         );
       }
     }
@@ -149,7 +149,7 @@ export class CedarSchemaJSONQuickFix implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     diagnostic: vscode.Diagnostic,
     title: string,
-    suggestion: string
+    suggestion: string,
   ): vscode.CodeAction {
     const fix = new vscode.CodeAction(title, vscode.CodeActionKind.QuickFix);
     fix.edit = new vscode.WorkspaceEdit();

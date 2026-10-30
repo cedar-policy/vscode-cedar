@@ -22,7 +22,7 @@ export const schemaExportTypeExtension: Record<
 const buildProperties = (
   attributes: Attributes,
   diagramType: SchemaExportType,
-  prefix: string = ''
+  prefix: string = '',
 ): string => {
   let properties = '';
 
@@ -55,7 +55,7 @@ const buildProperties = (
       properties += buildProperties(
         attributes[k].attributes as Attributes,
         diagramType,
-        k
+        k,
       );
     } else {
       if (prefix) {
@@ -72,7 +72,7 @@ const buildProperties = (
 export const generateDiagram = (
   diagramFilename: string,
   cedarschema: CedarSchemaDefinition,
-  diagramType: SchemaExportType
+  diagramType: SchemaExportType,
 ): string => {
   let dsl = '';
 
@@ -93,7 +93,7 @@ export const generateDiagram = (
           const attributes = e.attributes;
           properties = buildProperties(attributes, diagramType).replace(
             /    /g,
-            '  '
+            '  ',
           );
         }
         if (diagramType === SchemaExportType.Mermaid) {
@@ -218,7 +218,7 @@ export const generateDiagram = (
         entityTypesDSL,
         actions,
         membersDSL,
-        parentsDSL
+        parentsDSL,
       );
     } else {
       dsl += formatPuml(
@@ -228,7 +228,7 @@ export const generateDiagram = (
         entityTypesDSL,
         actions,
         membersDSL,
-        parentsDSL
+        parentsDSL,
       );
     }
   });
@@ -242,7 +242,7 @@ const formatPuml = (
   entityTypes: string,
   actions: string,
   members: string,
-  parents: string
+  parents: string,
 ): string => {
   const puml = `@startuml ${diagramFilename}
 
@@ -272,7 +272,7 @@ const formatMermaid = (
   entityTypes: string,
   actions: string,
   members: string,
-  parents: string
+  parents: string,
 ): string => {
   const mmd = `---
 title: ${title}

@@ -25,7 +25,7 @@ pub struct ValidateMessage {
 
 pub fn convert_messages_to_js_array(messages: &Vec<ValidateMessage>) -> js_sys::Array {
     let arr = js_sys::Array::new_with_length(messages.len() as u32);
-    
+
     for (i, e) in messages.iter().enumerate() {
         let vm = js_sys::Object::new();
         js_sys::Reflect::set(
@@ -49,6 +49,6 @@ pub fn convert_messages_to_js_array(messages: &Vec<ValidateMessage>) -> js_sys::
 
         arr.set(i as u32, JsValue::from(vm));
     }
-    
+
     arr
 }

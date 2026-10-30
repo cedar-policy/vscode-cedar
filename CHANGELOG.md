@@ -1,3 +1,12 @@
+## v0.12.0 (Preview) 2026-10-30
+
+- Cedar tests validation, navigation, and IntelliSense
+- Run Cedar tests from the Testing view
+- `cedar.fileAssociations` setting for JSON files not following the Cedar naming convention
+- When Cedar CLI detected, enable terminal commands for validate, check-parse, and run-tests
+- Show the level each Cedar policy validates at as a CodeLens or inlay hint (`cedar.levelValidation.display`)
+- `cedar.levelValidation.maxLevel` setting to warn on policies exceeding a level
+
 ## v0.10.6 (Preview) 2026-09-15
 
 - Update to Cedar SDK 4.13.0

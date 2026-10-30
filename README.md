@@ -26,9 +26,15 @@ Files named `cedarentities.json` or matching `*.cedarentities.json` are detected
 
 ![Cedar entities validation and navigation](https://raw.githubusercontent.com/cedar-policy/vscode-cedar/main/docs/marketplace/cedar_entities.gif)
 
+### Cedar tests
+
+Files named `cedartests.json` or matching `*.cedartests.json` are detected as Cedar tests and receive additional syntax highlighting.  Validation is performed against a Cedar schema on document open, document save, and via context menu.  IntelliSense for tests and embedded entities, and add test via context menu.  Test navigation using Outline or Breadcrumb.  "Go to Definition" on Cedar entity types, action names, and `reason` policy ids.  Tests are run using the Visual Studio Code [Testing](https://code.visualstudio.com/docs/editor/testing) view, evaluated against the Cedar policy (`*.cedar`), template links (`cedartemplatelinks.json`), entities (`cedarentities.json`), and schema files alongside the tests file.
+
 ### Cedar CLI
 
 Various commands of the `cedar` CLI take JSON formatted file inputs.  Files named `cedarauth.json` or matching `*.cedarauth.json` are detected as input to the `--request-json` option for the `authorize` command.  Files named `cedartemplatelinks.json` or matching `*.cedartemplatelinks.json` are detected as input to the `--template-linked` option for the `authorize` command.  These files receive additional syntax highlighting.
+
+The `cedar` CLI is optional and detected on the `PATH` during startup, and its version is reported by the "About Cedar extension" command.  When detected, context menu and Command Palette commands run `validate`, `run-tests`, `check-parse`, and `authorize` on the current file in a reused **Cedar CLI** terminal, using the Cedar schema, policy, template links, and entities files detected alongside it.
 
 ### Markdown
 
@@ -56,6 +62,44 @@ Sample `.vscode/settings.json` which enables `editor` settings for `cedar` files
   },
   "cedar.schemaFile": "tinytodo.cedarschema",
   "cedar.autodetectSchemaFile": true,
+}
+```
+
+### Level validation
+
+When `.cedar` files validate using a Cedar schema, the minimum entity dereference level each policy validates at (see [level validation](https://docs.cedarpolicy.com/policies/level-validation.html)) is shown, depending on `cedar.levelValidation.display`, as a CodeLens above the policy (`codeLens`), an inlay hint comment like `// Level 2` after the policy's `;` (`inlayHint`), or not at all (`none`).  Set `cedar.levelValidation.maxLevel` to warn on any policy which requires a higher level.
+
+```json
+{
+  "cedar.levelValidation.maxLevel": 2,
+  "cedar.levelValidation.display": "codeLens",
+}
+```
+
+### File associations
+
+JSON files are detected as Cedar files by the `cedar*.json` naming convention described above.  `cedar.fileAssociations` maps glob patterns to a Cedar file kind for files which don't follow that convention, in the style of [`files.associations`](https://code.visualstudio.com/docs/languages/overview#_add-a-file-extension-to-a-language).  A pattern without a `/` matches that filename in any folder.  The built-in names take precedence, then associations are matched in order.  Supported kinds are `cedarschema.json`, `cedarentities`, `avpentities`, `cedartemplatelinks`, `cedarauth`, `cedartests`, and `cedar.json`.
+
+```json
+{
+  "cedar.fileAssociations": {
+    "schema.json": "cedarschema.json",
+    "entities.json": "cedarentities",
+    "tests.json": "cedartests",
+    "links.json": "cedartemplatelinks"
+  }
+}
+```
+
+Associated files receive the same syntax highlighting, validation, navigation, and IntelliSense as the conventionally named files, and are used when locating the Cedar files a tests file is evaluated against.  An associated Cedar schema is found by `cedar.autodetectSchemaFile`, so `cedar.schemaFile` is not needed to point at it.  Since this setting is folder scoped, it can be set per folder of a multi-root workspace.
+
+Cedar schema files using the Cedar syntax don't need this setting, since `cedarschema` is a language and can be associated using `files.associations`.
+
+```json
+{
+  "files.associations": {
+    "schema.txt": "cedarschema"
+  }
 }
 ```
 

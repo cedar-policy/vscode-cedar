@@ -25,19 +25,19 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('context.s.contains("a")'),
       'contains',
-      'entity.name.function'
+      'entity.name.function',
     );
     await assertScope(
       CEDAR,
       policy('resource.getTag("w")'),
       'getTag',
-      'entity.name.function'
+      'entity.name.function',
     );
     await assertScope(
       CEDAR,
       policy('ip("1.1.1.1").isInRange(ip("1.1.1.1/24"))'),
       'isInRange',
-      'entity.name.function'
+      'entity.name.function',
     );
     // a bare call is an ExtFun call, not a method call
     await assertUnscoped(CEDAR, policy('contains("a")'), 'contains');
@@ -47,22 +47,37 @@ suite('Cedar policy TextMate Suite', () => {
 
   test('P1 extension constructors', async () => {
     for (const fn of ['ip', 'decimal', 'datetime', 'duration']) {
-      await assertScope(
-        CEDAR,
-        policy(`${fn}("x")`),
-        fn,
-        'support.function'
-      );
+      await assertScope(CEDAR, policy(`${fn}("x")`), fn, 'support.function');
     }
   });
 
   test('P2 integer literals', async () => {
-    await assertScope(CEDAR, policy('context.a == 42'), '42', 'constant.numeric');
+    await assertScope(
+      CEDAR,
+      policy('context.a == 42'),
+      '42',
+      'constant.numeric',
+    );
     // leading zeros are a single INT per the grammar
-    await assertScope(CEDAR, policy('context.a == 007'), '007', 'constant.numeric');
+    await assertScope(
+      CEDAR,
+      policy('context.a == 007'),
+      '007',
+      'constant.numeric',
+    );
     // the sign is an operator, not part of the literal
-    await assertScope(CEDAR, policy('context.a == -42'), '-', 'keyword.operator');
-    await assertScope(CEDAR, policy('context.a == -42'), '42', 'constant.numeric');
+    await assertScope(
+      CEDAR,
+      policy('context.a == -42'),
+      '-',
+      'keyword.operator',
+    );
+    await assertScope(
+      CEDAR,
+      policy('context.a == -42'),
+      '42',
+      'constant.numeric',
+    );
     // Cedar has no digit separators
     await assertUnscoped(CEDAR, policy('context.a == 1_000'), '1_000');
     // digits inside an identifier are not numbers
@@ -75,9 +90,14 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('!(principal in Group::"g")'),
       '!',
-      'keyword.operator'
+      'keyword.operator',
     );
-    await assertScope(CEDAR, policy('context.a != 1'), '!=', 'keyword.operator');
+    await assertScope(
+      CEDAR,
+      policy('context.a != 1'),
+      '!=',
+      'keyword.operator',
+    );
   });
 
   test('P4 symbolic operators are scoped', async () => {
@@ -99,7 +119,7 @@ suite('Cedar policy TextMate Suite', () => {
         CEDAR,
         policy(`context.a ${op} 1`),
         op,
-        'keyword.operator'
+        'keyword.operator',
       );
     }
   });
@@ -122,7 +142,7 @@ suite('Cedar policy TextMate Suite', () => {
         CEDAR,
         `@doNotOptimize\n${policy('true')}`,
         '@doNotOptimize',
-        scope
+        scope,
       );
       // ANYIDENT, so a reserved word is a legal annotation name
       await assertScope(CEDAR, `@is("x")\n${policy('true')}`, '@is', scope);
@@ -130,7 +150,7 @@ suite('Cedar policy TextMate Suite', () => {
         CEDAR,
         `@__cedar("x")\n${policy('true')}`,
         '@__cedar',
-        scope
+        scope,
       );
     }
     // a '@' inside a string is not an annotation
@@ -138,13 +158,13 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('context.a == "@notAnAnnotation"'),
       '@notAnAnnotation',
-      'string.quoted'
+      'string.quoted',
     );
     await assertNotScope(
       CEDAR,
       policy('context.a == "@notAnAnnotation"'),
       '@notAnAnnotation',
-      'meta.decorator'
+      'meta.decorator',
     );
   });
 
@@ -153,15 +173,20 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       'permit (principal is User, action, resource);',
       'User',
-      'entity.name.type'
+      'entity.name.type',
     );
     await assertScope(
       CEDAR,
       'permit (principal is A::User, action, resource);',
       'A::User',
-      'entity.name.type'
+      'entity.name.type',
     );
-    await assertScope(CEDAR, policy('resource is Photo'), 'Photo', 'entity.name.type');
+    await assertScope(
+      CEDAR,
+      policy('resource is Photo'),
+      'Photo',
+      'entity.name.type',
+    );
   });
 
   test('P7 entity literals', async () => {
@@ -169,57 +194,72 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('principal == User::"alice"'),
       'User',
-      'entity.name.type'
+      'entity.name.type',
     );
     await assertScope(
       CEDAR,
       policy('principal == A::B::User::"a"'),
       'A::B::User',
-      'entity.name.type'
+      'entity.name.type',
     );
   });
 
   test('P8 word operators and control flow are scoped apart', async () => {
-    await assertScope(CEDAR, policy('if true then 1 else 2'), 'if', 'keyword.control');
+    await assertScope(
+      CEDAR,
+      policy('if true then 1 else 2'),
+      'if',
+      'keyword.control',
+    );
     await assertScope(
       CEDAR,
       policy('if true then 1 else 2'),
       'then',
-      'keyword.control'
+      'keyword.control',
     );
     await assertScope(
       CEDAR,
       policy('if true then 1 else 2'),
       'else',
-      'keyword.control'
+      'keyword.control',
     );
-    await assertScope(CEDAR, policy('principal in A::"b"'), 'in', 'keyword.operator');
-    await assertScope(CEDAR, policy('principal has x'), 'has', 'keyword.operator');
+    await assertScope(
+      CEDAR,
+      policy('principal in A::"b"'),
+      'in',
+      'keyword.operator',
+    );
+    await assertScope(
+      CEDAR,
+      policy('principal has x'),
+      'has',
+      'keyword.operator',
+    );
     await assertScope(
       CEDAR,
       policy('resource.n like "a*"'),
       'like',
-      'keyword.operator'
+      'keyword.operator',
     );
     for (const kw of ['permit', 'when']) {
       await assertScope(
         CEDAR,
         'permit (principal, action, resource)\nwhen { true };',
         kw,
-        'keyword.control'
+        'keyword.control',
       );
     }
     await assertScope(
       CEDAR,
       'forbid (principal, action, resource)\nunless { true };',
       'forbid',
-      'keyword.control'
+      'keyword.control',
     );
     await assertScope(
       CEDAR,
       'forbid (principal, action, resource)\nunless { true };',
       'unless',
-      'keyword.control'
+      'keyword.control',
     );
   });
 
@@ -229,24 +269,39 @@ suite('Cedar policy TextMate Suite', () => {
         CEDAR,
         'permit (principal, action, resource);',
         v,
-        'variable.language'
+        'variable.language',
       );
     }
-    await assertScope(CEDAR, policy('context.a == 1'), 'context', 'variable.language');
+    await assertScope(
+      CEDAR,
+      policy('context.a == 1'),
+      'context',
+      'variable.language',
+    );
     await assertScope(
       CEDAR,
       'permit (principal in ?principal, action, resource);',
       '?principal',
-      'variable.parameter'
+      'variable.parameter',
     );
     await assertScope(
       CEDAR,
       'permit (principal, action, resource in ?resource);',
       '?resource',
-      'variable.parameter'
+      'variable.parameter',
     );
-    await assertScope(CEDAR, policy('true'), 'true', 'constant.language.boolean');
-    await assertScope(CEDAR, policy('false'), 'false', 'constant.language.boolean');
+    await assertScope(
+      CEDAR,
+      policy('true'),
+      'true',
+      'constant.language.boolean',
+    );
+    await assertScope(
+      CEDAR,
+      policy('false'),
+      'false',
+      'constant.language.boolean',
+    );
   });
 
   test('P11 a string does not run past the end of a line', async () => {
@@ -257,12 +312,12 @@ suite('Cedar policy TextMate Suite', () => {
     // the policy on the following line is still tokenized as Cedar
     await assertScope(CEDAR, source, 'permit', 'keyword.control');
     const strings = (await tokenize(CEDAR, source)).filter((t) =>
-      t.scopes.some((s) => s.startsWith('string.quoted'))
+      t.scopes.some((s) => s.startsWith('string.quoted')),
     );
     assert.equal(
       strings.every((t) => !t.text.includes('permit')),
       true,
-      'the unterminated string should not swallow the next line'
+      'the unterminated string should not swallow the next line',
     );
   });
 
@@ -271,33 +326,33 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('context.a == "a\\nb"'),
       '\\n',
-      'constant.character.escape'
+      'constant.character.escape',
     );
     await assertScope(
       CEDAR,
       policy('context.a == "a\\x41b"'),
       '\\x41',
-      'constant.character.escape'
+      'constant.character.escape',
     );
     await assertScope(
       CEDAR,
       policy('context.a == "a\\u{1F600}b"'),
       '\\u{1F600}',
-      'constant.character.escape'
+      'constant.character.escape',
     );
     // PAT allows \* as an extra escape
     await assertScope(
       CEDAR,
       policy('resource.n like "a\\*b"'),
       '\\*',
-      'constant.character.escape'
+      'constant.character.escape',
     );
     // an escape Cedar does not define is flagged rather than shown as valid
     await assertScope(
       CEDAR,
       policy('context.a == "a\\qb"'),
       '\\q',
-      'invalid.illegal'
+      'invalid.illegal',
     );
   });
 
@@ -306,31 +361,31 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('principal == A::User::"u"'),
       '::',
-      'punctuation.separator.namespace'
+      'punctuation.separator.namespace',
     );
     await assertScope(
       CEDAR,
       policy('context.a == 1'),
       '.',
-      'punctuation.accessor'
+      'punctuation.accessor',
     );
     await assertScope(
       CEDAR,
       'permit (principal, action, resource);',
       ',',
-      'punctuation.separator.comma'
+      'punctuation.separator.comma',
     );
     await assertScope(
       CEDAR,
       'permit (principal, action, resource);',
       ';',
-      'punctuation.terminator'
+      'punctuation.terminator',
     );
     await assertScope(
       CEDAR,
       'permit (principal, action, resource);',
       '(',
-      'punctuation.section.brackets'
+      'punctuation.section.brackets',
     );
     // the receiver dot and the opening paren of a call are scoped too, rather
     // than being silently consumed by the method and function rules
@@ -338,19 +393,19 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       policy('context.s.contains("a")'),
       '.',
-      'punctuation.accessor'
+      'punctuation.accessor',
     );
     await assertScope(
       CEDAR,
       policy('context.s.contains("a")'),
       '(',
-      'punctuation.section.brackets'
+      'punctuation.section.brackets',
     );
     await assertScope(
       CEDAR,
       policy('ip("1.1.1.1")'),
       '(',
-      'punctuation.section.brackets'
+      'punctuation.section.brackets',
     );
   });
 
@@ -359,28 +414,28 @@ suite('Cedar policy TextMate Suite', () => {
       CEDAR,
       '// hello\npermit (principal, action, resource);',
       '// hello',
-      'comment.line'
+      'comment.line',
     );
     // a comment directly after a path separator
     await assertScope(
       CEDAR,
       `${policy('A::B::User::"u" == principal')}//y`,
       '//y',
-      'comment.line'
+      'comment.line',
     );
     // a url inside a string is not a comment
     await assertScope(
       CEDAR,
       policy('context.a == "https://x.com"'),
       'https://x.com',
-      'string.quoted'
+      'string.quoted',
     );
     // '//' inside a string is not a comment
     await assertScope(
       CEDAR,
       policy('context.a == "// not a comment"'),
       '// not a comment',
-      'string.quoted'
+      'string.quoted',
     );
   });
 });
@@ -391,42 +446,62 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'entity E { a: String } tags String;',
       'tags',
-      'keyword'
+      'keyword',
     );
     await assertScope(CEDARSCHEMA, 'entity A tags String;', 'tags', 'keyword');
     await assertScope(
       CEDARSCHEMA,
       'entity B in [P] tags Set<String>;',
       'tags',
-      'keyword'
+      'keyword',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity C in P tags Set<Set<String>>;',
       'tags',
-      'keyword'
+      'keyword',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity R tags { note: String };',
       'tags',
-      'keyword'
+      'keyword',
     );
   });
 
   test('S1 tags used as a name is not the keyword', async () => {
-    await assertNotScope(CEDARSCHEMA, 'entity D { tags: Bool };', 'tags', 'keyword');
-    await assertNotScope(CEDARSCHEMA, 'entity D { tags?: Bool };', 'tags', 'keyword');
+    await assertNotScope(
+      CEDARSCHEMA,
+      'entity D { tags: Bool };',
+      'tags',
+      'keyword',
+    );
+    await assertNotScope(
+      CEDARSCHEMA,
+      'entity D { tags?: Bool };',
+      'tags',
+      'keyword',
+    );
     await assertNotScope(CEDARSCHEMA, 'entity tags;', 'tags', 'keyword');
     await assertNotScope(CEDARSCHEMA, 'entity E, tags;', 'tags', 'keyword');
     await assertNotScope(CEDARSCHEMA, 'type tags = Long;', 'tags', 'keyword');
-    await assertNotScope(CEDARSCHEMA, 'type X = { a: tags };', 'tags', 'keyword');
-    await assertNotScope(CEDARSCHEMA, 'entity tags in Parent;', 'tags', 'keyword');
+    await assertNotScope(
+      CEDARSCHEMA,
+      'type X = { a: tags };',
+      'tags',
+      'keyword',
+    );
+    await assertNotScope(
+      CEDARSCHEMA,
+      'entity tags in Parent;',
+      'tags',
+      'keyword',
+    );
     await assertNotScope(
       CEDARSCHEMA,
       'action tags appliesTo { context: {} };',
       'tags',
-      'keyword'
+      'keyword',
     );
   });
 
@@ -435,37 +510,52 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'entity Color enum ["Red", "Blue"];',
       'enum',
-      'keyword'
+      'keyword',
     );
-    await assertNotScope(CEDARSCHEMA, 'entity T { enum: Color };', 'enum', 'keyword');
+    await assertNotScope(
+      CEDARSCHEMA,
+      'entity T { enum: Color };',
+      'enum',
+      'keyword',
+    );
   });
 
   test('S3 in does not require a bracketed list', async () => {
     await assertScope(CEDARSCHEMA, 'entity Photo in Album;', 'in', 'keyword');
     await assertScope(CEDARSCHEMA, 'entity Photo in [Album];', 'in', 'keyword');
-    await assertScope(CEDARSCHEMA, 'action view in Action::"read";', 'in', 'keyword');
+    await assertScope(
+      CEDARSCHEMA,
+      'action view in Action::"read";',
+      'in',
+      'keyword',
+    );
   });
 
   test('S4 declarations are not anchored to the start of a line', async () => {
     await assertScope(CEDARSCHEMA, 'entity User;', 'entity', 'keyword.control');
-    await assertScope(CEDARSCHEMA, '  entity User;', 'entity', 'keyword.control');
+    await assertScope(
+      CEDARSCHEMA,
+      '  entity User;',
+      'entity',
+      'keyword.control',
+    );
     await assertScope(
       CEDARSCHEMA,
       'namespace N { entity User; }',
       'entity',
-      'keyword.control'
+      'keyword.control',
     );
     await assertScope(
       CEDARSCHEMA,
       'namespace N { action x; }',
       'action',
-      'keyword.control'
+      'keyword.control',
     );
     await assertScope(
       CEDARSCHEMA,
       'namespace N { type T = Long; }',
       'type',
-      'keyword.control'
+      'keyword.control',
     );
   });
 
@@ -474,13 +564,13 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'namespace Foo {\n entity E;\n}',
       'Foo',
-      'entity.name.namespace'
+      'entity.name.namespace',
     );
     await assertScope(
       CEDARSCHEMA,
       'namespace Foo::Bar::Baz {\n entity E;\n}',
       'Foo::Bar::Baz',
-      'entity.name.namespace'
+      'entity.name.namespace',
     );
   });
 
@@ -491,42 +581,77 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       '@doc("ns")\nnamespace N { entity E; }',
       '@doc',
-      'entity.name.function.decorator'
+      'entity.name.function.decorator',
     );
     await assertScope(
       CEDARSCHEMA,
       '@doc("ns")\nnamespace N { entity E; }',
       '@doc',
-      'meta.decorator'
+      'meta.decorator',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity E { @doc("a") "id": Long };',
       '@doc',
-      'meta.decorator'
+      'meta.decorator',
     );
-    await assertScope(CEDARSCHEMA, '@doc("t")\ntype T = Long;', '@doc', 'meta.decorator');
-    await assertScope(CEDARSCHEMA, '@internal\nentity E;', '@internal', 'meta.decorator');
+    await assertScope(
+      CEDARSCHEMA,
+      '@doc("t")\ntype T = Long;',
+      '@doc',
+      'meta.decorator',
+    );
+    await assertScope(
+      CEDARSCHEMA,
+      '@internal\nentity E;',
+      '@internal',
+      'meta.decorator',
+    );
   });
 
   test('S7 built-in type names', async () => {
-    await assertScope(CEDARSCHEMA, 'entity E { l: Long };', 'Long', 'support.type');
-    await assertScope(CEDARSCHEMA, 'entity E { b: Bool };', 'Bool', 'support.type');
+    await assertScope(
+      CEDARSCHEMA,
+      'entity E { l: Long };',
+      'Long',
+      'support.type',
+    );
+    await assertScope(
+      CEDARSCHEMA,
+      'entity E { b: Bool };',
+      'Bool',
+      'support.type',
+    );
     await assertScope(
       CEDARSCHEMA,
       'entity E { s: Set<String> };',
       'Set',
-      'support.type'
+      'support.type',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity E { s: Set<String> };',
       'String',
-      'support.type'
+      'support.type',
     );
-    await assertScope(CEDARSCHEMA, 'entity E { ip: ipaddr };', 'ipaddr', 'support.type');
-    await assertScope(CEDARSCHEMA, 'type Alias = Long;', 'Long', 'support.type');
-    await assertScope(CEDARSCHEMA, 'entity A tags String;', 'String', 'support.type');
+    await assertScope(
+      CEDARSCHEMA,
+      'entity E { ip: ipaddr };',
+      'ipaddr',
+      'support.type',
+    );
+    await assertScope(
+      CEDARSCHEMA,
+      'type Alias = Long;',
+      'Long',
+      'support.type',
+    );
+    await assertScope(
+      CEDARSCHEMA,
+      'entity A tags String;',
+      'String',
+      'support.type',
+    );
   });
 
   test('S7 extension types, which no longer get a semantic token', async () => {
@@ -537,13 +662,13 @@ suite('Cedar schema TextMate Suite', () => {
         CEDARSCHEMA,
         `entity E { a: ${ext} };`,
         ext,
-        'support.type'
+        'support.type',
       );
       await assertScope(
         CEDARSCHEMA,
         `type T = Set<${ext}>;`,
         ext,
-        'support.type'
+        'support.type',
       );
     }
   });
@@ -553,20 +678,20 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'entity String { a: Long };',
       'String',
-      'support.type'
+      'support.type',
     );
     await assertNotScope(
       CEDARSCHEMA,
       'type ipaddr = { a: Long };',
       'ipaddr',
-      'support.type'
+      'support.type',
     );
     // a common type reference is not a built-in type
     await assertNotScope(
       CEDARSCHEMA,
       'entity E { p: Primitives };',
       'Primitives',
-      'support.type'
+      'support.type',
     );
   });
 
@@ -575,10 +700,20 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'type T = { a: Long };',
       '=',
-      'keyword.operator.assignment'
+      'keyword.operator.assignment',
     );
-    await assertScope(CEDARSCHEMA, 'entity E { s: Set<String> };', '<', 'punctuation');
-    await assertScope(CEDARSCHEMA, 'entity E { s: Set<String> };', '>', 'punctuation');
+    await assertScope(
+      CEDARSCHEMA,
+      'entity E { s: Set<String> };',
+      '<',
+      'punctuation',
+    );
+    await assertScope(
+      CEDARSCHEMA,
+      'entity E { s: Set<String> };',
+      '>',
+      'punctuation',
+    );
   });
 
   test('S11 appliesTo requires a following brace', async () => {
@@ -586,13 +721,13 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'action a appliesTo { principal: [U] };',
       'appliesTo',
-      'keyword'
+      'keyword',
     );
     await assertNotScope(
       CEDARSCHEMA,
       'entity E { appliesTo: Bool };',
       'appliesTo',
-      'keyword'
+      'keyword',
     );
   });
 
@@ -601,32 +736,37 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'type T = { "id": Long };',
       '"id"',
-      'variable.other.property'
+      'variable.other.property',
     );
     await assertScope(
       CEDARSCHEMA,
       'type T = { "owner info": String };',
       '"owner info"',
-      'variable.other.property'
+      'variable.other.property',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity E { a?: Long };',
       'a',
-      'variable.other.property'
+      'variable.other.property',
     );
     // an ordinary string is still a string, even with a colon in it
     await assertScope(
       CEDARSCHEMA,
       '@doc("id: the task id")\nentity E;',
       'id: the task id',
-      'string.quoted'
+      'string.quoted',
     );
     await assertScope(CEDARSCHEMA, 'action "x";', 'x', 'string.quoted');
   });
 
   test('S13 a comment after a path separator', async () => {
-    await assertScope(CEDARSCHEMA, 'entity E { a: N::T };//c', '//c', 'comment.line');
+    await assertScope(
+      CEDARSCHEMA,
+      'entity E { a: N::T };//c',
+      '//c',
+      'comment.line',
+    );
   });
 
   test('S14 namespaced entity types', async () => {
@@ -634,19 +774,19 @@ suite('Cedar schema TextMate Suite', () => {
       CEDARSCHEMA,
       'action a appliesTo { principal: [N2::E] };',
       'N2::E',
-      'entity.name.type'
+      'entity.name.type',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity E in [Foo::Bar::Baz];',
       'Foo::Bar::Baz',
-      'entity.name.type'
+      'entity.name.type',
     );
     await assertScope(
       CEDARSCHEMA,
       'entity E { g: Set<__cedar::String> };',
       '__cedar::String',
-      'entity.name.type'
+      'entity.name.type',
     );
   });
 
@@ -654,11 +794,11 @@ suite('Cedar schema TextMate Suite', () => {
     const source = 'entity E { a: "unterminated };\nentity F;';
     await assertScope(CEDARSCHEMA, source, 'entity', 'keyword.control');
     const strings = (await tokenize(CEDARSCHEMA, source)).filter((t) =>
-      t.scopes.some((s) => s.startsWith('string.quoted'))
+      t.scopes.some((s) => s.startsWith('string.quoted')),
     );
     assert.equal(
       strings.every((t) => !t.text.includes('entity F')),
-      true
+      true,
     );
   });
 });

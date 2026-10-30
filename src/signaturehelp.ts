@@ -4,12 +4,14 @@
 import * as vscode from 'vscode';
 import { FUNCTION_HELP_DEFINITIONS } from './help';
 
-export class CedarSignatureHelpProvider implements vscode.SignatureHelpProvider {
+export class CedarSignatureHelpProvider
+  implements vscode.SignatureHelpProvider
+{
   provideSignatureHelp(
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
-    context: vscode.SignatureHelpContext
+    context: vscode.SignatureHelpContext,
   ): vscode.SignatureHelp | undefined {
     const linePrefix = document
       .lineAt(position)
@@ -54,7 +56,7 @@ export class CedarSignatureHelpProvider implements vscode.SignatureHelpProvider 
 
     const sigInfo = new vscode.SignatureInformation(
       signatureLabel,
-      new vscode.MarkdownString(description)
+      new vscode.MarkdownString(description),
     );
 
     // Use [startOffset, endOffset] into signatureLabel to highlight the

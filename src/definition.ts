@@ -9,15 +9,16 @@ import {
   parseCedarSchemaDoc,
   parseCedarTemplateLinksDoc,
   parseCedarJsonPolicyDoc,
+  parseCedarTestsDoc,
   ReferencedRange,
 } from './parser';
-import { getSchemaTextDocument } from './fileutil';
+import { getCedarTestFiles, getSchemaTextDocument } from './fileutil';
 
 const findSchemaDefinition = async (
   schemaDoc: vscode.TextDocument,
   position: vscode.Position,
   referencedTypes: ReferencedRange[],
-  actionIds: ReferencedRange[] = []
+  actionIds: ReferencedRange[] = [],
 ): Promise<vscode.Definition | null | undefined> => {
   // TODO: update from O(n^2) to something more efficient
   const schemaItem = parseCedarSchemaDoc(schemaDoc);
@@ -55,7 +56,7 @@ export class CedarEntitiesDefinitionProvider
   async provideDefinition(
     cedarEntitiesDoc: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
     const schemaDoc = await getSchemaTextDocument(cedarEntitiesDoc);
     if (schemaDoc) {
@@ -74,12 +75,12 @@ export class CedarTemplateLinksDefinitionProvider
   async provideDefinition(
     cedarTemplateLinksDoc: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
     const schemaDoc = await getSchemaTextDocument(cedarTemplateLinksDoc);
     if (schemaDoc) {
       const referencedTypes = parseCedarTemplateLinksDoc(
-        cedarTemplateLinksDoc
+        cedarTemplateLinksDoc,
       ).referencedTypes;
       return findSchemaDefinition(schemaDoc, position, referencedTypes);
     }
@@ -92,7 +93,7 @@ export class CedarAuthDefinitionProvider implements vscode.DefinitionProvider {
   async provideDefinition(
     cedarAuthDoc: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
     const schemaDoc = await getSchemaTextDocument(cedarAuthDoc);
     if (schemaDoc) {
@@ -103,7 +104,76 @@ export class CedarAuthDefinitionProvider implements vscode.DefinitionProvider {
         schemaDoc,
         position,
         referencedTypes,
-        actionIds
+        actionIds,
+      );
+    }
+
+    return null;
+  }
+}
+
+// resolve a policy id from a Cedar tests "reason" to the policy which declares
+// it (an @id annotated policy, or a template link_id)
+const findPolicyDefinition = async (
+  cedarTestsDoc: vscode.TextDocument,
+  position: vscode.Position,
+  policyIds: ReferencedRange[],
+): Promise<vscode.Definition | null | undefined> => {
+  for (let policyId of policyIds) {
+    if (policyId.range.contains(position)) {
+      const { policyDocs, templateLinksDoc } =
+        await getCedarTestFiles(cedarTestsDoc);
+
+      for (let policyDoc of policyDocs) {
+        for (let policyRange of parseCedarPoliciesDoc(policyDoc).policies) {
+          if (policyRange.id === policyId.name) {
+            return Promise.resolve(
+              new vscode.Location(policyDoc.uri, policyRange.range),
+            );
+          }
+        }
+      }
+
+      if (templateLinksDoc) {
+        for (let link of parseCedarTemplateLinksDoc(templateLinksDoc).links) {
+          if (link.id === policyId.name) {
+            return Promise.resolve(
+              new vscode.Location(templateLinksDoc.uri, link.range),
+            );
+          }
+        }
+      }
+
+      // already matched position but didn't find definition, so return
+      return null;
+    }
+  }
+};
+
+export class CedarTestsDefinitionProvider implements vscode.DefinitionProvider {
+  async provideDefinition(
+    cedarTestsDoc: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.Definition | null | undefined> {
+    const testsItem = parseCedarTestsDoc(cedarTestsDoc);
+
+    const policyDefinition = await findPolicyDefinition(
+      cedarTestsDoc,
+      position,
+      testsItem.policyIds,
+    );
+    if (policyDefinition !== undefined) {
+      return policyDefinition;
+    }
+
+    const schemaDoc = await getSchemaTextDocument(cedarTestsDoc);
+    if (schemaDoc) {
+      return findSchemaDefinition(
+        schemaDoc,
+        position,
+        testsItem.referencedTypes,
+        testsItem.actionIds,
       );
     }
 
@@ -115,7 +185,7 @@ export class CedarJsonDefinitionProvider implements vscode.DefinitionProvider {
   async provideDefinition(
     cedarJsonDoc: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
     const schemaDoc = await getSchemaTextDocument(cedarJsonDoc);
     if (schemaDoc) {
@@ -126,7 +196,7 @@ export class CedarJsonDefinitionProvider implements vscode.DefinitionProvider {
         schemaDoc,
         position,
         referencedTypes,
-        actionIds
+        actionIds,
       );
     }
 
@@ -140,7 +210,7 @@ export class CedarSchemaDefinitionProvider
   async provideDefinition(
     schemaDoc: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
     const schemaItem = parseCedarSchemaDoc(schemaDoc);
     const referencedTypes = schemaItem.referencedTypes;
@@ -149,7 +219,7 @@ export class CedarSchemaDefinitionProvider
       schemaDoc,
       position,
       referencedTypes,
-      actionIds
+      actionIds,
     );
   }
 }
@@ -158,7 +228,7 @@ export class CedarDefinitionProvider implements vscode.DefinitionProvider {
   async provideDefinition(
     cedarDoc: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
     const schemaDoc = await getSchemaTextDocument(cedarDoc);
     if (schemaDoc) {
@@ -169,7 +239,7 @@ export class CedarDefinitionProvider implements vscode.DefinitionProvider {
         schemaDoc,
         position,
         referencedTypes,
-        actionIds
+        actionIds,
       );
     }
 

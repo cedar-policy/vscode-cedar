@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$comment": "https://docs.cedarpolicy.com/auth/authorization.html",
+  "type": "array",
+  "description": "Each object in this list represents a single authorization test, and should have a name, request, and expected decision",
+  "markdownDescription": "Each object in this list represents a single authorization test, and should have a `name`, `request`, and expected `decision`.\n\nTests are evaluated against the Cedar policy (`*.cedar`), template links (`cedartemplatelinks.json`), and schema files alongside the tests file.",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Name of this test, displayed in the Test Explorer"
+      },
+      "request": {
+        "type": "object",
+        "description": "Can this principal take this action on this resource in this context?",
+        "markdownDescription": "Can this `principal` take this `action` on this `resource` in this `context`?",
+        "properties": {
+          "principal": {
+            "type": "string",
+            "description": "Entity making the request, for example App::User::\"alice\""
+          },
+          "action": {
+            "type": "string",
+            "description": "Action being requested, for example App::Action::\"view\""
+          },
+          "resource": {
+            "type": "string",
+            "description": "Entity being acted upon, for example App::Photo::\"vacation.jpg\""
+          },
+          "context": {
+            "type": "object",
+            "description": "Additional details about the request not tied to the principal, action, or resource"
+          }
+        },
+        "required": ["principal", "action", "resource"],
+        "additionalProperties": false
+      },
+      "entities": {
+        "type": "array",
+        "description": "Entities for this test. When omitted, the entities file (cedarentities.json) alongside the tests file is used.",
+        "markdownDescription": "Entities for this test. When omitted, the entities file (`cedarentities.json`) alongside the tests file is used.",
+        "items": { "$ref": "#/$defs/entityItemDef" }
+      },
+      "decision": {
+        "description": "Expected authorization decision",
+        "enum": ["allow", "deny"]
+      },
+      "reason": {
+        "type": "array",
+        "description": "Expected policy ids which determine the decision. Static policies use their @id annotation, and template-linked policies use their link_id.",
+        "markdownDescription": "Expected policy ids which determine the decision. Static policies use their `@id` annotation, and template-linked policies use their `link_id`.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "num_errors": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0,
+        "description": "Expected number of authorization (evaluation) errors, defaulting to 0 when omitted",
+        "markdownDescription": "Expected number of authorization (evaluation) errors.  Omitting `num_errors` is the same as `0`, so any evaluation error fails the test."
+      }
+    },
+    "required": ["name", "request", "decision"],
+    "additionalProperties": false,
+    "defaultSnippets": [
+      {
+        "label": "New test",
+        "body": {
+          "name": "$1",
+          "request": {
+            "principal": "$2::\"$3\"",
+            "action": "$4Action::\"$5\"",
+            "resource": "$6::\"$7\"",
+            "context": "^{$8}"
+          },
+          "decision": "^\"${9|allow,deny|}\"",
+          "reason": [],
+          "num_errors": 0
+        }
+      }
+    ]
+  },
+  "$defs": {
+    "entityItemDef": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "description": "The uid object specifies the Cedar type and unique identifier for the entity.",
+          "markdownDescription": "The `uid` object specifies the Cedar type and unique identifier for the entity.",
+          "anyOf": [
+            { "$ref": "#/$defs/entityDef" },
+            { "$ref": "#/$defs/__entityDef" },
+            { "type": "string" }
+          ]
+        },
+        "parents": {
+          "type": "array",
+          "description": "The parents object identifies other entities that represent containers in a hierarchy, such as a group that can contain users.",
+          "markdownDescription": "The `parents` object identifies other entities that represent containers in a hierarchy, such as a group that can contain users.",
+          "items": {
+            "anyOf": [
+              { "$ref": "#/$defs/entityDef" },
+              { "$ref": "#/$defs/__entityDef" },
+              { "type": "string" }
+            ]
+          }
+        },
+        "attrs": {
+          "type": "object",
+          "description": "Use the attrs object to specify the key name and value of each attribute attached to the associated entity.",
+          "markdownDescription": "Use the `attrs` object to specify the key name and value of each attribute attached to the associated entity."
+        },
+        "tags": {
+          "type": "object",
+          "description": "Tags are similar to attributes, but they can have key names which are known only dynamically (at run-time) and not when the policy/schema is authored."
+        }
+      },
+      "required": ["uid", "parents", "attrs"],
+      "additionalProperties": false
+    },
+    "entityDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type must be a normalized entity type, i.e., without whitespace or Cedar comments."
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": ["type", "id"],
+      "additionalProperties": false
+    },
+    "__entityDef": {
+      "type": "object",
+      "properties": {
+        "__entity": {
+          "anyOf": [{ "$ref": "#/$defs/entityDef" }]
+        }
+      },
+      "required": ["__entity"],
+      "additionalProperties": false
+    }
+  }
+}

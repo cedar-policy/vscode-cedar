@@ -11,20 +11,20 @@ import { splitPropertyChain } from './completion';
 
 const getPrevNextCharacters = (
   document: vscode.TextDocument,
-  range: vscode.Range
+  range: vscode.Range,
 ): { prevChar: string; nextChar: string } => {
   let prevChar = '',
     nextChar = '';
   const nextCharPos = new vscode.Position(
     range.end.line,
-    range.end.character + 1
+    range.end.character + 1,
   );
   if (document.validatePosition(nextCharPos)) {
     nextChar = document.getText(new vscode.Range(range.end, nextCharPos));
   }
   const prevCharPos = new vscode.Position(
     range.start.line,
-    range.start.character - 1
+    range.start.character - 1,
   );
   if (document.validatePosition(prevCharPos)) {
     prevChar = document.getText(new vscode.Range(prevCharPos, range.start));
@@ -36,7 +36,7 @@ const getPrevNextCharacters = (
 const createVariableHover = async (
   document: vscode.TextDocument,
   position: vscode.Position,
-  word: string
+  word: string,
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
   const schemaDoc = await getSchemaTextDocument(document);
@@ -61,7 +61,7 @@ const createPropertyHover = async (
   document: vscode.TextDocument,
   position: vscode.Position,
   properties: string[],
-  range: vscode.Range | undefined
+  range: vscode.Range | undefined,
 ): Promise<vscode.Hover | undefined> => {
   let mdarray: vscode.MarkdownString[] = [];
   const schemaDoc = await getSchemaTextDocument(document);
@@ -70,7 +70,7 @@ const createPropertyHover = async (
       schemaDoc,
       properties[0],
       document,
-      position
+      position,
     );
     const completions = parseCedarSchemaDoc(schemaDoc).completions;
     let word = properties[properties.length - 1];
@@ -78,7 +78,7 @@ const createPropertyHover = async (
       const { lastType } = traversePropertyChain(
         completions,
         properties,
-        entityType
+        entityType,
       );
       if (lastType) {
         let md = new vscode.MarkdownString();
@@ -101,7 +101,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
   provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.ProviderResult<vscode.Hover> {
     let range = document.getWordRangeAtPosition(position);
     if (range) {
@@ -127,7 +127,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
       }
 
       let lineIncludingWord = document.getText(
-        new vscode.Range(new vscode.Position(range.start.line, 0), range.end)
+        new vscode.Range(new vscode.Position(range.start.line, 0), range.end),
       );
       let attemptPropertyChainMatch = false;
       if (prevChar === '.') {
@@ -143,7 +143,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
           lineIncludingWord =
             lineBeforeWord.substring(
               0,
-              lineBeforeWord.length - 5 // ' has '
+              lineBeforeWord.length - 5, // ' has '
             ) + `["${word}"]`;
         } else {
           const prevQuotePos = lineBeforeWord.lastIndexOf('"');
@@ -152,7 +152,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
             // update hover highlight range to include quoted string
             range = new vscode.Range(
               range.start.with({ character: prevQuotePos + 1 }),
-              range.end.with({ character: nextQuotePos })
+              range.end.with({ character: nextQuotePos }),
             );
             word = line.substring(prevQuotePos + 1, nextQuotePos);
             if (line.substring(0, prevQuotePos).endsWith(' has ')) {
@@ -162,7 +162,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
               lineIncludingWord =
                 lineBeforeWord.substring(
                   0,
-                  prevQuotePos - 5 // ' has '
+                  prevQuotePos - 5, // ' has '
                 ) + `["${word}"]`;
             } else {
               if (
@@ -188,7 +188,7 @@ export class CedarHoverProvider implements vscode.HoverProvider {
               document,
               position,
               properties,
-              range
+              range,
             );
             resolve(result);
           });
@@ -202,7 +202,7 @@ export class CedarEntitiesJSONHoverProvider implements vscode.HoverProvider {
   provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.ProviderResult<vscode.Hover> {
     let range = document.getWordRangeAtPosition(position);
     if (range) {

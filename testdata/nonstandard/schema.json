@@ -1,0 +1,86 @@
+{
+  "PhotoApp": {
+    "entityTypes": {
+      "Album": {},
+      "Application": {},
+      "Photo": {
+        "memberOfTypes": [
+          "PhotoApp::Application",
+          "PhotoApp::Album"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "labels": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            },
+            "owner": {
+              "type": "Entity",
+              "name": "PhotoApp::User"
+            },
+            "subjects": {
+              "type": "Set",
+              "element": {
+                "type": "Entity",
+                "name": "PhotoApp::User"
+              },
+              "required": false
+            }
+          }
+        }
+      },
+      "Role": {},
+      "User": {
+        "memberOfTypes": [
+          "PhotoApp::UserGroup",
+          "PhotoApp::Role"
+        ]
+      },
+      "UserGroup": {}
+    },
+    "actions": {
+      "deletePhoto": {
+        "appliesTo": {
+          "resourceTypes": [
+            "PhotoApp::Photo"
+          ],
+          "principalTypes": [
+            "PhotoApp::User"
+          ]
+        }
+      },
+      "editPhoto": {
+        "appliesTo": {
+          "resourceTypes": [
+            "PhotoApp::Photo"
+          ],
+          "principalTypes": [
+            "PhotoApp::User"
+          ]
+        }
+      },
+      "viewPhoto": {
+        "appliesTo": {
+          "resourceTypes": [
+            "PhotoApp::Photo"
+          ],
+          "principalTypes": [
+            "PhotoApp::User"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "judgingSession": {
+                "type": "Bool",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

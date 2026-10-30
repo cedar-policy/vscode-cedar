@@ -22,10 +22,10 @@ suite('Cedar Completion Suite', () => {
 
   const invokeAt = async (
     position: vscode.Position,
-    lastCharacter: boolean = false
+    lastCharacter: boolean = false,
   ) => {
     const doc = await vscode.workspace.openTextDocument(
-      path.join(process.cwd(), 'testdata', 'triple', 'entities.cedar')
+      path.join(process.cwd(), 'testdata', 'triple', 'entities.cedar'),
     );
     return invokeAtTextDocument(doc, position, lastCharacter);
   };
@@ -33,7 +33,7 @@ suite('Cedar Completion Suite', () => {
   const invokeAtTextDocument = async (
     doc: vscode.TextDocument,
     position: vscode.Position,
-    lastCharacter: boolean = false
+    lastCharacter: boolean = false,
   ) => {
     await vscode.window.showTextDocument(doc);
     const provider = new completion.CedarCompletionItemProvider();
@@ -51,7 +51,7 @@ suite('Cedar Completion Suite', () => {
         : {
             triggerKind: vscode.CompletionTriggerKind.Invoke,
             triggerCharacter: undefined,
-          }
+          },
     );
 
     return items;
@@ -59,7 +59,7 @@ suite('Cedar Completion Suite', () => {
 
   const triggerLastCharacter = async (
     content: string,
-    lastCharacter: boolean = true
+    lastCharacter: boolean = true,
   ) => {
     const doc = await vscode.workspace.openTextDocument({
       content: content,
@@ -80,7 +80,7 @@ suite('Cedar Completion Suite', () => {
         : {
             triggerKind: vscode.CompletionTriggerKind.Invoke,
             triggerCharacter: undefined,
-          }
+          },
     );
 
     return items;
@@ -94,7 +94,7 @@ suite('Cedar Completion Suite', () => {
       assert.strictEqual(items.length, 2);
       assert.strictEqual(
         (items[0].label as vscode.CompletionItemLabel).description,
-        'permit when'
+        'permit when',
       );
     }
   });
@@ -107,7 +107,7 @@ suite('Cedar Completion Suite', () => {
       assert.strictEqual(items.length, 2);
       assert.strictEqual(
         (items[0].label as vscode.CompletionItemLabel).description,
-        'forbid when'
+        'forbid when',
       );
     }
   });
@@ -120,7 +120,7 @@ suite('Cedar Completion Suite', () => {
       assert.strictEqual(items.length, 1);
       assert.strictEqual(
         (items[0].label as vscode.CompletionItemLabel).description,
-        'when condition'
+        'when condition',
       );
     }
   });
@@ -133,7 +133,7 @@ suite('Cedar Completion Suite', () => {
       assert.strictEqual(items.length, 1);
       assert.strictEqual(
         (items[0].label as vscode.CompletionItemLabel).description,
-        'unless condition'
+        'unless condition',
       );
     }
   });
@@ -185,12 +185,12 @@ suite('Cedar Completion Suite', () => {
 
   test('commonTypes as properties', async () => {
     const doc = await vscode.workspace.openTextDocument(
-      path.join(process.cwd(), 'testdata', 'context', 'commonTypes.cedar')
+      path.join(process.cwd(), 'testdata', 'context', 'commonTypes.cedar'),
     );
     let items = await invokeAtTextDocument(
       doc,
       new vscode.Position(1, 17),
-      true
+      true,
     );
 
     assert.ok(items);
@@ -246,7 +246,7 @@ suite('Cedar Completion Suite', () => {
     assert.ok(items);
     if (items) {
       const actualLabels = new Set(
-        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label),
       );
       const expectedLabels = new Set([
         'isIpv4',
@@ -268,7 +268,7 @@ suite('Cedar Completion Suite', () => {
       assert.strictEqual(items.length, 1);
       assert.strictEqual(
         (items[0].label as vscode.CompletionItemLabel).label,
-        'ip'
+        'ip',
       );
     }
   });
@@ -280,7 +280,7 @@ suite('Cedar Completion Suite', () => {
     assert.ok(items);
     if (items) {
       const actualLabels = new Set(
-        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label),
       );
       const expectedLabels = new Set([
         'lessThan',
@@ -299,7 +299,7 @@ suite('Cedar Completion Suite', () => {
     assert.ok(items);
     if (items) {
       const actualLabels = new Set(
-        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label),
       );
       const expectedLabels = new Set([
         'offset',
@@ -318,7 +318,7 @@ suite('Cedar Completion Suite', () => {
     assert.ok(items);
     if (items) {
       const actualLabels = new Set(
-        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label),
       );
       const expectedLabels = new Set([
         'toMilliseconds',
@@ -338,7 +338,7 @@ suite('Cedar Completion Suite', () => {
     assert.ok(items);
     if (items) {
       const actualLabels = new Set(
-        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label),
       );
       const expectedLabels = new Set(['datetime', 'decimal', 'duration']);
       assert.deepStrictEqual(actualLabels, expectedLabels);
@@ -353,7 +353,7 @@ suite('Cedar Completion Suite', () => {
     if (items) {
       assert.strictEqual(items.length, 4);
       const actualLabels = new Set(
-        items.map((item) => (item.label as vscode.CompletionItemLabel).label)
+        items.map((item) => (item.label as vscode.CompletionItemLabel).label),
       );
       const expectedLabels = new Set([
         'contains',

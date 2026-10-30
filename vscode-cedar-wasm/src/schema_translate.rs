@@ -48,15 +48,25 @@ pub fn translate_schema_from_json(json_src: &str) -> TranslateSchemaResult {
 #[wasm_bindgen(js_name = translateSchemaToJSON)]
 pub fn translate_schema_to_json(cedar_src: &str) -> TranslateSchemaResult {
     match cedar_policy::ffi::schema_to_json_with_resolved_types(cedar_src) {
-        cedar_policy::ffi::SchemaToJsonWithResolvedTypesAnswer::Success { json, warnings: _ } => TranslateSchemaResult {
-            success: true,
-            schema: Some(json.to_string()),
-            error: None,
-        },
-        cedar_policy::ffi::SchemaToJsonWithResolvedTypesAnswer::Failure { errors } => TranslateSchemaResult {
-            success: false,
-            schema: None,
-            error: Some(errors.iter().map(|e| format!("{:?}", e)).collect::<Vec<_>>().join("; ")),
-        },
+        cedar_policy::ffi::SchemaToJsonWithResolvedTypesAnswer::Success { json, warnings: _ } => {
+            TranslateSchemaResult {
+                success: true,
+                schema: Some(json.to_string()),
+                error: None,
+            }
+        }
+        cedar_policy::ffi::SchemaToJsonWithResolvedTypesAnswer::Failure { errors } => {
+            TranslateSchemaResult {
+                success: false,
+                schema: None,
+                error: Some(
+                    errors
+                        .iter()
+                        .map(|e| format!("{:?}", e))
+                        .collect::<Vec<_>>()
+                        .join("; "),
+                ),
+            }
+        }
     }
 }

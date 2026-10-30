@@ -30,7 +30,7 @@ const GRAMMARS: Record<string, string> = {
 
 const onigLib = (async () => {
   const wasm = fs.readFileSync(
-    require.resolve('vscode-oniguruma/release/onig.wasm')
+    require.resolve('vscode-oniguruma/release/onig.wasm'),
   );
   await oniguruma.loadWASM(wasm);
   return {
@@ -53,7 +53,9 @@ const registry = new vsctm.Registry({
 
 const cache = new Map<string, vsctm.IGrammar>();
 
-export const grammarFor = async (scopeName: string): Promise<vsctm.IGrammar> => {
+export const grammarFor = async (
+  scopeName: string,
+): Promise<vsctm.IGrammar> => {
   let grammar = cache.get(scopeName);
   if (!grammar) {
     const loaded = await registry.loadGrammar(scopeName);
@@ -72,7 +74,7 @@ export const grammarFor = async (scopeName: string): Promise<vsctm.IGrammar> => 
  */
 export const tokenize = async (
   scopeName: string,
-  source: string
+  source: string,
 ): Promise<TmToken[]> => {
   const grammar = await grammarFor(scopeName);
   const tokens: TmToken[] = [];
@@ -101,7 +103,7 @@ export const tokenize = async (
 export const scopesOf = async (
   scopeName: string,
   source: string,
-  text: string
+  text: string,
 ): Promise<string[] | undefined> => {
   const tokens = await tokenize(scopeName, source);
   const hit = tokens.find((t) => t.text === text || t.text.trim() === text);
@@ -116,18 +118,18 @@ export const assertScope = async (
   scopeName: string,
   source: string,
   text: string,
-  prefix: string
+  prefix: string,
 ): Promise<void> => {
   const scopes = await scopesOf(scopeName, source, text);
   if (scopes === undefined) {
     throw new Error(
-      `no token ${JSON.stringify(text)} in ${JSON.stringify(source)}`
+      `no token ${JSON.stringify(text)} in ${JSON.stringify(source)}`,
     );
   }
   if (!scopes.some((s) => s.startsWith(prefix))) {
     throw new Error(
       `expected ${JSON.stringify(text)} to carry a scope starting with ` +
-        `"${prefix}", got ${JSON.stringify(scopes)}`
+        `"${prefix}", got ${JSON.stringify(scopes)}`,
     );
   }
 };
@@ -137,18 +139,18 @@ export const assertNotScope = async (
   scopeName: string,
   source: string,
   text: string,
-  prefix: string
+  prefix: string,
 ): Promise<void> => {
   const scopes = await scopesOf(scopeName, source, text);
   if (scopes === undefined) {
     throw new Error(
-      `no token ${JSON.stringify(text)} in ${JSON.stringify(source)}`
+      `no token ${JSON.stringify(text)} in ${JSON.stringify(source)}`,
     );
   }
   if (scopes.some((s) => s.startsWith(prefix))) {
     throw new Error(
       `expected ${JSON.stringify(text)} NOT to carry "${prefix}", ` +
-        `got ${JSON.stringify(scopes)}`
+        `got ${JSON.stringify(scopes)}`,
     );
   }
 };
@@ -157,17 +159,17 @@ export const assertNotScope = async (
 export const assertUnscoped = async (
   scopeName: string,
   source: string,
-  text: string
+  text: string,
 ): Promise<void> => {
   const scopes = await scopesOf(scopeName, source, text);
   if (scopes === undefined) {
     throw new Error(
-      `no token ${JSON.stringify(text)} in ${JSON.stringify(source)}`
+      `no token ${JSON.stringify(text)} in ${JSON.stringify(source)}`,
     );
   }
   if (scopes.length !== 0) {
     throw new Error(
-      `expected ${JSON.stringify(text)} to be unscoped, got ${JSON.stringify(scopes)}`
+      `expected ${JSON.stringify(text)} to be unscoped, got ${JSON.stringify(scopes)}`,
     );
   }
 };

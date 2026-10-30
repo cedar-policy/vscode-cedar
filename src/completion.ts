@@ -18,7 +18,7 @@ import { IDENT_REGEX, PROPERTY_CHAIN_REGEX } from './regex';
 const createFunctionItem = (
   range: vscode.Range,
   label: string,
-  snippetString?: string
+  snippetString?: string,
 ): vscode.CompletionItem => {
   // use first line of Hover Help as detail for completion item
   const help = FUNCTION_HELP_DEFINITIONS[label];
@@ -27,7 +27,7 @@ const createFunctionItem = (
     help && help.length > 1
       ? { label: label, detail: help[0].substring(label.length) }
       : label,
-    vscode.CompletionItemKind.Function
+    vscode.CompletionItemKind.Function,
   );
   item.range = range;
   if (snippetString) {
@@ -74,7 +74,7 @@ const createIpFunctionItem = (range: vscode.Range): vscode.CompletionItem => {
   return createFunctionItem(range, 'ip', 'ip("${1:127.0.0.1}")$0');
 };
 const createIPAddrItems = (
-  position: vscode.Position
+  position: vscode.Position,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
@@ -90,23 +90,27 @@ const createIPAddrItems = (
 
 // Decimal extension functions
 const createDecimalFunctionItem = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem => {
   return createFunctionItem(range, 'decimal', 'decimal("${1:0.1234}")$0');
 };
 const createDecimalItems = (
-  position: vscode.Position
+  position: vscode.Position,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
 
   items.push(createFunctionItem(range, 'lessThan', 'lessThan($1) $0'));
   items.push(
-    createFunctionItem(range, 'lessThanOrEqual', 'lessThanOrEqual($1) $0')
+    createFunctionItem(range, 'lessThanOrEqual', 'lessThanOrEqual($1) $0'),
   );
   items.push(createFunctionItem(range, 'greaterThan', 'greaterThan($1) $0'));
   items.push(
-    createFunctionItem(range, 'greaterThanOrEqual', 'greaterThanOrEqual($1) $0')
+    createFunctionItem(
+      range,
+      'greaterThanOrEqual',
+      'greaterThanOrEqual($1) $0',
+    ),
   );
 
   return items;
@@ -114,16 +118,16 @@ const createDecimalItems = (
 
 // Datetime extension functions
 const createDatetimeFunctionItem = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem => {
   return createFunctionItem(
     range,
     'datetime',
-    'datetime("${1:YYYY-MM-DDThh:mm:ssZ}")$0'
+    'datetime("${1:YYYY-MM-DDThh:mm:ssZ}")$0',
   );
 };
 const createDatetimeItems = (
-  position: vscode.Position
+  position: vscode.Position,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
@@ -136,22 +140,22 @@ const createDatetimeItems = (
   return items;
 };
 const createDurationFunctionItem = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem => {
   return createFunctionItem(
     range,
     'duration',
-    'duration("${1:1d2h3m4s5ms}")$0'
+    'duration("${1:1d2h3m4s5ms}")$0',
   );
 };
 const createDurationItems = (
-  position: vscode.Position
+  position: vscode.Position,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
 
   items.push(
-    createFunctionItem(range, 'toMilliseconds', 'toMilliseconds() $0')
+    createFunctionItem(range, 'toMilliseconds', 'toMilliseconds() $0'),
   );
   items.push(createFunctionItem(range, 'toSeconds', 'toSeconds() $0'));
   items.push(createFunctionItem(range, 'toMinutes', 'toMinutes() $0'));
@@ -212,13 +216,13 @@ const createEntityItems = (
   schemaDoc: vscode.TextDocument,
   element: string,
   trigger: string,
-  typeOnly: boolean = false
+  typeOnly: boolean = false,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = trigger
     ? new vscode.Range(
         new vscode.Position(position.line, position.character - trigger.length),
-        position
+        position,
       )
     : new vscode.Range(position, position);
 
@@ -229,7 +233,7 @@ const createEntityItems = (
       if (definition.collection === 'actions') {
         let item = new vscode.CompletionItem(
           definition.etype,
-          vscode.CompletionItemKind.Value
+          vscode.CompletionItemKind.Value,
         );
         item.range = range;
         items.push(item);
@@ -237,7 +241,7 @@ const createEntityItems = (
     } else if (definition.collection === 'entityTypes') {
       let item = new vscode.CompletionItem(
         definition.etype,
-        vscode.CompletionItemKind.Class
+        vscode.CompletionItemKind.Class,
       );
       item.range = range;
       if (typeOnly) {
@@ -247,14 +251,14 @@ const createEntityItems = (
           definition.enums.forEach((enumValue) => {
             let item = new vscode.CompletionItem(
               `${definition.etype}::"${enumValue}"`,
-              vscode.CompletionItemKind.EnumMember
+              vscode.CompletionItemKind.EnumMember,
             );
             item.range = range;
             items.push(item);
           });
         } else {
           item.insertText = new vscode.SnippetString(
-            definition.etype + '::"$1"'
+            definition.etype + '::"$1"',
           );
           items.push(item);
         }
@@ -268,7 +272,7 @@ const createEntityItems = (
 const createAttributeItems = (
   position: vscode.Position,
   entityType: string,
-  attributes: SchemaCompletionRecord
+  attributes: SchemaCompletionRecord,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
@@ -281,7 +285,7 @@ const createAttributeItems = (
           detail: `: ${attributes[key].description}`,
           description: entityType,
         },
-        vscode.CompletionItemKind.Field
+        vscode.CompletionItemKind.Field,
       );
       item.range = range;
       let match = key.match(IDENT_REGEX);
@@ -293,8 +297,8 @@ const createAttributeItems = (
           vscode.TextEdit.delete(
             new vscode.Range(
               new vscode.Position(position.line, position.character - 1),
-              position
-            )
+              position,
+            ),
           ),
         ];
       }
@@ -308,7 +312,7 @@ const createAttributeItems = (
 const createEntityTypesAttributeItems = (
   position: vscode.Position,
   schemaDoc: vscode.TextDocument,
-  entityTypes: string[]
+  entityTypes: string[],
 ): vscode.CompletionItem[] => {
   let items: vscode.CompletionItem[] = [];
   const completions = parseCedarSchemaDoc(schemaDoc).completions;
@@ -317,7 +321,7 @@ const createEntityTypesAttributeItems = (
   entityTypes.forEach((entityType) => {
     const attributes = completions[entityType];
     items = items.concat(
-      createAttributeItems(position, entityType, attributes)
+      createAttributeItems(position, entityType, attributes),
     );
     if (tags.includes(entityType)) {
       addTagItems = true;
@@ -332,18 +336,18 @@ const createEntityTypesAttributeItems = (
 
 const createVariableItem = (
   range: vscode.Range,
-  label: string
+  label: string,
 ): vscode.CompletionItem => {
   const item = new vscode.CompletionItem(
     label,
-    vscode.CompletionItemKind.Variable
+    vscode.CompletionItemKind.Variable,
   );
   item.range = range;
   return item;
 };
 
 const createInvokeItems = (
-  position: vscode.Position
+  position: vscode.Position,
 ): vscode.CompletionItem[] => {
   const items: vscode.CompletionItem[] = [];
   const range = new vscode.Range(position, position);
@@ -365,7 +369,7 @@ const createInvokeItems = (
 const provideCedarPeriodTriggerItems = async (
   position: vscode.Position,
   linePrefix: string,
-  document: vscode.TextDocument
+  document: vscode.TextDocument,
 ): Promise<vscode.CompletionItem[] | undefined> => {
   if (linePrefix.endsWith(').')) {
     if (linePrefix.match(IP_REGEX)) {
@@ -388,7 +392,7 @@ const provideCedarPeriodTriggerItems = async (
         schemaDoc,
         properties[0],
         document,
-        position
+        position,
       );
 
       if (properties.length === 1) {
@@ -401,13 +405,13 @@ const provideCedarPeriodTriggerItems = async (
           const { lastType, completion } = traversePropertyChain(
             completions,
             properties,
-            entityType
+            entityType,
           );
 
           if (lastType) {
             if (lastType === 'Record' && completion) {
               items = items.concat(
-                createAttributeItems(position, entityType, completion)
+                createAttributeItems(position, entityType, completion),
               );
             } else if (!lastTypes.has(lastType)) {
               lastTypes.add(lastType);
@@ -425,7 +429,7 @@ const provideCedarPeriodTriggerItems = async (
                 items = items.concat(
                   createEntityTypesAttributeItems(position, schemaDoc, [
                     lastType,
-                  ])
+                  ]),
                 );
               }
             }
@@ -447,7 +451,7 @@ const provideCedarTriggerCharacterCompletionItems = async (
   document: vscode.TextDocument,
   position: vscode.Position,
   token: vscode.CancellationToken,
-  context: vscode.CompletionContext
+  context: vscode.CompletionContext,
 ) => {
   const linePrefix = document
     .lineAt(position)
@@ -470,7 +474,7 @@ const provideCedarTriggerCharacterCompletionItems = async (
     if (linePrefix === '// @') {
       let item = new vscode.CompletionItem(
         '@formatter:off',
-        vscode.CompletionItemKind.Property
+        vscode.CompletionItemKind.Property,
       );
       item.insertText = new vscode.SnippetString('formatter:off$0');
       item.range = new vscode.Range(position, position);
@@ -481,7 +485,7 @@ const provideCedarTriggerCharacterCompletionItems = async (
       annotations.forEach((annotation) => {
         let item = new vscode.CompletionItem(
           '@' + annotation,
-          vscode.CompletionItemKind.Property
+          vscode.CompletionItemKind.Property,
         );
         item.insertText = new vscode.SnippetString(annotation + '("$1")$0');
         item.range = new vscode.Range(position, position);
@@ -498,7 +502,7 @@ const provideCedarTriggerCharacterCompletionItems = async (
       const element = found?.groups.element;
       let item = new vscode.CompletionItem(
         '?' + element,
-        vscode.CompletionItemKind.Variable
+        vscode.CompletionItemKind.Variable,
       );
       item.insertText = new vscode.SnippetString(element);
       item.range = new vscode.Range(position, position);
@@ -513,11 +517,11 @@ const createSnippetItem = (
   label: string,
   description: string,
   insertText: vscode.SnippetString,
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem => {
   const item = new vscode.CompletionItem(
     { label: label, description: description },
-    vscode.CompletionItemKind.Snippet
+    vscode.CompletionItemKind.Snippet,
   );
   item.insertText = insertText;
   item.range = range;
@@ -526,15 +530,15 @@ const createSnippetItem = (
 };
 
 const createPermitSnippetItems = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'permit',
     'permit when',
     new vscode.SnippetString(
-      'permit (principal, action, resource)\n' + 'when { ${0:Expr} };'
+      'permit (principal, action, resource)\n' + 'when { ${0:Expr} };',
     ),
-    range
+    range,
   );
 
   const item2 = createSnippetItem(
@@ -545,59 +549,59 @@ const createPermitSnippetItems = (
         '    principal == ${1:Path}::"${2:id}",\n' +
         '    action == Action::"${3:id}",\n' +
         '    resource == ${4:Path}::"${5:id}"\n' +
-        ')$0;'
+        ')$0;',
     ),
-    range
+    range,
   );
 
   return [item1, item2];
 };
 
 const createForbidSnippetItems = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'forbid',
     'forbid when',
     new vscode.SnippetString(
-      'forbid (principal, action, resource)\n' + 'when { ${0:Expr} };'
+      'forbid (principal, action, resource)\n' + 'when { ${0:Expr} };',
     ),
-    range
+    range,
   );
 
   const item2 = createSnippetItem(
     'forbid',
     'forbid unless',
     new vscode.SnippetString(
-      'forbid (principal, action, resource)\n' + 'unless { ${0:Expr} };'
+      'forbid (principal, action, resource)\n' + 'unless { ${0:Expr} };',
     ),
-    range
+    range,
   );
 
   return [item1, item2];
 };
 
 const createWhenSnippetItems = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'when',
     'when condition',
     new vscode.SnippetString('when { ${0:Expr} }'),
-    range
+    range,
   );
 
   return [item1];
 };
 
 const createUnlessSnippetItems = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'unless',
     'unless condition',
     new vscode.SnippetString('unless { ${0:Expr} }'),
-    range
+    range,
   );
 
   return [item1];
@@ -609,14 +613,14 @@ const provideCedarInvokeCompletionItems = async (
   document: vscode.TextDocument,
   position: vscode.Position,
   token: vscode.CancellationToken,
-  context: vscode.CompletionContext
+  context: vscode.CompletionContext,
 ) => {
   const lineText = document.lineAt(position).text;
   const linePrefix = lineText.substring(0, position.character);
   const lineSuffix = lineText.substring(position.character);
   const range = new vscode.Range(
     new vscode.Position(position.line, position.character - 1),
-    position
+    position,
   );
 
   // some completion items are only suggests at beginning of line
@@ -659,7 +663,7 @@ const provideCedarInvokeCompletionItems = async (
       return provideCedarPeriodTriggerItems(
         position,
         linePrefix.substring(0, linePrefix.length - 5),
-        document
+        document,
       );
     }
 
@@ -667,7 +671,7 @@ const provideCedarInvokeCompletionItems = async (
   }
   const penultimateChar = linePrefix.substring(
     linePrefix.length - 2,
-    linePrefix.length - 1
+    linePrefix.length - 1,
   );
   if ([' ', '(', '{', '['].includes(penultimateChar)) {
     switch (lastChar) {
@@ -711,21 +715,21 @@ export class CedarCompletionItemProvider
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
-    context: vscode.CompletionContext
+    context: vscode.CompletionContext,
   ) {
     if (context.triggerKind === vscode.CompletionTriggerKind.TriggerCharacter) {
       return await provideCedarTriggerCharacterCompletionItems(
         document,
         position,
         token,
-        context
+        context,
       );
     } else if (context.triggerKind === vscode.CompletionTriggerKind.Invoke) {
       return await provideCedarInvokeCompletionItems(
         document,
         position,
         token,
-        context
+        context,
       );
     }
 
@@ -741,21 +745,21 @@ export class CedarSchemaCompletionItemProvider
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
-    context: vscode.CompletionContext
+    context: vscode.CompletionContext,
   ) {
     if (context.triggerKind === vscode.CompletionTriggerKind.TriggerCharacter) {
       return await this.provideTriggerCharacterCompletionItems(
         document,
         position,
         token,
-        context
+        context,
       );
     } else if (context.triggerKind === vscode.CompletionTriggerKind.Invoke) {
       return await this.provideInvokeCompletionItems(
         document,
         position,
         token,
-        context
+        context,
       );
     }
 
@@ -766,7 +770,7 @@ export class CedarSchemaCompletionItemProvider
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
-    context: vscode.CompletionContext
+    context: vscode.CompletionContext,
   ) {
     return undefined;
   }
@@ -775,14 +779,14 @@ export class CedarSchemaCompletionItemProvider
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
-    context: vscode.CompletionContext
+    context: vscode.CompletionContext,
   ) {
     const lineText = document.lineAt(position).text;
     const linePrefix = lineText.substring(0, position.character);
     const lineSuffix = lineText.substring(position.character);
     const range = new vscode.Range(
       new vscode.Position(position.line, position.character - 1),
-      position
+      position,
     );
 
     // some completion items are only suggests at beginning of line
@@ -807,17 +811,17 @@ export class CedarSchemaCompletionItemProvider
         case 'a':
           return createActionSnippetItems(
             range,
-            linePrefix.substring(0, linePrefix.length - 1)
+            linePrefix.substring(0, linePrefix.length - 1),
           );
         case 'e':
           return createEntitySnippetItems(
             range,
-            linePrefix.substring(0, linePrefix.length - 1)
+            linePrefix.substring(0, linePrefix.length - 1),
           );
         case 't':
           return createTypeSnippetItems(
             range,
-            linePrefix.substring(0, linePrefix.length - 1)
+            linePrefix.substring(0, linePrefix.length - 1),
           );
         default:
           break;
@@ -829,58 +833,58 @@ export class CedarSchemaCompletionItemProvider
 }
 
 const createNamespaceSnippetItems = (
-  range: vscode.Range
+  range: vscode.Range,
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'namespace',
     'namespace',
     new vscode.SnippetString('namespace ${1:NS} {\n' + '  $0' + '\n}'),
-    range
+    range,
   );
   return [item1];
 };
 
 const createTypeSnippetItems = (
   range: vscode.Range,
-  prefix = '  '
+  prefix = '  ',
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'type',
     'type',
     new vscode.SnippetString(
-      ['type ${1:T} = {', '  $0', '};'].join(prefix + '\n')
+      ['type ${1:T} = {', '  $0', '};'].join(prefix + '\n'),
     ),
-    range
+    range,
   );
   return [item1];
 };
 
 const createEntitySnippetItems = (
   range: vscode.Range,
-  prefix = '  '
+  prefix = '  ',
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'entity',
     'entity',
     new vscode.SnippetString(
-      ['entity ${1:E} {', '  $0', '};'].join(prefix + '\n')
+      ['entity ${1:E} {', '  $0', '};'].join(prefix + '\n'),
     ),
-    range
+    range,
   );
   const item2 = createSnippetItem(
     'entity',
     'entity in',
     new vscode.SnippetString(
-      ['entity ${1:E} in [${2:E}] {', '  $0', '};'].join(prefix + '\n')
+      ['entity ${1:E} in [${2:E}] {', '  $0', '};'].join(prefix + '\n'),
     ),
-    range
+    range,
   );
   return [item1, item2];
 };
 
 const createActionSnippetItems = (
   range: vscode.Range,
-  prefix = '  '
+  prefix = '  ',
 ): vscode.CompletionItem[] => {
   const item1 = createSnippetItem(
     'action',
@@ -892,9 +896,9 @@ const createActionSnippetItems = (
         '  resource: [${4:R}],',
         '  context: {$0}',
         '};',
-      ].join(prefix + '\n')
+      ].join(prefix + '\n'),
     ),
-    range
+    range,
   );
   const item2 = createSnippetItem(
     'action',
@@ -906,9 +910,9 @@ const createActionSnippetItems = (
         '  resource: [${4:R}],',
         '  context: {$0}',
         '};',
-      ].join(prefix + '\n')
+      ].join(prefix + '\n'),
     ),
-    range
+    range,
   );
   return [item1, item2];
 };
