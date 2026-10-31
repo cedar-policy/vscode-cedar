@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -465,11 +465,11 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "=18.15.0",
     "@types/vscode": "=1.83.0",
-    "@typescript-eslint/eslint-plugin": "^8.72.0",
-    "@typescript-eslint/parser": "^8.72.0",
+    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.1",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
-    "@vscode/vsce": "^3.9.2",
+    "@vscode/vsce": "^4.1.0",
     "eslint": "^9.39.5",
     "js-yaml": "^4.3.2",
     "mocha": "^11.8.0",
