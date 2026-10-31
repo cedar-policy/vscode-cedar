@@ -6,6 +6,7 @@ import * as cedar from 'vscode-cedar-wasm';
 import * as jsonc from 'jsonc-parser';
 import { DEFAULT_RANGE } from './diagnostics';
 import { ENTITY_REGEXG } from './regex';
+import { FUNCTION_HELP_DEFINITIONS } from './help';
 
 /*
  * see https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide
@@ -25,12 +26,60 @@ const tokenTypes = [
   'enumMember',
   'decorator',
   'string',
+  'parameter',
 ];
-const tokenModifiers = ['declaration', 'deprecated', 'readonly'];
+const tokenModifiers = [
+  'declaration',
+  'deprecated',
+  'readonly',
+  'defaultLibrary',
+];
 export const semanticTokensLegend = new vscode.SemanticTokensLegend(
   tokenTypes,
   tokenModifiers,
 );
+
+/*
+ * Cedar variables (principal, action, resource, context) and template slots
+ * (?principal, ?resource) in Cedar JSON files, scoped by semanticTokenScopes in
+ * package.json to match the colors of the Cedar grammar
+ */
+const CEDAR_VARIABLES = ['principal', 'action', 'resource', 'context'];
+const CEDAR_SLOTS = ['?principal', '?resource'];
+const pushCedarVariable = (
+  tokensBuilder: vscode.SemanticTokensBuilder,
+  range: vscode.Range,
+) => tokensBuilder.push(range, 'variable', ['defaultLibrary']);
+// expression keys of a Cedar JSON policy condition
+const CEDAR_JSON_OPERATORS = [
+  '!',
+  'neg',
+  '==',
+  '!=',
+  '<',
+  '<=',
+  '>',
+  '>=',
+  '&&',
+  '||',
+  '+',
+  '-',
+  '*',
+  '.',
+  'in',
+  'has',
+  'like',
+  'is',
+];
+const CEDAR_JSON_FUNCTIONS = [
+  ...Object.keys(FUNCTION_HELP_DEFINITIONS),
+  'isIpv4',
+  'isIpv6',
+];
+const pushCedarSlot = (
+  tokensBuilder: vscode.SemanticTokensBuilder,
+  range: vscode.Range,
+) => tokensBuilder.push(range, 'parameter', []);
 
 const makeRange = (
   startLine: number,
@@ -294,6 +343,9 @@ type PolicyJsonCacheItem = {
   tokens: vscode.SemanticTokens;
   referencedTypes: ReferencedRange[];
   actionIds: ReferencedRange[];
+  // the policy ids of a policy set, and the templateId of its template links
+  policyIds: ReferencedRange[];
+  templateIds: ReferencedRange[];
 };
 
 const policyJsonCache: Record<string, PolicyJsonCacheItem> = {};
@@ -311,6 +363,8 @@ export const parseCedarJsonPolicyDoc = (
 
   const referencedTypes: ReferencedRange[] = [];
   const actionIds: ReferencedRange[] = [];
+  const policyIds: ReferencedRange[] = [];
+  const templateIds: ReferencedRange[] = [];
   let tmpActionType = '';
   let pathLenOffset = 0;
 
@@ -335,17 +389,42 @@ export const parseCedarJsonPolicyDoc = (
       const jsonPathLen = pathSupplier().length;
       if (jsonPathLen - pathLenOffset === 0) {
         if (['principal', 'action', 'resource'].includes(property)) {
-          tokensBuilder.push(range, 'variable', ['readonly']);
+          pushCedarVariable(tokensBuilder, range);
         }
+      } else if (
+        // slots linked by "values" of a policy set's "templateLinks"
+        pathSupplier()[0] === 'templateLinks' &&
+        pathSupplier()[jsonPathLen - 1] === 'values' &&
+        CEDAR_SLOTS.includes(property)
+      ) {
+        pushCedarSlot(tokensBuilder, range);
+      } else if (
+        // the policy ids of a policy set's "templates" and "staticPolicies"
+        jsonPathLen === 1 &&
+        ['templates', 'staticPolicies'].includes(pathSupplier()[0] as string)
+      ) {
+        tokensBuilder.push(range, 'function', ['declaration']);
+        policyIds.push({
+          name: property,
+          range: makeRange(startLine, startCharacter, length, 1),
+        });
       } else if (
         jsonPathLen - pathLenOffset === 1 &&
         pathSupplier()[jsonPathLen - 1] === 'annotations'
       ) {
         tokensBuilder.push(range, 'decorator', []);
+      } else if (pathSupplier()[jsonPathLen - 1] === 'Record') {
+        // anything directly under "Record" is an attribute name
       } else if (
-        ['&&', '||', '==', '!=', '>=', '<=', '<', '>', '.'].includes(property)
+        CEDAR_JSON_OPERATORS.includes(property) &&
+        pathSupplier()[pathLenOffset] === 'conditions'
       ) {
         tokensBuilder.push(range, 'operator', []);
+      } else if (
+        CEDAR_JSON_FUNCTIONS.includes(property) &&
+        pathSupplier()[pathLenOffset] === 'conditions'
+      ) {
+        tokensBuilder.push(range, 'function', []);
       } else if (
         ['if', 'then', 'else'].includes(property) &&
         pathSupplier()[jsonPathLen - 1] === 'if-then-else'
@@ -376,12 +455,33 @@ export const parseCedarJsonPolicyDoc = (
         tokensBuilder.push(range, 'keyword', []);
       }
 
+      // a policy set's "templateLinks" link a template to a new policy id
+      if (pathSupplier()[0] === 'templateLinks' && jsonPathLen === 3) {
+        if (pathSupplier()[2] === 'templateId') {
+          tokensBuilder.push(range, 'function', []);
+          templateIds.push({
+            name: value,
+            range: makeRange(startLine, startCharacter, length, 1),
+          });
+        } else if (pathSupplier()[2] === 'newId') {
+          tokensBuilder.push(range, 'function', ['declaration']);
+        }
+      }
+
+      // the slot of a scope, including the "in" of an "is" scope
       if (
-        jsonPathLen - pathLenOffset === 2 &&
         pathSupplier()[jsonPathLen - 1] === 'slot' &&
-        ['?principal', '?resource'].includes(value)
+        CEDAR_SLOTS.includes(value)
       ) {
-        tokensBuilder.push(range, 'variable', []);
+        pushCedarSlot(tokensBuilder, range);
+      }
+
+      if (
+        // "Wildcard" in the pattern of "like"
+        value === 'Wildcard' &&
+        pathSupplier()[jsonPathLen - 2] === 'pattern'
+      ) {
+        tokensBuilder.push(range, 'operator', []);
       }
 
       if (
@@ -392,8 +492,8 @@ export const parseCedarJsonPolicyDoc = (
       }
 
       if (
-        (jsonPathLen - pathLenOffset === 2 &&
-          pathSupplier()[jsonPathLen - 1] === 'entity_type') ||
+        // the entity type of an "is" scope or an "is" condition
+        pathSupplier()[jsonPathLen - 1] === 'entity_type' ||
         (jsonPathLen > 2 && pathSupplier()[jsonPathLen - 1] === 'type')
         // most things directly under "type" are a type
       ) {
@@ -440,7 +540,11 @@ export const parseCedarJsonPolicyDoc = (
         pathSupplier()[jsonPathLen - 1] === 'Var'
       ) {
         // most things directly under "Var" are a variable
-        tokensBuilder.push(range, 'variable', []);
+        if (CEDAR_VARIABLES.includes(value)) {
+          pushCedarVariable(tokensBuilder, range);
+        } else {
+          tokensBuilder.push(range, 'variable', []);
+        }
       }
     },
   });
@@ -450,6 +554,8 @@ export const parseCedarJsonPolicyDoc = (
     tokens: tokensBuilder.build(),
     referencedTypes: referencedTypes,
     actionIds: actionIds,
+    policyIds: policyIds,
+    templateIds: templateIds,
   };
   policyJsonCache[cedarJsonDoc.uri.toString()] = cachedItem;
 
@@ -533,6 +639,14 @@ const determineEntityNames = (
     ? AVP_ENTITY_NAMES
     : CEDAR_ENTITY_NAMES;
 };
+
+// the path of a request "context" as though it were the "attrs" of an entity,
+// since both are records of Cedar values
+const contextAsEntityPath = (contextPath: jsonc.Segment[]): jsonc.Segment[] => [
+  0,
+  CEDAR_ENTITY_NAMES.attrs,
+  ...contextPath,
+];
 
 /**
  * Push the semantic token for a property of a Cedar entity.  `entityPath` is
@@ -866,6 +980,8 @@ export type TemplateLinksCacheItem = {
   links: TemplateLinkRange[];
   tokens: vscode.SemanticTokens;
   referencedTypes: ReferencedRange[];
+  // the template_id of each link, which is the id of a Cedar policy template
+  templateIds: ReferencedRange[];
 };
 
 const templateLinksCache: Record<string, TemplateLinksCacheItem> = {};
@@ -888,6 +1004,7 @@ export const parseCedarTemplateLinksDoc = (
   let depth = 0;
   const links: TemplateLinkRange[] = [];
   const referencedTypes: ReferencedRange[] = [];
+  const templateIds: ReferencedRange[] = [];
 
   jsonc.visit(cedarTemplateLinksDoc.getText(), {
     onObjectBegin(offset, length, startLine, startCharacter, pathSupplier) {
@@ -921,6 +1038,21 @@ export const parseCedarTemplateLinksDoc = (
       const jsonPathLen = pathSupplier().length;
       if (pathSupplier()[1] === 'link_id') {
         linkId = value;
+        tokensBuilder.push(
+          makeRange(startLine, startCharacter, length),
+          'function',
+          ['declaration'],
+        );
+      } else if (pathSupplier()[1] === 'template_id' && jsonPathLen === 2) {
+        tokensBuilder.push(
+          makeRange(startLine, startCharacter, length),
+          'function',
+          [],
+        );
+        templateIds.push({
+          name: value,
+          range: makeRange(startLine, startCharacter, length, 1),
+        });
       } else if (pathSupplier()[1] === 'args' && jsonPathLen === 3) {
         determineEntitiesInString(
           value,
@@ -946,8 +1078,8 @@ export const parseCedarTemplateLinksDoc = (
           linkIdRange = makeRange(startLine, startCharacter, length, 1);
         }
       } else if (jsonPathLen === 2) {
-        if (['?principal', '?resource'].includes(property)) {
-          tokensBuilder.push(range, 'variable', []);
+        if (CEDAR_SLOTS.includes(property)) {
+          pushCedarSlot(tokensBuilder, range);
         }
       }
     },
@@ -958,6 +1090,7 @@ export const parseCedarTemplateLinksDoc = (
     links: links,
     tokens: tokensBuilder.build(),
     referencedTypes: referencedTypes,
+    templateIds: templateIds,
   };
   templateLinksCache[cedarTemplateLinksDoc.uri.toString()] = cachedItem;
 
@@ -1115,9 +1248,14 @@ export const parseCedarTestsDoc = (
         // properties of a test
         depth1Property = property;
         if (
-          ['name', 'request', 'entities', 'decision', 'reason'].includes(
-            property,
-          )
+          [
+            'name',
+            'request',
+            'entities',
+            'decision',
+            'reason',
+            'num_errors',
+          ].includes(property)
         ) {
           tokensBuilder.push(range, 'variable', ['readonly']);
         }
@@ -1129,9 +1267,16 @@ export const parseCedarTestsDoc = (
           entitiesKeyRange = innerRange;
         }
       } else if (jsonPathLen === 2 && jsonPath[1] === 'request') {
-        if (['principal', 'action', 'resource', 'context'].includes(property)) {
-          tokensBuilder.push(range, 'variable', []);
+        if (CEDAR_VARIABLES.includes(property)) {
+          pushCedarVariable(tokensBuilder, range);
         }
+      } else if (jsonPath[1] === 'request' && jsonPath[2] === 'context') {
+        pushEntityPropertyToken(
+          contextAsEntityPath(jsonPath.slice(3)),
+          property,
+          range,
+          tokensBuilder,
+        );
       } else if (jsonPath[1] === 'entities') {
         // paths inside "entities" match a Cedar entities JSON document
         // shifted by the test index and the "entities" property
@@ -1222,6 +1367,16 @@ export const parseCedarTestsDoc = (
             }
           });
         }
+      } else if (jsonPath[1] === 'request' && jsonPath[2] === 'context') {
+        pushEntityValueTokens(
+          contextAsEntityPath(jsonPath.slice(3)),
+          value,
+          startLine,
+          startCharacter,
+          length,
+          tokensBuilder,
+          referencedTypes,
+        );
       } else if (jsonPath[1] === 'entities') {
         pushEntityValueTokens(
           jsonPath.slice(2),
@@ -1294,7 +1449,17 @@ export const parseCedarAuthDoc = (
     ) {
       const jsonPathLen = pathSupplier().length;
       const property = pathSupplier()[0] as string;
-      if (
+      if (property === 'context') {
+        pushEntityValueTokens(
+          contextAsEntityPath(pathSupplier().slice(1)),
+          value,
+          startLine,
+          startCharacter,
+          length,
+          tokensBuilder,
+          referencedTypes,
+        );
+      } else if (
         ['principal', 'action', 'resource'].includes(property) &&
         jsonPathLen === 1
       ) {
@@ -1348,9 +1513,16 @@ export const parseCedarAuthDoc = (
       const range = makeRange(startLine, startCharacter, length);
       const jsonPathLen = pathSupplier().length;
       if (jsonPathLen === 0) {
-        if (['principal', 'action', 'resource', 'context'].includes(property)) {
-          tokensBuilder.push(range, 'variable', []);
+        if (CEDAR_VARIABLES.includes(property)) {
+          pushCedarVariable(tokensBuilder, range);
         }
+      } else if (pathSupplier()[0] === 'context') {
+        pushEntityPropertyToken(
+          contextAsEntityPath(pathSupplier().slice(1)),
+          property,
+          range,
+          tokensBuilder,
+        );
       }
     },
   });

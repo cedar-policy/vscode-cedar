@@ -42,6 +42,30 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "semanticTokenScopes": [
+      {
+        "language": "json",
+        "scopes": {
+          "variable.defaultLibrary": [
+            "variable.language.cedar"
+          ],
+          "parameter": [
+            "variable.parameter.cedar"
+          ]
+        }
+      },
+      {
+        "language": "jsonc",
+        "scopes": {
+          "variable.defaultLibrary": [
+            "variable.language.cedar"
+          ],
+          "parameter": [
+            "variable.parameter.cedar"
+          ]
+        }
+      }
+    ],
     "languages": [
       {
         "id": "cedar",

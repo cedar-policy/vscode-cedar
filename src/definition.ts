@@ -187,12 +187,32 @@ export class CedarTemplateLinksDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
+    const templateLinksItem = parseCedarTemplateLinksDoc(cedarTemplateLinksDoc);
+
+    // a template_id goes to the Cedar policy template with that id
+    for (let templateId of templateLinksItem.templateIds) {
+      if (templateId.range.contains(position)) {
+        const { policyDocs } = await getCedarTestFiles(cedarTemplateLinksDoc);
+        for (let policyDoc of policyDocs) {
+          for (let policyRange of parseCedarPoliciesDoc(policyDoc).policies) {
+            if (policyRange.id === templateId.name) {
+              return Promise.resolve(
+                new vscode.Location(policyDoc.uri, policyRange.range),
+              );
+            }
+          }
+        }
+        return null;
+      }
+    }
+
     const schemaDoc = await getSchemaTextDocument(cedarTemplateLinksDoc);
     if (schemaDoc) {
-      const referencedTypes = parseCedarTemplateLinksDoc(
-        cedarTemplateLinksDoc,
-      ).referencedTypes;
-      return findSchemaDefinition(schemaDoc, position, referencedTypes);
+      return findSchemaDefinition(
+        schemaDoc,
+        position,
+        templateLinksItem.referencedTypes,
+      );
     }
 
     return null;
@@ -297,9 +317,22 @@ export class CedarJsonDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
+    const policyItem = parseCedarJsonPolicyDoc(cedarJsonDoc);
+
+    // a template link's templateId goes to the template in the same policy set
+    for (let templateId of policyItem.templateIds) {
+      if (templateId.range.contains(position)) {
+        const policyId = policyItem.policyIds.find(
+          (id) => id.name === templateId.name,
+        );
+        return policyId
+          ? new vscode.Location(cedarJsonDoc.uri, policyId.range)
+          : null;
+      }
+    }
+
     const schemaDoc = await getSchemaTextDocument(cedarJsonDoc);
     if (schemaDoc) {
-      const policyItem = parseCedarJsonPolicyDoc(cedarJsonDoc);
       const referencedTypes = policyItem.referencedTypes;
       const actionIds = policyItem.actionIds;
       return findSchemaDefinition(
