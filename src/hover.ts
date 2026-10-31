@@ -2,12 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
+import * as path from 'node:path';
 import { FUNCTION_HELP_DEFINITIONS } from './help';
 import { getSchemaTextDocument } from './fileutil';
 import { narrowEntityTypes } from './validate';
 import { PROPERTY_CHAIN_REGEX } from './regex';
 import { parseCedarSchemaDoc, traversePropertyChain } from './parser';
 import { splitPropertyChain } from './completion';
+import {
+  findDefinition,
+  findSchemaNameAtPosition,
+  SchemaDefinition,
+} from './definition';
 
 const getPrevNextCharacters = (
   document: vscode.TextDocument,
@@ -225,5 +231,65 @@ export class CedarEntitiesJSONHoverProvider implements vscode.HoverProvider {
         }
       }
     }
+  }
+}
+
+// the declaration text, without the indentation it shares with its first line
+const declarationText = (definition: SchemaDefinition): string => {
+  const MAX_LINES = 20;
+  const lines = definition.doc
+    .getText(definition.schemaRange.range)
+    .split(/\r?\n/);
+  const indent = Math.min(
+    ...lines
+      .filter((line) => line.trim().length > 0)
+      .map((line) => line.length - line.trimStart().length),
+  );
+  const text = lines
+    .slice(0, MAX_LINES)
+    .map((line) => line.substring(indent))
+    .join('\n');
+  return lines.length > MAX_LINES ? `${text}\n…` : text;
+};
+
+/**
+ * Hover over an entity type, common type, or action in a schema file which is
+ * declared `external` or defined by another schema file of its schema set,
+ * showing the definition and the schema file it is in.
+ */
+export class CedarSchemaHoverProvider implements vscode.HoverProvider {
+  async provideHover(
+    schemaDoc: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.Hover | undefined> {
+    const found = await findSchemaNameAtPosition(schemaDoc, position);
+    if (!found) {
+      return undefined;
+    }
+
+    const definition = findDefinition(found.docs, found.name, true);
+    const md = new vscode.MarkdownString();
+    if (definition && definition.doc !== schemaDoc) {
+      md.appendCodeblock(
+        declarationText(definition),
+        definition.doc.languageId === 'cedarschema' ? 'cedarschema' : 'json',
+      );
+      const uri = definition.doc.uri.with({
+        fragment: `L${definition.schemaRange.range.start.line + 1}`,
+      });
+      md.appendMarkdown(
+        `Defined in [${path.basename(definition.doc.uri.fsPath)}](${uri})`,
+      );
+    } else if (!definition && found.external) {
+      md.appendMarkdown(
+        `\`${found.name}\` is declared \`external\` but not defined by any linked schema`,
+      );
+    } else {
+      // defined in this schema file
+      return undefined;
+    }
+
+    return { contents: [md], range: found.range };
   }
 }

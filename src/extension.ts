@@ -12,8 +12,11 @@ import {
   handleWillDeleteFiles,
   handleDidRenameFiles,
   getSchemaTextDocument,
-  getSchemaUri,
   cedarKindGlob,
+  CEDAR_SCHEMA_SCHEME,
+  clearSchemaSetCache,
+  combinedSchemaContentProvider,
+  openSchemaSetFiles,
   determineCedarKind,
   saveTextAndFormat,
 } from './fileutil';
@@ -23,7 +26,7 @@ import {
   clearValidationCache,
   validateCedarDoc,
   validateEntitiesDoc,
-  validateSchemaDoc,
+  validateSchemaFileDoc,
   validateTestsDoc,
   validateTextDocument,
 } from './validate';
@@ -83,7 +86,11 @@ import {
   CedarCompletionItemProvider,
   CedarSchemaCompletionItemProvider,
 } from './completion';
-import { CedarHoverProvider, CedarEntitiesJSONHoverProvider } from './hover';
+import {
+  CedarHoverProvider,
+  CedarEntitiesJSONHoverProvider,
+  CedarSchemaHoverProvider,
+} from './hover';
 import { CedarSignatureHelpProvider } from './signaturehelp';
 import { aboutExtension, detectCedarCLI } from './about';
 import * as cedar from 'vscode-cedar-wasm';
@@ -132,6 +139,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
   let diagnosticCollection = createDiagnosticCollection();
   context.subscriptions.push(diagnosticCollection);
+
+  // the combined schema of a set of Cedar schema files
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      CEDAR_SCHEMA_SCHEME,
+      combinedSchemaContentProvider,
+    ),
+  );
 
   vscode.window.visibleTextEditors.forEach((editor) => {
     if (editor) {
@@ -220,7 +235,13 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(
       (e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration('cedar.schemaFile')) {
+        if (
+          e.affectsConfiguration('cedar.schemaFile') ||
+          e.affectsConfiguration('cedar.autodetectSchemaFile')
+        ) {
+          // the schema files combined into a schema set may have changed
+          clearSchemaSetCache();
+          clearValidationCache();
           // no need to await to invoke vscode.window.showErrorMessage
           getSchemaTextDocument();
         }
@@ -398,7 +419,7 @@ export async function activate(context: vscode.ExtensionContext) {
         edit: vscode.TextEditorEdit,
         args: any[],
       ) => {
-        validateSchemaDoc(textEditor.document, diagnosticCollection, true);
+        validateSchemaFileDoc(textEditor.document, diagnosticCollection, true);
       },
     ),
   );
@@ -419,7 +440,11 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         if (
-          !validateSchemaDoc(textEditor.document, diagnosticCollection, true)
+          !(await validateSchemaFileDoc(
+            textEditor.document,
+            diagnosticCollection,
+            true,
+          ))
         ) {
           vscode.window.showErrorMessage(
             `Cedar schema translate requires a valid Cedar schema file`,
@@ -469,7 +494,11 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         if (
-          !validateSchemaDoc(textEditor.document, diagnosticCollection, true)
+          !(await validateSchemaFileDoc(
+            textEditor.document,
+            diagnosticCollection,
+            true,
+          ))
         ) {
           vscode.window.showErrorMessage(
             `Cedar schema export requires a valid Cedar schema file`,
@@ -529,20 +558,7 @@ export async function activate(context: vscode.ExtensionContext) {
         edit: vscode.TextEditorEdit,
         args: any[],
       ) => {
-        const fileUri = await getSchemaUri(textEditor.document);
-        if (fileUri) {
-          try {
-            await vscode.commands.executeCommand('vscode.open', fileUri);
-          } catch {
-            vscode.window.showErrorMessage(
-              `Cannot open Cedar schema file: ${fileUri}`,
-            );
-          }
-        } else {
-          vscode.window.showErrorMessage(
-            `Cedar schema file not found or configured in settings.json`,
-          );
-        }
+        await openSchemaSetFiles(textEditor.document);
       },
     ),
   );
@@ -660,7 +676,7 @@ export async function activate(context: vscode.ExtensionContext) {
         schemaDoc: vscode.TextDocument,
       ): Promise<vscode.TextEdit[] | undefined> {
         // don't try and format if syntax doesn't validate
-        if (!(await validateSchemaDoc(schemaDoc, diagnosticCollection))) {
+        if (!(await validateSchemaFileDoc(schemaDoc, diagnosticCollection))) {
           return Promise.resolve(undefined);
         }
 
@@ -702,6 +718,12 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerDefinitionProvider(
       { language: 'cedarschema' },
       new CedarSchemaDefinitionProvider(),
+    ),
+  );
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(
+      { language: 'cedarschema' },
+      new CedarSchemaHoverProvider(),
     ),
   );
   context.subscriptions.push(
@@ -769,6 +791,12 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.languages.registerDefinitionProvider(
         schemaSelector,
         new CedarSchemaDefinitionProvider(),
+      ),
+    );
+    push(
+      vscode.languages.registerHoverProvider(
+        schemaSelector,
+        new CedarSchemaHoverProvider(),
       ),
     );
 

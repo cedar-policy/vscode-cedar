@@ -3,7 +3,12 @@
 
 import * as vscode from 'vscode';
 import * as path from 'node:path';
-import { getCedarTestFiles, getSchemaTextDocument } from './fileutil';
+import * as os from 'node:os';
+import {
+  getCedarTestFiles,
+  getSchemaSet,
+  isCombinedSchemaDoc,
+} from './fileutil';
 import { CEDAR_CLI_LABEL } from './about';
 import { getMaxLevel } from './validate';
 
@@ -77,15 +82,40 @@ const fileArg = (cwd: string, uri: vscode.Uri): string => {
 const schemaFormatArgs = (schemaDoc: vscode.TextDocument): string[] =>
   schemaDoc.languageId === 'cedarschema' ? [] : ['--schema-format', 'json'];
 
+/*
+ * The Cedar CLI reads one schema file, so the combined schema of a set of
+ * schema files is written to a temporary file
+ */
+const combinedSchemaFile = async (
+  schemaDoc: vscode.TextDocument,
+): Promise<vscode.Uri> => {
+  const folder = vscode.Uri.file(path.join(os.tmpdir(), 'vscode-cedar'));
+  await vscode.workspace.fs.createDirectory(folder);
+  const uri = vscode.Uri.joinPath(
+    folder,
+    `${schemaDoc.uri.query}.cedarschema.json`,
+  );
+  await vscode.workspace.fs.writeFile(
+    uri,
+    new Uint8Array(Buffer.from(schemaDoc.getText())),
+  );
+
+  return Promise.resolve(uri);
+};
+
 const schemaArgs = async (
   doc: vscode.TextDocument,
   cwd: string,
 ): Promise<string[]> => {
-  const schemaDoc = await getSchemaTextDocument(doc);
+  const schemaDoc = (await getSchemaSet(doc))?.doc;
+  if (!schemaDoc) {
+    return [];
+  }
 
-  return schemaDoc
-    ? ['-s', fileArg(cwd, schemaDoc.uri), ...schemaFormatArgs(schemaDoc)]
-    : [];
+  const uri = isCombinedSchemaDoc(schemaDoc)
+    ? await combinedSchemaFile(schemaDoc)
+    : schemaDoc.uri;
+  return ['-s', fileArg(cwd, uri), ...schemaFormatArgs(schemaDoc)];
 };
 
 /*

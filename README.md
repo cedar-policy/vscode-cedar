@@ -65,6 +65,23 @@ Sample `.vscode/settings.json` which enables `editor` settings for `cedar` files
 }
 ```
 
+### Cedar schema sets
+
+A Cedar policy, entities, or tests file validates using the Cedar schema files in its folder, else those in the workspace folder, else the `cedar.schemaFile` setting.  When there is more than one schema file, they are combined into one schema:
+
+- **Linked**, when any of them declares an `external` entity type or action (`external entity User;` or `"external": true`).  Each schema file stands on its own, and each `external` declaration is resolved against a definition of the same name in another schema file (see [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html)).
+- **Merged**, otherwise, as fragments of one schema, so a schema file can refer to the entity and common types of another without declaring them.
+
+A schema with an `external` declaration that no schema file defines is partial: entities still validate, but policies can't be validated until every `external` declaration has a definition.  Hover over or go to definition of an `external` declaration (or a type another schema file defines) to see its definition.  Problems combining the schema files are reported on the schema file each problem is in, and the "Validated using" CodeLens opens any of the schema files or the combined schema (JSON).  A folder of unrelated schema files, with no `external` declarations and nothing alongside them to validate, is not combined.  See the `testdata/schemaset-*` folders for examples.
+
+`cedar.schemaFile` is either one schema file, or an array of schema files and glob patterns combined into one schema, relative to the first workspace folder:
+
+```json
+{
+  "cedar.schemaFile": ["shared/identity.cedarschema", "app/*.cedarschema"],
+}
+```
+
 ### Level validation
 
 When `.cedar` files validate using a Cedar schema, the minimum entity dereference level each policy validates at (see [level validation](https://docs.cedarpolicy.com/policies/level-validation.html)) is shown, depending on `cedar.levelValidation.display`, as a CodeLens above the policy (`codeLens`), an inlay hint comment like `// Level 2` after the policy's `;` (`inlayHint`), or not at all (`none`).  Set `cedar.levelValidation.maxLevel` to warn on any policy which requires a higher level.

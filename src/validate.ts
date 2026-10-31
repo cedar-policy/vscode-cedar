@@ -14,12 +14,21 @@ import {
   reportFormatterOff,
 } from './diagnostics';
 import {
+  CedarSchemaSet,
+  getSchemaMemberUris,
+  getSchemaSetForSchemaDoc,
   getSchemaTextDocument,
   detectEntitiesDoc,
   detectSchemaDoc,
   detectTestsDoc,
+  isCombinedSchemaDoc,
 } from './fileutil';
-import { parseCedarPoliciesDoc, parseCedarTestsDoc, TestRange } from './parser';
+import {
+  parseCedarPoliciesDoc,
+  parseCedarSchemaDoc,
+  parseCedarTestsDoc,
+  TestRange,
+} from './parser';
 
 type ValidationCacheItem = {
   version: number;
@@ -123,26 +132,31 @@ class ValidationCache {
     this.entityTypes = {};
   }
 
+  // a combined schema is associated through each of its schema files, since
+  // editing any of them changes the combined schema
   associateSchemaWithDoc(
     schemaDoc: vscode.TextDocument,
     doc: vscode.TextDocument,
   ) {
-    const s = this.docsBySchema[schemaDoc.uri.toString()] || new Set();
-    s.add(doc.uri.toString());
-    this.docsBySchema[schemaDoc.uri.toString()] = s;
+    getSchemaMemberUris(schemaDoc).forEach((schemaUri) => {
+      const s = this.docsBySchema[schemaUri] || new Set();
+      s.add(doc.uri.toString());
+      this.docsBySchema[schemaUri] = s;
+    });
   }
 
   revalidateSchema(
     schemaDoc: vscode.TextDocument,
     diagnosticCollection: vscode.DiagnosticCollection,
   ) {
-    const docs = this.docsBySchema[schemaDoc.uri.toString()];
-    if (docs) {
-      docs.forEach((docUri) => {
-        delete this.cache[docUri];
-        void revalidateDoc(docUri, diagnosticCollection);
-      });
-    }
+    const docUris = new Set<string>();
+    getSchemaMemberUris(schemaDoc).forEach((schemaUri) => {
+      this.docsBySchema[schemaUri]?.forEach((docUri) => docUris.add(docUri));
+    });
+    docUris.forEach((docUri) => {
+      delete this.cache[docUri];
+      void revalidateDoc(docUri, diagnosticCollection);
+    });
   }
 }
 const HEAD_REGEX = /(?:(permit|forbid)\s*\((.|\n)*?\))(?<!\s*(;|when|unless))/;
@@ -272,7 +286,7 @@ export const validateTextDocument = async (
   if (doc.languageId === 'cedar') {
     await validateCedarDoc(doc, diagnosticCollection);
   } else if (detectSchemaDoc(doc)) {
-    validateSchemaDoc(doc, diagnosticCollection);
+    await validateSchemaFileDoc(doc, diagnosticCollection);
   } else if (detectEntitiesDoc(doc)) {
     await validateEntitiesDoc(doc, diagnosticCollection);
   } else if (detectTestsDoc(doc)) {
@@ -408,7 +422,9 @@ export const validateSchemaDoc = (
   }
   try {
     const success = schemaResult.success;
-    if (schemaResult.success === false && schemaResult.errors) {
+    if (isCombinedSchemaDoc(schemaDoc)) {
+      // problems are reported on the schema files by validateSchemaSet
+    } else if (schemaResult.success === false && schemaResult.errors) {
       let schemaDiagnostics: vscode.Diagnostic[] = [];
       let vse = schemaResult.errors.map((e) => {
         return { message: e.message, offset: e.offset, length: e.length };
@@ -427,7 +443,9 @@ export const validateSchemaDoc = (
         });
         diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
       }
+    }
 
+    if (success) {
       // determine applicable principal and resource types
       const principalTypes = determineEntityTypes(schemaDoc, 'principal');
       const resourceTypes = determineEntityTypes(schemaDoc, 'resource');
@@ -449,6 +467,133 @@ export const validateSchemaDoc = (
   } finally {
     schemaResult.free();
   }
+};
+
+// the declaration of an entity type or action in a schema file
+const findDeclarationRange = (
+  schemaDoc: vscode.TextDocument,
+  name: string,
+  external: boolean | undefined = undefined,
+): vscode.Range | undefined =>
+  parseCedarSchemaDoc(schemaDoc).definitionRanges.find(
+    (definition) =>
+      definition.etype === name &&
+      (external === undefined || !!definition.external === external),
+  )?.etypeRange;
+
+/**
+ * Validate the schema files of a schema set together, reporting problems
+ * combining them on the schema file each problem is located in.
+ */
+export const validateSchemaSet = (
+  set: CedarSchemaSet,
+  diagnosticCollection: vscode.DiagnosticCollection,
+  userInitiated: boolean = false,
+): boolean => {
+  const link = set.link;
+  if (!link) {
+    return set.doc
+      ? validateSchemaDoc(set.doc, diagnosticCollection, userInitiated)
+      : false;
+  }
+
+  const diagnosticsByDoc: vscode.Diagnostic[][] = set.docs.map(() => []);
+  const located = (index: number) =>
+    index >= 0 && index < set.docs.length ? [index] : set.docs.keys();
+  link.errors.forEach((e) => {
+    for (const i of located(e.index)) {
+      const schemaDoc = set.docs[i];
+      if (e.index < 0) {
+        // not located, so try the declaration the message names
+        const name = e.message.match(/`([^`]+)`/)?.[1];
+        const range = name ? findDeclarationRange(schemaDoc, name) : undefined;
+        if (
+          name &&
+          !range &&
+          set.docs.some((d) => findDeclarationRange(d, name))
+        ) {
+          continue;
+        }
+        addValidationDiagnosticError(
+          diagnosticsByDoc[i],
+          e.message,
+          range || DEFAULT_RANGE,
+        );
+      } else {
+        addSyntaxDiagnosticErrors(diagnosticsByDoc[i], [e], schemaDoc);
+      }
+    }
+  });
+  link.warnings.forEach((w) => {
+    for (const i of located(w.index)) {
+      const schemaDoc = set.docs[i];
+      addValidationDiagnosticWarning(
+        diagnosticsByDoc[i],
+        w.message,
+        determineRangeFromOffset(schemaDoc, w.offset, w.length),
+      );
+    }
+  });
+
+  // an external declaration which no schema file in the set defines
+  [...link.externalEntityTypes, ...link.externalActions].forEach((name) => {
+    set.docs.forEach((schemaDoc, i) => {
+      const range = findDeclarationRange(schemaDoc, name, true);
+      if (range) {
+        const diagnostic = new vscode.Diagnostic(
+          range,
+          `\`${name}\` is declared \`external\` but not defined by any linked schema, so policies can't be validated`,
+          vscode.DiagnosticSeverity.Information,
+        );
+        diagnostic.source = 'cedar';
+        diagnosticsByDoc[i].push(diagnostic);
+      }
+    });
+  });
+
+  set.docs.forEach((schemaDoc, i) => {
+    diagnosticCollection.set(schemaDoc.uri, diagnosticsByDoc[i]);
+    validationCache.store(schemaDoc, link.success);
+  });
+
+  if (set.doc) {
+    // determines the applicable principal and resource types, and revalidates
+    // any documents using the combined schema
+    validateSchemaDoc(set.doc, diagnosticCollection, userInitiated);
+  }
+  set.docs.forEach((schemaDoc) =>
+    validationCache.revalidateSchema(schemaDoc, diagnosticCollection),
+  );
+
+  return link.success;
+};
+
+/**
+ * Validate a Cedar schema file, as part of the schema set it belongs to, else
+ * on its own.
+ */
+export const validateSchemaFileDoc = async (
+  schemaDoc: vscode.TextDocument,
+  diagnosticCollection: vscode.DiagnosticCollection,
+  userInitiated: boolean = false,
+): Promise<boolean> => {
+  if (!userInitiated) {
+    const cachedItem = validationCache.check(schemaDoc);
+    if (cachedItem) {
+      return Promise.resolve(cachedItem.valid);
+    }
+  }
+
+  const set = await getSchemaSetForSchemaDoc(schemaDoc);
+  if (set) {
+    return Promise.resolve(
+      validateSchemaSet(set, diagnosticCollection, userInitiated),
+    );
+  }
+
+  return Promise.resolve(
+    validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated),
+  );
 };
 
 // TODO: find a real API to call for determineEntityTypes

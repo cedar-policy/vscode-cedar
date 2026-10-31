@@ -76,6 +76,11 @@
 			"patterns": [{
 				"name": "keyword.control.cedarschema",
 				"match": "\\b(type|entity|action)\\b(?=\\s+)"
+			},
+			{
+				"name": "keyword.control.cedarschema",
+				"match": "\\bexternal\\b(?=\\s+(?:entity|action)\\b)",
+				"comment": "Decl := ['external'] Entity | ['external'] Action -- declared here, defined by a linked schema (https://docs.cedarpolicy.com/schema/schema-linking.html)"
 			}]
 		},
 		"keywords": {

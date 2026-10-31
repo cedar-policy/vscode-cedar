@@ -1,0 +1,37 @@
+[
+  {
+    "uid": { "type": "DocApp::Team", "id": "Writers" },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": { "type": "DocApp::User", "id": "alice" },
+    "attrs": {
+      "email": "alice@example.com",
+      "name": { "first": "Alice", "last": "Smith" }
+    },
+    "parents": [{ "type": "DocApp::Team", "id": "Writers" }]
+  },
+  {
+    "uid": { "type": "DocApp::User", "id": "bob" },
+    "attrs": {
+      "email": "bob@example.com",
+      "name": { "first": "Bob", "last": "Jones" }
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "DocApp::Folder", "id": "drafts" },
+    "attrs": { "owner": { "type": "DocApp::User", "id": "bob" } },
+    "parents": []
+  },
+  {
+    "uid": { "type": "DocApp::Document", "id": "plan.md" },
+    "attrs": {
+      "author": { "first": "Bob", "last": "Jones" },
+      "owner": { "type": "DocApp::User", "id": "bob" },
+      "title": "Plan"
+    },
+    "parents": [{ "type": "DocApp::Folder", "id": "drafts" }]
+  }
+]

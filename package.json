@@ -371,14 +371,20 @@
       "title": "Cedar",
       "properties": {
         "cedar.schemaFile": {
-          "type": "string",
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
           "default": null,
-          "description": "Location of Cedar schema file used for policy validation."
+          "markdownDescription": "Location of the Cedar schema file used for policy validation, relative to the first workspace folder.  An array lists schema file paths or glob patterns which are combined into one schema (see [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html))."
         },
         "cedar.autodetectSchemaFile": {
           "type": "boolean",
           "default": true,
-          "description": "Auto detect Cedar schema file used for policy validation."
+          "description": "Auto detect the Cedar schema files used for policy validation. Every schema file in the folder of a document (else in the workspace folder) is combined into one schema."
         },
         "cedar.levelValidation.maxLevel": {
           "type": [

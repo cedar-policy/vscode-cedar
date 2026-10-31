@@ -1398,6 +1398,8 @@ export type SchemaRange = {
   range: vscode.Range;
   etypeRange: vscode.Range;
   symbol: vscode.SymbolKind;
+  // an `external` declaration, defined in another schema
+  external?: boolean;
 };
 
 type SchemaCompletionData = {
@@ -1483,6 +1485,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
   let collection: 'commonTypes' | 'entityTypes' | 'actions' = 'entityTypes';
   let etype: string = '';
   let enums: string[] | undefined = undefined;
+  let external = false;
   let etypeStart: vscode.Position | null = null;
   let etypeEnd: vscode.Position | null = null;
   let etypeRange: vscode.Range | null = null;
@@ -1554,6 +1557,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
             range: new vscode.Range(etypeStart, etypeEnd),
             etypeRange: etypeRange,
             symbol: symbol,
+            external: external || undefined,
           };
           definitionRanges.push(schemaRange);
           if (collection === 'entityTypes') {
@@ -1597,6 +1601,7 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
         etypeStart = new vscode.Position(startLine, startCharacter);
         etypeRange = makeRange(startLine, startCharacter, length, 1);
         enums = undefined;
+        external = false;
 
         if (pathSupplier()[1] === 'commonTypes') {
           tokensBuilder.push(range, 'struct', ['declaration']);
@@ -1623,6 +1628,13 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
         property === 'tags'
       ) {
         tags.push(etype);
+        tokensBuilder.push(range, 'keyword', []);
+      } else if (
+        jsonPathLen === 3 &&
+        (pathSupplier()[1] === 'entityTypes' ||
+          pathSupplier()[1] === 'actions') &&
+        property === 'external'
+      ) {
         tokensBuilder.push(range, 'keyword', []);
       } else if (
         jsonPathLen === 3 &&
@@ -1658,6 +1670,13 @@ const parseCedarSchemaJSONText = (schemaText: string): SchemaCacheItem => {
       const jsonPathLen = pathSupplier().length;
       const range = makeRange(startLine, startCharacter, length);
       if (
+        jsonPathLen === 4 &&
+        (pathSupplier()[1] === 'entityTypes' ||
+          pathSupplier()[1] === 'actions') &&
+        pathSupplier()[3] === 'external'
+      ) {
+        external = value === true;
+      } else if (
         // anything directly under "memberOfTypes" under "entityTypes" is a type
         jsonPathLen === 5 &&
         pathSupplier()[1] === 'entityTypes' &&
@@ -1839,6 +1858,7 @@ const parseCedarSchemaCedarDoc = (
   const tokensBuilder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
 
   let declarations: Record<string, vscode.Range | null> = {};
+  let external = false;
   let namespace: string = '';
   let collection: 'commonTypes' | 'entityTypes' | 'actions' = 'entityTypes';
 
@@ -1927,6 +1947,17 @@ const parseCedarSchemaCedarDoc = (
       } else if (declarationStartLine === -1 && linePreComment === '}') {
         // assume closing } not inside declaration is end of namespace
         namespace = '';
+      }
+
+      // https://docs.cedarpolicy.com/schema/schema-linking.html
+      const externalMatch = linePreComment.match(
+        /^external\s+(?=entity|action)/,
+      );
+      if (declarationStartLine === -1 && externalMatch) {
+        external = true;
+        const idx = textLine.indexOf('external');
+        tokensBuilder.push(makeRange(i, idx, 'external'.length), 'keyword', []);
+        linePreComment = linePreComment.substring(externalMatch[0].length);
       }
 
       // https://docs.cedarpolicy.com/schema/human-readable-schema.html#schema-commonTypes
@@ -2078,12 +2109,14 @@ const parseCedarSchemaCedarDoc = (
             range: range,
             etypeRange: value || range,
             symbol: symbol,
+            external: external || undefined,
           };
           definitionRanges.push(schemaRange);
         });
 
         declarationStartLine = -1;
         declarations = {};
+        external = false;
       }
     }
   }

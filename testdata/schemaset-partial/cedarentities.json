@@ -1,0 +1,10 @@
+[
+  {
+    "uid": { "type": "DocApp::Document", "id": "plan.md" },
+    "attrs": {
+      "owner": { "type": "DocApp::User", "id": "alice" },
+      "title": "Plan"
+    },
+    "parents": []
+  }
+]

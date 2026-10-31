@@ -520,6 +520,27 @@ suite('Cedar schema TextMate Suite', () => {
     );
   });
 
+  test('S2 external declarations', async () => {
+    await assertScope(
+      CEDARSCHEMA,
+      'external entity User;',
+      'external',
+      'keyword.control',
+    );
+    await assertScope(
+      CEDARSCHEMA,
+      'external action viewDocument in readActions;',
+      'external',
+      'keyword.control',
+    );
+    await assertNotScope(
+      CEDARSCHEMA,
+      'entity T { external: Bool };',
+      'external',
+      'keyword',
+    );
+  });
+
   test('S3 in does not require a bracketed list', async () => {
     await assertScope(CEDARSCHEMA, 'entity Photo in Album;', 'in', 'keyword');
     await assertScope(CEDARSCHEMA, 'entity Photo in [Album];', 'in', 'keyword');

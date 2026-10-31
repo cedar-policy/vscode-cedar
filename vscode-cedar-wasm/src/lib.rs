@@ -6,6 +6,7 @@ mod entities_validator;
 mod format;
 mod policy;
 mod policy_validator;
+mod schema_link;
 mod schema_translate;
 mod schema_validator;
 mod syntax_validator;

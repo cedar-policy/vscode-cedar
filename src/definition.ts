@@ -11,41 +11,151 @@ import {
   parseCedarJsonPolicyDoc,
   parseCedarTestsDoc,
   ReferencedRange,
+  SchemaRange,
 } from './parser';
-import { getCedarTestFiles, getSchemaTextDocument } from './fileutil';
+import {
+  getCedarTestFiles,
+  getSchemaMemberUris,
+  getSchemaSetForSchemaDoc,
+  getSchemaTextDocument,
+} from './fileutil';
+
+/*
+ * The schema files to find definitions in, which are the schema files of a
+ * combined schema rather than the combined schema itself
+ */
+const schemaDefinitionDocs = async (
+  schemaDoc: vscode.TextDocument,
+): Promise<vscode.TextDocument[]> => {
+  const uris = getSchemaMemberUris(schemaDoc);
+  if (uris.length === 1 && uris[0] === schemaDoc.uri.toString()) {
+    return Promise.resolve([schemaDoc]);
+  }
+  const docs: vscode.TextDocument[] = [];
+  for (const uri of uris) {
+    try {
+      docs.push(await vscode.workspace.openTextDocument(vscode.Uri.parse(uri)));
+    } catch {
+      // skip schema files which cannot be opened
+    }
+  }
+  return Promise.resolve(docs);
+};
+
+export type SchemaDefinition = {
+  doc: vscode.TextDocument;
+  schemaRange: SchemaRange;
+};
+
+/**
+ * Find the declaration of an entity type, common type, or action in schema
+ * files, preferring the definition over an `external` declaration of it.
+ */
+export const findDefinition = (
+  schemaDocs: vscode.TextDocument[],
+  name: string,
+  definedOnly: boolean = false,
+): SchemaDefinition | undefined => {
+  let externalDefinition: SchemaDefinition | undefined = undefined;
+  for (const schemaDoc of schemaDocs) {
+    for (let schemaRange of parseCedarSchemaDoc(schemaDoc).definitionRanges) {
+      if (schemaRange.etype === name) {
+        if (!schemaRange.external) {
+          return { doc: schemaDoc, schemaRange: schemaRange };
+        }
+        externalDefinition = externalDefinition || {
+          doc: schemaDoc,
+          schemaRange: schemaRange,
+        };
+      }
+    }
+  }
+  return definedOnly ? undefined : externalDefinition;
+};
+
+const findDefinitionLocation = (
+  schemaDocs: vscode.TextDocument[],
+  name: string,
+  definedOnly: boolean = false,
+): vscode.Location | null => {
+  const definition = findDefinition(schemaDocs, name, definedOnly);
+  return definition
+    ? new vscode.Location(definition.doc.uri, definition.schemaRange.range)
+    : null;
+};
+
+/**
+ * The entity type, common type, or action at a position in a schema file,
+ * either referenced or declared `external`, along with the schema files (of
+ * the schema set the schema file belongs to) to find its definition in.
+ */
+export const findSchemaNameAtPosition = async (
+  schemaDoc: vscode.TextDocument,
+  position: vscode.Position,
+): Promise<
+  | {
+      name: string;
+      range: vscode.Range;
+      external: boolean;
+      docs: vscode.TextDocument[];
+    }
+  | undefined
+> => {
+  const schemaItem = parseCedarSchemaDoc(schemaDoc);
+  let found: { name: string; range: vscode.Range; external: boolean } | null =
+    null;
+  for (let referenced of [
+    ...schemaItem.referencedTypes,
+    ...schemaItem.actionIds,
+  ]) {
+    if (referenced.range.contains(position)) {
+      found = {
+        name: referenced.name,
+        range: referenced.range,
+        external: false,
+      };
+      break;
+    }
+  }
+  if (!found) {
+    const declaration = schemaItem.definitionRanges.find(
+      (schemaRange) =>
+        schemaRange.external && schemaRange.etypeRange.contains(position),
+    );
+    if (declaration) {
+      found = {
+        name: declaration.etype,
+        range: declaration.etypeRange,
+        external: true,
+      };
+    }
+  }
+  if (!found) {
+    return Promise.resolve(undefined);
+  }
+
+  // types may be defined by another schema file of the same schema set
+  const set = await getSchemaSetForSchemaDoc(schemaDoc);
+  const docs = set
+    ? [schemaDoc, ...set.docs.filter((doc) => doc !== schemaDoc)]
+    : [schemaDoc];
+
+  return Promise.resolve({ ...found, docs });
+};
 
 const findSchemaDefinition = async (
-  schemaDoc: vscode.TextDocument,
+  schemaDocs: vscode.TextDocument | vscode.TextDocument[],
   position: vscode.Position,
   referencedTypes: ReferencedRange[],
   actionIds: ReferencedRange[] = [],
 ): Promise<vscode.Definition | null | undefined> => {
-  // TODO: update from O(n^2) to something more efficient
-  const schemaItem = parseCedarSchemaDoc(schemaDoc);
-  const schemaDefinitionRanges = schemaItem.definitionRanges;
-  for (let referencedType of referencedTypes) {
+  const docs = Array.isArray(schemaDocs)
+    ? schemaDocs
+    : await schemaDefinitionDocs(schemaDocs);
+  for (let referencedType of [...referencedTypes, ...actionIds]) {
     if (referencedType.range.contains(position)) {
-      for (let schemaRange of schemaDefinitionRanges) {
-        if (schemaRange.etype === referencedType.name) {
-          const loc = new vscode.Location(schemaDoc.uri, schemaRange.range);
-          return Promise.resolve(loc);
-        }
-      }
-      // already matched position but didn't find definition, so return
-      return null;
-    }
-  }
-
-  for (let actionId of actionIds) {
-    if (actionId.range.contains(position)) {
-      for (let schemaRange of schemaDefinitionRanges) {
-        if (schemaRange.etype === actionId.name) {
-          const loc = new vscode.Location(schemaDoc.uri, schemaRange.range);
-          return Promise.resolve(loc);
-        }
-      }
-      // already matched position but didn't find definition, so return
-      return null;
+      // already matched position, so return even without a definition
+      return Promise.resolve(findDefinitionLocation(docs, referencedType.name));
     }
   }
 };
@@ -212,15 +322,13 @@ export class CedarSchemaDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaItem = parseCedarSchemaDoc(schemaDoc);
-    const referencedTypes = schemaItem.referencedTypes;
-    const actionIds = schemaItem.actionIds;
-    return findSchemaDefinition(
-      schemaDoc,
-      position,
-      referencedTypes,
-      actionIds,
-    );
+    const found = await findSchemaNameAtPosition(schemaDoc, position);
+    if (!found) {
+      return undefined;
+    }
+
+    // an `external` declaration goes to the schema file defining it
+    return findDefinitionLocation(found.docs, found.name, found.external);
   }
 }
 

@@ -1,0 +1,7 @@
+// users and teams, owned by the identity team
+namespace DocApp {
+  entity Team;
+  entity User in [Team] {
+    "email": String,
+  };
+}

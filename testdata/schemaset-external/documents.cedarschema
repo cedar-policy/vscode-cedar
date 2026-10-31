@@ -1,0 +1,20 @@
+// each schema file stands on its own, declaring what other schema files
+// define as external, so these schema files are linked
+// https://docs.cedarpolicy.com/schema/schema-linking.html
+namespace DocApp {
+  external entity User;
+  external action share;
+
+  entity Folder {
+    "owner": User,
+  };
+  entity Document in [Folder] {
+    "owner": User,
+    "title": String,
+  };
+
+  action view, edit appliesTo {
+    principal: [User],
+    resource: [Document],
+  };
+}

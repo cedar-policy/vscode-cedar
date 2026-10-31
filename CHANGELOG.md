@@ -1,3 +1,11 @@
+## v0.14.0 (Preview) Unreleased
+
+- Update to Cedar SDK 4.14.0
+- Cedar schema sets: every Cedar schema file in a folder is combined into one schema, linking `external` entity types and actions (see [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html)) or merging schema files without them
+- `cedar.schemaFile` also accepts an array of schema file paths or glob patterns
+- Syntax highlighting for `external` declarations, with hover and go to definition of the schema file defining them
+- **Behavior change:** a folder with more than one Cedar schema file now combines them, where it previously fell back to the workspace folder or `cedar.schemaFile`.  To keep using separate schemas, set `cedar.autodetectSchemaFile` to `false` and `cedar.schemaFile` to the schema to use.  An array `cedar.schemaFile` is not understood by earlier versions of the extension (such as through Settings Sync)
+
 ## v0.12.0 (Preview) 2026-10-30
 
 - Cedar tests validation, navigation, and IntelliSense
