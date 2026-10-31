@@ -17,13 +17,13 @@ Cedar libraries in Rust, compiled to WASM, for use in this Visual Studio Code ex
 Read these for background:
 
 * [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen)
-* [Welcome to the wasm-pack docs!](https://rustwasm.github.io/docs/wasm-pack/introduction.html)
+* [Welcome to the wasm-pack docs!](https://wasm-bindgen.github.io/wasm-pack/)
 
 Install Rust and wasm-pack
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+curl https://wasm-bindgen.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
 ### macOS wasm build support
