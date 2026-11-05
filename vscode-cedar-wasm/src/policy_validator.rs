@@ -28,13 +28,13 @@ export class ValidatePolicyResult {
 pub struct ValidatePolicyResult {
     #[wasm_bindgen(readonly)]
     pub success: bool,
-    warnings: Option<Vec<ValidateMessage>>,
-    errors: Option<Vec<ValidateMessage>>,
+    pub(crate) warnings: Option<Vec<ValidateMessage>>,
+    pub(crate) errors: Option<Vec<ValidateMessage>>,
     /// minimum entity dereference level (RFC 76) the policies validate at,
     /// `None` if validation failed or an entity literal is dereferenced
     #[wasm_bindgen(readonly)]
     pub level: Option<u32>,
-    level_warnings: Option<Vec<ValidateMessage>>,
+    pub(crate) level_warnings: Option<Vec<ValidateMessage>>,
 }
 
 #[wasm_bindgen]
@@ -81,7 +81,7 @@ pub fn validate_policy_schema_json(
             };
         }
     };
-    return validate_policy_schema(schema, input_policies_str, max_level);
+    return validate_policy_schema(&Validator::new(schema), input_policies_str, max_level);
 }
 
 #[wasm_bindgen(js_name = validatePolicySchemaCedar)]
@@ -106,7 +106,11 @@ pub fn validate_policy_schema_cedar(
             };
         }
     };
-    return validate_policy_schema(schema_tuple.0, input_policies_str, max_level);
+    return validate_policy_schema(
+        &Validator::new(schema_tuple.0),
+        input_policies_str,
+        max_level,
+    );
 }
 
 /// Convert a validation error or warning into a message per labeled span
@@ -177,12 +181,13 @@ fn level_violations(
     messages
 }
 
-fn validate_policy_schema(
-    schema: Schema,
+/// Validate policies, and their level (RFC 76), with a validator which may be
+/// reused across calls so its schema is only parsed once
+pub(crate) fn validate_policy_schema(
+    validator: &Validator,
     input_policies_str: &str,
     max_level: Option<u32>,
 ) -> ValidatePolicyResult {
-    let validator = Validator::new(schema);
     let pset = match PolicySet::from_str(&input_policies_str) {
         Ok(pset) => pset,
         Err(_e) => {
@@ -209,10 +214,10 @@ fn validate_policy_schema(
 
     if result.validation_passed() {
         // level validation only reports levels for policies which typecheck
-        let level = minimum_level(&validator, &pset);
+        let level = minimum_level(validator, &pset);
         let level_warnings = match max_level {
             Some(max_level) if level.map_or(true, |level| level > max_level) => {
-                Some(level_violations(&validator, &pset, max_level))
+                Some(level_violations(validator, &pset, max_level))
             }
             _ => None,
         };

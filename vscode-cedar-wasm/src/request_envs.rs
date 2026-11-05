@@ -3,9 +3,11 @@
 
 use std::collections::BTreeSet;
 
-use cedar_policy::{Policy, RequestEnv, Schema, Template};
+use cedar_policy::{Policy, RequestEnv, Schema, Template, Validator};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+
+use crate::policy_validator::{validate_policy_schema, ValidatePolicyResult};
 
 #[wasm_bindgen(typescript_custom_section)]
 const REQUEST_ENVS_RESULT: &'static str = r#"
@@ -29,25 +31,70 @@ pub struct RequestEnvsResult {
     pub resources: Vec<String>,
 }
 
-#[wasm_bindgen(js_name = getRequestEnvsSchemaJSON)]
-pub fn get_request_envs_schema_json(
-    input_schema_str: &str,
-    input_policy_str: &str,
-) -> RequestEnvsResult {
-    match Schema::from_json_str(input_schema_str) {
-        Ok(schema) => get_request_envs(&schema, input_policy_str),
-        Err(_) => RequestEnvsResult::default(),
-    }
+#[wasm_bindgen(typescript_custom_section)]
+const SCHEMA_HANDLE: &'static str = r#"
+export class SchemaHandle {
+  free(): void;
+  static fromCedar(input_schema_str: string): SchemaHandle | undefined;
+  static fromJSON(input_schema_str: string): SchemaHandle | undefined;
+  requestEnvs(input_policy_str: string): RequestEnvsResult;
+  requestEnvsBatch(input_policy_strs: Array<string>): Array<RequestEnvsResult>;
+  validatePolicy(input_policies_str: string, max_level?: number | null): ValidatePolicyResult;
+}"#;
+
+/// A schema parsed once, to validate and determine the request environments
+/// of many policies without parsing the schema for each of them
+#[wasm_bindgen(skip_typescript)]
+pub struct SchemaHandle {
+    validator: Validator,
 }
 
-#[wasm_bindgen(js_name = getRequestEnvsSchemaCedar)]
-pub fn get_request_envs_schema_cedar(
-    input_schema_str: &str,
-    input_policy_str: &str,
-) -> RequestEnvsResult {
-    match Schema::from_cedarschema_str(input_schema_str) {
-        Ok((schema, _)) => get_request_envs(&schema, input_policy_str),
-        Err(_) => RequestEnvsResult::default(),
+#[wasm_bindgen]
+impl SchemaHandle {
+    /// `undefined` if the Cedar schema doesn't parse
+    #[wasm_bindgen(js_name = fromCedar)]
+    pub fn from_cedar(input_schema_str: &str) -> Option<SchemaHandle> {
+        Schema::from_cedarschema_str(input_schema_str)
+            .ok()
+            .map(|(schema, _)| SchemaHandle {
+                validator: Validator::new(schema),
+            })
+    }
+
+    /// `undefined` if the JSON schema doesn't parse
+    #[wasm_bindgen(js_name = fromJSON)]
+    pub fn from_json(input_schema_str: &str) -> Option<SchemaHandle> {
+        Schema::from_json_str(input_schema_str)
+            .ok()
+            .map(|schema| SchemaHandle {
+                validator: Validator::new(schema),
+            })
+    }
+
+    #[wasm_bindgen(js_name = requestEnvs)]
+    pub fn request_envs(&self, input_policy_str: &str) -> RequestEnvsResult {
+        get_request_envs(self.validator.schema(), input_policy_str)
+    }
+
+    /// The request environments of each policy, in the same order, crossing
+    /// the WASM boundary once
+    #[wasm_bindgen(js_name = requestEnvsBatch)]
+    pub fn request_envs_batch(&self, input_policy_strs: Vec<String>) -> Vec<RequestEnvsResult> {
+        input_policy_strs
+            .iter()
+            .map(|policy| get_request_envs(self.validator.schema(), policy))
+            .collect()
+    }
+
+    /// The same as `validatePolicySchemaCedar` and `validatePolicySchemaJSON`,
+    /// without parsing the schema
+    #[wasm_bindgen(js_name = validatePolicy)]
+    pub fn validate_policy(
+        &self,
+        input_policies_str: &str,
+        max_level: Option<u32>,
+    ) -> ValidatePolicyResult {
+        validate_policy_schema(&self.validator, input_policies_str, max_level)
     }
 }
 
@@ -101,7 +148,9 @@ namespace NS {
 "#;
 
     fn envs(policy: &str) -> RequestEnvsResult {
-        get_request_envs_schema_cedar(SCHEMA, policy)
+        SchemaHandle::from_cedar(SCHEMA)
+            .unwrap()
+            .request_envs(policy)
     }
 
     fn strs(v: &[&str]) -> Vec<String> {
@@ -208,10 +257,63 @@ namespace NS {
 
     #[test]
     fn invalid_schema() {
-        let r = get_request_envs_schema_cedar("entity", "permit(principal, action, resource);");
-        assert!(!r.success);
-        let r = get_request_envs_schema_json("{", "permit(principal, action, resource);");
-        assert!(!r.success);
+        assert!(SchemaHandle::from_cedar("entity").is_none());
+        assert!(SchemaHandle::from_json("{").is_none());
+    }
+
+    #[test]
+    fn batch() {
+        let handle = SchemaHandle::from_cedar(SCHEMA).unwrap();
+        let results = handle.request_envs_batch(strs(&[
+            r#"permit(principal, action == NS::Action::"a1", resource);"#,
+            "permit(principal, action, resource",
+            "permit(principal is NS::E2, action, resource is NS::R2);",
+        ]));
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0].principals, strs(&["NS::E1"]));
+        assert!(!results[1].success);
+        assert_eq!(
+            results[2].actions,
+            strs(&[r#"NS::Action::"a""#, r#"NS::Action::"a2""#])
+        );
+        assert!(handle.request_envs_batch(vec![]).is_empty());
+    }
+
+    #[test]
+    fn validate_policy() {
+        let handle = SchemaHandle::from_cedar(SCHEMA).unwrap();
+        let valid = handle.validate_policy(
+            r#"permit(principal, action == NS::Action::"a1", resource) when { principal.p1 == "x" };"#,
+            Some(0),
+        );
+        assert!(valid.success);
+        assert_eq!(valid.level, Some(1));
+        assert!(valid.level_warnings.is_some());
+
+        // the same handle validates again, with a type error for E2
+        let invalid = handle.validate_policy(
+            r#"permit(principal, action, resource) when { principal.p1 == "x" };"#,
+            None,
+        );
+        assert!(!invalid.success);
+        assert!(invalid.errors.is_some());
+
+        let unparsed = handle.validate_policy("permit(principal, action, resource", None);
+        assert!(!unparsed.success);
+        assert!(unparsed.errors.is_none());
+    }
+
+    #[test]
+    fn validate_policy_matches_schema_str() {
+        let policy = "permit(principal is NS::E, action, resource);";
+        let handle = SchemaHandle::from_cedar(SCHEMA).unwrap();
+        let from_handle = handle.validate_policy(policy, None);
+        let from_str = crate::policy_validator::validate_policy_schema_cedar(SCHEMA, policy, None);
+        assert_eq!(from_handle.success, from_str.success);
+        assert_eq!(
+            serde_json::to_string(&from_handle).unwrap(),
+            serde_json::to_string(&from_str).unwrap()
+        );
     }
 
     #[test]
@@ -220,7 +322,9 @@ namespace NS {
           "entityTypes": { "User": {}, "Photo": {} },
           "actions": { "view": { "appliesTo": { "principalTypes": ["User"], "resourceTypes": ["Photo"] } } }
         } }"#;
-        let r = get_request_envs_schema_json(schema, "permit(principal, action, resource);");
+        let r = SchemaHandle::from_json(schema)
+            .unwrap()
+            .request_envs("permit(principal, action, resource);");
         assert!(r.success);
         assert_eq!(r.principals, strs(&["User"]));
         assert_eq!(r.actions, strs(&[r#"Action::"view""#]));

@@ -100,6 +100,11 @@ import {
   PolicyLevelInlayHintsProvider,
 } from './level';
 import {
+  pickPolicyScope,
+  PICK_SCOPE_COMMAND,
+  PolicyScopeCodeLensProvider,
+} from './scope';
+import {
   addEntitiesJSON,
   addTestsJSON,
   CedarEntitiesJSONCompletionItemProvider,
@@ -225,6 +230,16 @@ export async function activate(context: vscode.ExtensionContext) {
       new PolicyLevelCodeLensProvider(),
     ),
   );
+  // after the level CodeLens, which shares the line above each policy
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'cedar' },
+      new PolicyScopeCodeLensProvider(),
+    ),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(PICK_SCOPE_COMMAND, pickPolicyScope),
+  );
   context.subscriptions.push(
     vscode.languages.registerInlayHintsProvider(
       { language: 'cedar' },
@@ -251,8 +266,12 @@ export async function activate(context: vscode.ExtensionContext) {
           registerCedarJsonProviders();
           updateCedarKindContext(vscode.window.activeTextEditor);
         }
-        if (e.affectsConfiguration('cedar.levelValidation')) {
-          // levels and their warnings are cached with the validation results
+        if (
+          e.affectsConfiguration('cedar.levelValidation') ||
+          e.affectsConfiguration('cedar.policyScope')
+        ) {
+          // levels, their warnings, and policy scopes are cached with the
+          // validation results
           clearValidationCache();
           vscode.workspace.textDocuments
             .filter((doc) => doc.languageId === 'cedar')

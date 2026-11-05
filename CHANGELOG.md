@@ -9,6 +9,7 @@
 - Color and go to definition of entity types in the `context` of Cedar auth and Cedar tests files
 - Color word operators, methods, and extension functions in Cedar JSON policy conditions
 - Narrow `principal`, `action`, and `resource` hover and completion using the Cedar SDK request environments for each policy (`get_valid_request_envs`), instead of parsing validation errors
+- Show the principal types, actions, and resource types each Cedar policy applies to as a CodeLens, going to their schema declarations (`cedar.policyScope.display`)
 - **Behavior change:** a folder with more than one Cedar schema file now combines them, where it previously fell back to the workspace folder or `cedar.schemaFile`.  To keep using separate schemas, set `cedar.autodetectSchemaFile` to `false` and `cedar.schemaFile` to the schema to use.  An array `cedar.schemaFile` is not understood by earlier versions of the extension (such as through Settings Sync)
 
 ## v0.12.0 (Preview) 2026-10-30

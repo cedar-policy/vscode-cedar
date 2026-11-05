@@ -436,6 +436,20 @@
           "scope": "resource",
           "markdownDescription": "How to show the entity dereference level each Cedar policy validates at, when validated using a Cedar schema.  Inlay hints also depend on `#editor.inlayHints.enabled#`."
         },
+        "cedar.policyScope.display": {
+          "type": "string",
+          "enum": [
+            "codeLens",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Show the number of principal types, actions, and resource types as a CodeLens above each policy, each going to their schema declarations",
+            "Don't show the policy scope"
+          ],
+          "default": "codeLens",
+          "scope": "resource",
+          "markdownDescription": "How to show the principal types, actions, and resource types each Cedar policy applies to, considering both its scope and conditions, when validated using a Cedar schema."
+        },
         "cedar.fileAssociations": {
           "type": "object",
           "default": {},

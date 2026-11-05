@@ -93,6 +93,10 @@ When `.cedar` files validate using a Cedar schema, the minimum entity dereferenc
 }
 ```
 
+### Policy scope
+
+When `.cedar` files validate using a Cedar schema, a CodeLens above each policy shows how many principal types, actions, and resource types it applies to, like `2 principals | 3 actions | 1 resource`.  Both the policy scope and its conditions are considered, so `when { principal is User }` narrows the principal types.  Click a count to pick one to go to its declaration in the schema (or go directly when there is only one).  Set `cedar.policyScope.display` to `none` to hide it.
+
 ### File associations
 
 JSON files are detected as Cedar files by the `cedar*.json` naming convention described above.  `cedar.fileAssociations` maps glob patterns to a Cedar file kind for files which don't follow that convention, in the style of [`files.associations`](https://code.visualstudio.com/docs/languages/overview#_add-a-file-extension-to-a-language).  A pattern without a `/` matches that filename in any folder.  The built-in names take precedence, then associations are matched in order.  Supported kinds are `cedarschema.json`, `cedarentities`, `avpentities`, `cedartemplatelinks`, `cedarauth`, `cedartests`, and `cedar.json`.

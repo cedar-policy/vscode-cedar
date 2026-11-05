@@ -1,0 +1,12 @@
+namespace NS {
+  entity E;
+  entity E1 in [E] { p1: String };
+  entity E2 in [E] { p1: Long };
+  entity R;
+  entity R1 in [R] { p1: String };
+  entity R2 in [R] { p1: Long };
+  action "as";
+  action a in ["as"] appliesTo { principal: [E1, E2], resource: [R1, R2] };
+  action a1 in ["as"] appliesTo { principal: E1, resource: R1 };
+  action a2 in ["as"] appliesTo { principal: E2, resource: R2 };
+}

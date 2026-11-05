@@ -24,7 +24,7 @@ import {
  * The schema files to find definitions in, which are the schema files of a
  * combined schema rather than the combined schema itself
  */
-const schemaDefinitionDocs = async (
+export const schemaDefinitionDocs = async (
   schemaDoc: vscode.TextDocument,
 ): Promise<vscode.TextDocument[]> => {
   const uris = getSchemaMemberUris(schemaDoc);
