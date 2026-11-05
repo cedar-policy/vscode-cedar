@@ -162,7 +162,7 @@ const determineEntitiesInString = (
  * Cedar policies
  */
 
-type EntityTypes = {
+export type EntityTypes = {
   principals: string[];
   resources: string[];
   actions: string[];

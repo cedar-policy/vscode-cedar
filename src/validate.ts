@@ -24,6 +24,7 @@ import {
   isCombinedSchemaDoc,
 } from './fileutil';
 import {
+  EntityTypes,
   parseCedarPoliciesDoc,
   parseCedarSchemaDoc,
   parseCedarTestsDoc,
@@ -177,18 +178,7 @@ export const fetchEntityTypes = (
         if (match) {
           head = match[0];
         }
-        const principalTypes = determineEntityTypes(
-          schemaDoc,
-          'principal',
-          head,
-        );
-        const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
-        const actionIds = determineEntityTypes(schemaDoc, 'action', head);
-        policy.entityTypes = {
-          principals: principalTypes,
-          resources: resourceTypes,
-          actions: actionIds,
-        };
+        policy.entityTypes = determineEntityTypes(schemaDoc, head);
 
         return policy.entityTypes;
       } else {
@@ -447,14 +437,13 @@ export const validateSchemaDoc = (
 
     if (success) {
       // determine applicable principal and resource types
-      const principalTypes = determineEntityTypes(schemaDoc, 'principal');
-      const resourceTypes = determineEntityTypes(schemaDoc, 'resource');
-      const actionIds = determineEntityTypes(schemaDoc, 'action');
+      const { principals, resources, actions } =
+        determineEntityTypes(schemaDoc);
       validationCache.storeEntityTypes(
         schemaDoc,
-        principalTypes,
-        resourceTypes,
-        actionIds,
+        principals,
+        resources,
+        actions,
       );
 
       // revalidate any Cedar files using this schema
@@ -596,51 +585,30 @@ export const validateSchemaFileDoc = async (
   );
 };
 
-// TODO: find a real API to call for determineEntityTypes
-// parsing errors from intentionally invalid policy is an ugly hack
-const UNEXPECTED_REGEX =
-  /unexpected type: expected Bool but saw (?<suggestion>.+)/;
-const ATTRIBUTE_REGEX =
-  /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
+/**
+ * The principal types, action ids, and resource types a policy applies to,
+ * according to the schema.  Only the policy head (scope) is considered, since
+ * the body may be incomplete while editing, and a body which doesn't
+ * typecheck excludes every request environment.
+ */
 export const determineEntityTypes = (
   schemaDoc: vscode.TextDocument,
-  scope: 'principal' | 'resource' | 'action',
   head: string = 'permit (principal, action, resource)',
-): string[] => {
-  const types: string[] = [];
-  const expr = scope === 'action' ? 'context.__vscode__' : scope;
-  const tmpPolicy = `${head} when { ${expr} };`;
-  let policyResult: cedar.ValidatePolicyResult;
-  if (schemaDoc.languageId === 'cedarschema') {
-    policyResult = cedar.validatePolicySchemaCedar(
-      schemaDoc.getText(),
-      tmpPolicy,
-    );
-  } else {
-    policyResult = cedar.validatePolicySchemaJSON(
-      schemaDoc.getText(),
-      tmpPolicy,
-    );
-  }
+): EntityTypes => {
+  const tmpPolicy = `${head} when { true };`;
+  const result =
+    schemaDoc.languageId === 'cedarschema'
+      ? cedar.getRequestEnvsSchemaCedar(schemaDoc.getText(), tmpPolicy)
+      : cedar.getRequestEnvsSchemaJSON(schemaDoc.getText(), tmpPolicy);
   try {
-    if (policyResult.success === false && policyResult.errors) {
-      policyResult.errors.forEach((e) => {
-        let found =
-          scope === 'action'
-            ? e.message.match(ATTRIBUTE_REGEX)
-            : e.message.match(UNEXPECTED_REGEX);
-
-        if (found?.groups && found?.groups.suggestion) {
-          if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
-            types.push(found.groups.suggestion);
-          }
-        }
-      });
-    }
+    return {
+      principals: result.principals,
+      resources: result.resources,
+      actions: result.actions,
+    };
   } finally {
-    policyResult.free();
+    result.free();
   }
-  return types.sort();
 };
 
 /*

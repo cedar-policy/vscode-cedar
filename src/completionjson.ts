@@ -242,8 +242,7 @@ export const testBodySnippet = (
   actionId: string,
 ): string => {
   const head = `permit (principal, action == ${cedarActionId(actionId)}, resource)`;
-  const principals = determineEntityTypes(schemaDoc, 'principal', head);
-  const resources = determineEntityTypes(schemaDoc, 'resource', head);
+  const { principals, resources } = determineEntityTypes(schemaDoc, head);
 
   // context attributes are declared per action in the Cedar schema
   let tabstop = 6;
