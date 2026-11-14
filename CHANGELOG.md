@@ -10,6 +10,7 @@
 - Color word operators, methods, and extension functions in Cedar JSON policy conditions
 - Narrow `principal`, `action`, and `resource` hover and completion using the Cedar SDK request environments for each policy (`get_valid_request_envs`), instead of parsing validation errors
 - Show the principal types, actions, and resource types each Cedar policy applies to as a CodeLens, going to their schema declarations (`cedar.policyScope.display`)
+- Hover over an entity type or action in a Cedar file, or a Cedar entities, template links, auth, tests, or JSON policy file, to see its schema definition (or a policy id to see its policy: a template links `template_id`, a Cedar tests `reason`, or a JSON policy set `templateId`), without holding the go to definition modifier key
 - **Behavior change:** a folder with more than one Cedar schema file now combines them, where it previously fell back to the workspace folder or `cedar.schemaFile`.  To keep using separate schemas, set `cedar.autodetectSchemaFile` to `false` and `cedar.schemaFile` to the schema to use.  An array `cedar.schemaFile` is not understood by earlier versions of the extension (such as through Settings Sync)
 
 ## v0.12.0 (Preview) 2026-10-30

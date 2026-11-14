@@ -15,10 +15,23 @@ import {
   isCombinedSchemaDoc,
 } from '../../fileutil';
 import {
+  CedarAuthDefinitionProvider,
+  cedarAuthReferences,
   CedarDefinitionProvider,
+  CedarEntitiesDefinitionProvider,
+  cedarEntitiesReferences,
   CedarSchemaDefinitionProvider,
+  CedarTemplateLinksDefinitionProvider,
+  cedarTemplateLinksReferences,
+  CedarTestsDefinitionProvider,
+  cedarTestsReferences,
+  SchemaReferences,
 } from '../../definition';
-import { CedarSchemaHoverProvider } from '../../hover';
+import {
+  CedarDefinitionHoverProvider,
+  CedarHoverProvider,
+  CedarSchemaHoverProvider,
+} from '../../hover';
 import { parseCedarPoliciesDoc, parseCedarSchemaDoc } from '../../parser';
 import { evaluateTest, gatherTestRun } from '../../testing';
 import {
@@ -191,6 +204,80 @@ suite('Cedar Schema Set Suite', () => {
     // identity.cedarschema defines User, which documents.cedarschema and
     // sharing.cedarschema.json declare external
     assert.ok(location?.uri.fsPath.endsWith('identity.cedarschema'));
+    // an empty range, so the modifier key hover doesn't repeat the hover
+    assert.ok(location.range.isEmpty);
+
+    const hover = await new CedarHoverProvider().provideHover(
+      cedarDoc,
+      referencedType.range.start,
+      mockToken,
+    );
+    const md = hover?.contents[0] as vscode.MarkdownString;
+    assert.ok(md?.value.includes('entity User in [Team]'));
+    assert.ok(md?.value.includes('Defined in [identity.cedarschema]'));
+  });
+
+  test('JSON files hover with and go to the schema definition', async () => {
+    const cases: [
+      string,
+      string,
+      vscode.DefinitionProvider,
+      SchemaReferences,
+      string,
+    ][] = [
+      [
+        'schemaset-external',
+        'cedarentities.json',
+        new CedarEntitiesDefinitionProvider(),
+        cedarEntitiesReferences,
+        'DocApp::User',
+      ],
+      [
+        'schemaset-external',
+        'cedartests.json',
+        new CedarTestsDefinitionProvider(),
+        cedarTestsReferences,
+        'DocApp::User',
+      ],
+      [
+        'photoapp',
+        'cedarauth.json',
+        new CedarAuthDefinitionProvider(),
+        cedarAuthReferences,
+        'PhotoApp::User',
+      ],
+      [
+        'photoapp',
+        'cedartemplatelinks.json',
+        new CedarTemplateLinksDefinitionProvider(),
+        cedarTemplateLinksReferences,
+        'PhotoApp::User',
+      ],
+    ];
+    for (const [dirname, filename, provider, references, name] of cases) {
+      const doc = await openTestData(dirname, filename);
+      const referencedType = references(doc).find((t) => t.name === name);
+      assert.ok(referencedType, filename);
+      const position = referencedType.range.start;
+
+      const definition = await provider.provideDefinition(
+        doc,
+        position,
+        mockToken,
+      );
+      const location = definition as vscode.Location;
+      assert.ok(location?.uri.fsPath.endsWith('.cedarschema'), filename);
+      // an empty range, so the modifier key hover doesn't repeat the hover
+      assert.ok(location.range.isEmpty, filename);
+
+      const hover = await new CedarDefinitionHoverProvider(
+        references,
+      ).provideHover(doc, position, mockToken);
+      const md = hover?.contents[0] as vscode.MarkdownString;
+      assert.ok(md?.value.includes('entity User'), filename);
+      assert.ok(md?.value.includes('Defined in ['), filename);
+      assert.ok(hover?.range?.isEqual(referencedType.range), filename);
+    }
   });
 
   test('external declaration hovers and goes to its definition', async () => {
@@ -216,6 +303,7 @@ suite('Cedar Schema Set Suite', () => {
         location?.uri.fsPath.endsWith('identity.cedarschema'),
         filename,
       );
+      assert.ok(location.range.isEmpty, filename);
 
       const hover = await new CedarSchemaHoverProvider().provideHover(
         schemaDoc,

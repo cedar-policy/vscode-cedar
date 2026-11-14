@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
+import * as jsonc from 'jsonc-parser';
 import {
   parseCedarEntitiesDoc,
   parseCedarPoliciesDoc,
@@ -73,16 +74,21 @@ export const findDefinition = (
   return definedOnly ? undefined : externalDefinition;
 };
 
-const findDefinitionLocation = (
-  schemaDocs: vscode.TextDocument[],
-  name: string,
-  definedOnly: boolean = false,
-): vscode.Location | null => {
-  const definition = findDefinition(schemaDocs, name, definedOnly);
-  return definition
-    ? new vscode.Location(definition.doc.uri, definition.schemaRange.range)
-    : null;
-};
+/**
+ * The location of a definition. When a hover already shows the definition,
+ * the location is the (empty) start of its name, so holding the modifier key
+ * over the reference doesn't show the same definition again as a preview.
+ */
+const definitionLocation = (
+  definition: SchemaDefinition,
+  hoverShown: boolean = false,
+): vscode.Location =>
+  hoverShown
+    ? new vscode.Location(
+        definition.doc.uri,
+        definition.schemaRange.etypeRange.start,
+      )
+    : new vscode.Location(definition.doc.uri, definition.schemaRange.range);
 
 /**
  * The entity type, common type, or action at a position in a schema file,
@@ -143,21 +149,69 @@ export const findSchemaNameAtPosition = async (
   return Promise.resolve({ ...found, docs });
 };
 
-const findSchemaDefinition = async (
-  schemaDocs: vscode.TextDocument | vscode.TextDocument[],
+/**
+ * The entity types and actions referenced by each kind of Cedar file, which
+ * go to (and hover with) their schema definitions.
+ */
+export type SchemaReferences = (doc: vscode.TextDocument) => ReferencedRange[];
+
+export const cedarReferences: SchemaReferences = (doc) => {
+  const item = parseCedarPoliciesDoc(doc);
+  return [...item.referencedTypes, ...item.actionIds];
+};
+export const cedarEntitiesReferences: SchemaReferences = (doc) =>
+  parseCedarEntitiesDoc(doc).referencedTypes;
+export const cedarTemplateLinksReferences: SchemaReferences = (doc) =>
+  parseCedarTemplateLinksDoc(doc).referencedTypes;
+export const cedarAuthReferences: SchemaReferences = (doc) => {
+  const item = parseCedarAuthDoc(doc);
+  return [...item.referencedTypes, ...item.actionIds];
+};
+export const cedarTestsReferences: SchemaReferences = (doc) => {
+  const item = parseCedarTestsDoc(doc);
+  return [...item.referencedTypes, ...item.actionIds];
+};
+export const cedarJsonReferences: SchemaReferences = (doc) => {
+  const item = parseCedarJsonPolicyDoc(doc);
+  return [...item.referencedTypes, ...item.actionIds];
+};
+
+/**
+ * The entity type or action referenced at a position in a Cedar file, along
+ * with its definition in the schema files.
+ */
+export const findReferencedDefinition = async (
+  doc: vscode.TextDocument,
   position: vscode.Position,
-  referencedTypes: ReferencedRange[],
-  actionIds: ReferencedRange[] = [],
-): Promise<vscode.Definition | null | undefined> => {
-  const docs = Array.isArray(schemaDocs)
-    ? schemaDocs
-    : await schemaDefinitionDocs(schemaDocs);
-  for (let referencedType of [...referencedTypes, ...actionIds]) {
-    if (referencedType.range.contains(position)) {
-      // already matched position, so return even without a definition
-      return Promise.resolve(findDefinitionLocation(docs, referencedType.name));
-    }
+  references: SchemaReferences,
+): Promise<
+  | { referenced: ReferencedRange; definition: SchemaDefinition | undefined }
+  | undefined
+> => {
+  const referenced = references(doc).find((r) => r.range.contains(position));
+  if (!referenced) {
+    return undefined;
   }
+  const schemaDoc = await getSchemaTextDocument(doc);
+  if (!schemaDoc) {
+    return { referenced, definition: undefined };
+  }
+  const docs = await schemaDefinitionDocs(schemaDoc);
+  return { referenced, definition: findDefinition(docs, referenced.name) };
+};
+
+// already matched position, so return null even without a definition
+const findSchemaDefinition = async (
+  doc: vscode.TextDocument,
+  position: vscode.Position,
+  references: SchemaReferences,
+): Promise<vscode.Definition | null | undefined> => {
+  const found = await findReferencedDefinition(doc, position, references);
+  if (!found) {
+    return undefined;
+  }
+  // CedarDefinitionHoverProvider shows the definition
+  return found.definition ? definitionLocation(found.definition, true) : null;
 };
 
 export class CedarEntitiesDefinitionProvider
@@ -168,16 +222,147 @@ export class CedarEntitiesDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(cedarEntitiesDoc);
-    if (schemaDoc) {
-      const referencedTypes =
-        parseCedarEntitiesDoc(cedarEntitiesDoc).referencedTypes;
-      return findSchemaDefinition(schemaDoc, position, referencedTypes);
-    }
-
-    return null;
+    return findSchemaDefinition(
+      cedarEntitiesDoc,
+      position,
+      cedarEntitiesReferences,
+    );
   }
 }
+
+/**
+ * A Cedar policy (or template, or template link) declaring a policy id, which
+ * may be Cedar or JSON.
+ */
+export type PolicyDefinition = {
+  doc: vscode.TextDocument;
+  range: vscode.Range;
+};
+
+/**
+ * Find the policy id referenced at a position, along with the policy which
+ * declares it.
+ */
+export type PolicyFinder = (
+  doc: vscode.TextDocument,
+  position: vscode.Position,
+) => Promise<
+  | { referenced: ReferencedRange; definition: PolicyDefinition | undefined }
+  | undefined
+>;
+
+// the Cedar policy with an @id (or a template with that id)
+const findCedarPolicy = (
+  policyDocs: vscode.TextDocument[],
+  id: string,
+): PolicyDefinition | undefined => {
+  for (let policyDoc of policyDocs) {
+    for (let policyRange of parseCedarPoliciesDoc(policyDoc).policies) {
+      if (policyRange.id === id) {
+        return { doc: policyDoc, range: policyRange.range };
+      }
+    }
+  }
+  return undefined;
+};
+
+/**
+ * A template_id in a Cedar template links file goes to the Cedar policy
+ * template with that id.
+ */
+export const findTemplateLinksPolicy: PolicyFinder = async (doc, position) => {
+  const referenced = parseCedarTemplateLinksDoc(doc).templateIds.find(
+    (templateId) => templateId.range.contains(position),
+  );
+  if (!referenced) {
+    return undefined;
+  }
+  const { policyDocs } = await getCedarTestFiles(doc);
+  return {
+    referenced,
+    definition: findCedarPolicy(policyDocs, referenced.name),
+  };
+};
+
+/**
+ * A policy id from a Cedar tests "reason" goes to the policy which declares it
+ * (an @id annotated policy, or a template link_id).
+ */
+export const findTestsPolicy: PolicyFinder = async (doc, position) => {
+  const referenced = parseCedarTestsDoc(doc).policyIds.find((policyId) =>
+    policyId.range.contains(position),
+  );
+  if (!referenced) {
+    return undefined;
+  }
+  const { policyDocs, templateLinksDoc } = await getCedarTestFiles(doc);
+  let definition = findCedarPolicy(policyDocs, referenced.name);
+  if (!definition && templateLinksDoc) {
+    const link = parseCedarTemplateLinksDoc(templateLinksDoc).links.find(
+      (link) => link.id === referenced.name,
+    );
+    if (link) {
+      definition = { doc: templateLinksDoc, range: link.range };
+    }
+  }
+  return { referenced, definition };
+};
+
+/**
+ * A template link's templateId in a Cedar JSON policy set goes to the template
+ * in the same policy set.
+ */
+export const findJsonPolicy: PolicyFinder = async (doc, position) => {
+  const policyItem = parseCedarJsonPolicyDoc(doc);
+  const referenced = policyItem.templateIds.find((templateId) =>
+    templateId.range.contains(position),
+  );
+  if (!referenced) {
+    return undefined;
+  }
+  if (!policyItem.policyIds.some((id) => id.name === referenced.name)) {
+    return { referenced, definition: undefined };
+  }
+  // the "id": { ... } property of "templates" (or "staticPolicies")
+  const tree = jsonc.parseTree(doc.getText());
+  const node = tree
+    ? (jsonc.findNodeAtLocation(tree, ['templates', referenced.name]) ??
+      jsonc.findNodeAtLocation(tree, ['staticPolicies', referenced.name]))
+    : undefined;
+  const property = node?.parent;
+  if (!property) {
+    return { referenced, definition: undefined };
+  }
+  // from the start of the line, so the hover keeps relative indentation
+  const range = new vscode.Range(
+    doc.positionAt(property.offset).with({ character: 0 }),
+    doc.positionAt(property.offset + property.length),
+  );
+  return { referenced, definition: { doc, range } };
+};
+
+/**
+ * Go to the policy declaring a policy id. The location is the (empty) start
+ * of the policy, since CedarPolicyHoverProvider shows the policy, so holding
+ * the modifier key over the policy id doesn't show it again as a preview.
+ */
+const findPolicyDefinition = async (
+  doc: vscode.TextDocument,
+  position: vscode.Position,
+  findPolicy: PolicyFinder,
+): Promise<vscode.Definition | null | undefined> => {
+  const found = await findPolicy(doc, position);
+  if (!found) {
+    return undefined;
+  }
+  // already matched position, so return null even without a definition
+  return found.definition
+    ? new vscode.Location(
+        found.definition.doc.uri,
+        found.definition.range.start,
+      )
+    : null;
+};
 
 export class CedarTemplateLinksDefinitionProvider
   implements vscode.DefinitionProvider
@@ -187,35 +372,20 @@ export class CedarTemplateLinksDefinitionProvider
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const templateLinksItem = parseCedarTemplateLinksDoc(cedarTemplateLinksDoc);
-
-    // a template_id goes to the Cedar policy template with that id
-    for (let templateId of templateLinksItem.templateIds) {
-      if (templateId.range.contains(position)) {
-        const { policyDocs } = await getCedarTestFiles(cedarTemplateLinksDoc);
-        for (let policyDoc of policyDocs) {
-          for (let policyRange of parseCedarPoliciesDoc(policyDoc).policies) {
-            if (policyRange.id === templateId.name) {
-              return Promise.resolve(
-                new vscode.Location(policyDoc.uri, policyRange.range),
-              );
-            }
-          }
-        }
-        return null;
-      }
+    const policyDefinition = await findPolicyDefinition(
+      cedarTemplateLinksDoc,
+      position,
+      findTemplateLinksPolicy,
+    );
+    if (policyDefinition !== undefined) {
+      return policyDefinition;
     }
 
-    const schemaDoc = await getSchemaTextDocument(cedarTemplateLinksDoc);
-    if (schemaDoc) {
-      return findSchemaDefinition(
-        schemaDoc,
-        position,
-        templateLinksItem.referencedTypes,
-      );
-    }
-
-    return null;
+    return findSchemaDefinition(
+      cedarTemplateLinksDoc,
+      position,
+      cedarTemplateLinksReferences,
+    );
   }
 }
 
@@ -225,60 +395,9 @@ export class CedarAuthDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(cedarAuthDoc);
-    if (schemaDoc) {
-      const authItem = parseCedarAuthDoc(cedarAuthDoc);
-      const referencedTypes = authItem.referencedTypes;
-      const actionIds = authItem.actionIds;
-      return findSchemaDefinition(
-        schemaDoc,
-        position,
-        referencedTypes,
-        actionIds,
-      );
-    }
-
-    return null;
+    return findSchemaDefinition(cedarAuthDoc, position, cedarAuthReferences);
   }
 }
-
-// resolve a policy id from a Cedar tests "reason" to the policy which declares
-// it (an @id annotated policy, or a template link_id)
-const findPolicyDefinition = async (
-  cedarTestsDoc: vscode.TextDocument,
-  position: vscode.Position,
-  policyIds: ReferencedRange[],
-): Promise<vscode.Definition | null | undefined> => {
-  for (let policyId of policyIds) {
-    if (policyId.range.contains(position)) {
-      const { policyDocs, templateLinksDoc } =
-        await getCedarTestFiles(cedarTestsDoc);
-
-      for (let policyDoc of policyDocs) {
-        for (let policyRange of parseCedarPoliciesDoc(policyDoc).policies) {
-          if (policyRange.id === policyId.name) {
-            return Promise.resolve(
-              new vscode.Location(policyDoc.uri, policyRange.range),
-            );
-          }
-        }
-      }
-
-      if (templateLinksDoc) {
-        for (let link of parseCedarTemplateLinksDoc(templateLinksDoc).links) {
-          if (link.id === policyId.name) {
-            return Promise.resolve(
-              new vscode.Location(templateLinksDoc.uri, link.range),
-            );
-          }
-        }
-      }
-
-      // already matched position but didn't find definition, so return
-      return null;
-    }
-  }
-};
 
 export class CedarTestsDefinitionProvider implements vscode.DefinitionProvider {
   async provideDefinition(
@@ -286,28 +405,16 @@ export class CedarTestsDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const testsItem = parseCedarTestsDoc(cedarTestsDoc);
-
     const policyDefinition = await findPolicyDefinition(
       cedarTestsDoc,
       position,
-      testsItem.policyIds,
+      findTestsPolicy,
     );
     if (policyDefinition !== undefined) {
       return policyDefinition;
     }
 
-    const schemaDoc = await getSchemaTextDocument(cedarTestsDoc);
-    if (schemaDoc) {
-      return findSchemaDefinition(
-        schemaDoc,
-        position,
-        testsItem.referencedTypes,
-        testsItem.actionIds,
-      );
-    }
-
-    return null;
+    return findSchemaDefinition(cedarTestsDoc, position, cedarTestsReferences);
   }
 }
 
@@ -317,33 +424,16 @@ export class CedarJsonDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const policyItem = parseCedarJsonPolicyDoc(cedarJsonDoc);
-
-    // a template link's templateId goes to the template in the same policy set
-    for (let templateId of policyItem.templateIds) {
-      if (templateId.range.contains(position)) {
-        const policyId = policyItem.policyIds.find(
-          (id) => id.name === templateId.name,
-        );
-        return policyId
-          ? new vscode.Location(cedarJsonDoc.uri, policyId.range)
-          : null;
-      }
+    const policyDefinition = await findPolicyDefinition(
+      cedarJsonDoc,
+      position,
+      findJsonPolicy,
+    );
+    if (policyDefinition !== undefined) {
+      return policyDefinition;
     }
 
-    const schemaDoc = await getSchemaTextDocument(cedarJsonDoc);
-    if (schemaDoc) {
-      const referencedTypes = policyItem.referencedTypes;
-      const actionIds = policyItem.actionIds;
-      return findSchemaDefinition(
-        schemaDoc,
-        position,
-        referencedTypes,
-        actionIds,
-      );
-    }
-
-    return null;
+    return findSchemaDefinition(cedarJsonDoc, position, cedarJsonReferences);
   }
 }
 
@@ -361,7 +451,15 @@ export class CedarSchemaDefinitionProvider
     }
 
     // an `external` declaration goes to the schema file defining it
-    return findDefinitionLocation(found.docs, found.name, found.external);
+    const definition = findDefinition(found.docs, found.name, found.external);
+    if (!definition) {
+      return null;
+    }
+    // CedarSchemaHoverProvider shows a definition in another schema file
+    return definitionLocation(
+      definition,
+      !definition.schemaRange.external && definition.doc !== schemaDoc,
+    );
   }
 }
 
@@ -371,19 +469,6 @@ export class CedarDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Definition | null | undefined> {
-    const schemaDoc = await getSchemaTextDocument(cedarDoc);
-    if (schemaDoc) {
-      const policyItem = parseCedarPoliciesDoc(cedarDoc);
-      const referencedTypes = policyItem.referencedTypes;
-      const actionIds = policyItem.actionIds;
-      return findSchemaDefinition(
-        schemaDoc,
-        position,
-        referencedTypes,
-        actionIds,
-      );
-    }
-
-    return null;
+    return findSchemaDefinition(cedarDoc, position, cedarReferences);
   }
 }

@@ -10,9 +10,13 @@ import { PROPERTY_CHAIN_REGEX } from './regex';
 import { parseCedarSchemaDoc, traversePropertyChain } from './parser';
 import { splitPropertyChain } from './completion';
 import {
+  cedarReferences,
   findDefinition,
+  findReferencedDefinition,
   findSchemaNameAtPosition,
+  PolicyFinder,
   SchemaDefinition,
+  SchemaReferences,
 } from './definition';
 
 const getPrevNextCharacters = (
@@ -103,11 +107,31 @@ const createPropertyHover = async (
   return undefined;
 };
 
+/**
+ * Hover over an entity type or action in a Cedar policy file, showing its
+ * definition and the schema file it is in, otherwise hover help for variables,
+ * functions, and properties.
+ */
 export class CedarHoverProvider implements vscode.HoverProvider {
-  provideHover(
+  async provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
     token: vscode.CancellationToken,
+  ): Promise<vscode.Hover | null | undefined> {
+    const found = await findReferencedDefinition(
+      document,
+      position,
+      cedarReferences,
+    );
+    if (found?.definition) {
+      return definitionHover(found.definition, found.referenced.range);
+    }
+    return this.provideHelpHover(document, position);
+  }
+
+  private provideHelpHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
   ): vscode.ProviderResult<vscode.Hover> {
     let range = document.getWordRangeAtPosition(position);
     if (range) {
@@ -235,11 +259,12 @@ export class CedarEntitiesJSONHoverProvider implements vscode.HoverProvider {
 }
 
 // the declaration text, without the indentation it shares with its first line
-const declarationText = (definition: SchemaDefinition): string => {
+const declarationText = (
+  doc: vscode.TextDocument,
+  range: vscode.Range,
+): string => {
   const MAX_LINES = 20;
-  const lines = definition.doc
-    .getText(definition.schemaRange.range)
-    .split(/\r?\n/);
+  const lines = doc.getText(range).trimEnd().split(/\r?\n/);
   const indent = Math.min(
     ...lines
       .filter((line) => line.trim().length > 0)
@@ -251,6 +276,92 @@ const declarationText = (definition: SchemaDefinition): string => {
     .join('\n');
   return lines.length > MAX_LINES ? `${text}\n…` : text;
 };
+
+// the declaration and a link to the file it is in
+const declarationHover = (
+  doc: vscode.TextDocument,
+  declarationRange: vscode.Range,
+  language: string,
+  range: vscode.Range,
+): vscode.Hover => {
+  const md = new vscode.MarkdownString();
+  md.appendCodeblock(declarationText(doc, declarationRange), language);
+  const uri = doc.uri.with({
+    fragment: `L${declarationRange.start.line + 1}`,
+  });
+  md.appendMarkdown(`Defined in [${path.basename(doc.uri.fsPath)}](${uri})`);
+  return { contents: [md], range: range };
+};
+
+// the schema declaration and a link to the schema file it is in
+const definitionHover = (
+  definition: SchemaDefinition,
+  range: vscode.Range,
+): vscode.Hover =>
+  declarationHover(
+    definition.doc,
+    definition.schemaRange.range,
+    definition.doc.languageId === 'cedarschema' ? 'cedarschema' : 'json',
+    range,
+  );
+
+/**
+ * Hover over an entity type or action in a Cedar JSON file (entities, template
+ * links, auth, tests, or JSON policies), showing its schema definition and the
+ * schema file it is in.
+ */
+export class CedarDefinitionHoverProvider implements vscode.HoverProvider {
+  constructor(private readonly references: SchemaReferences) {}
+
+  async provideHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.Hover | undefined> {
+    const found = await findReferencedDefinition(
+      document,
+      position,
+      this.references,
+    );
+    return found?.definition
+      ? definitionHover(found.definition, found.referenced.range)
+      : undefined;
+  }
+}
+
+/**
+ * Hover over a policy id which links to a policy (a template links
+ * template_id, a tests "reason", or a JSON policy set templateId), showing the
+ * policy and the file it is in, otherwise the schema definition of an entity
+ * type or action.
+ */
+export class CedarPolicyHoverProvider extends CedarDefinitionHoverProvider {
+  constructor(
+    private readonly findPolicy: PolicyFinder,
+    references: SchemaReferences,
+  ) {
+    super(references);
+  }
+
+  async provideHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.Hover | undefined> {
+    const found = await this.findPolicy(document, position);
+    if (found) {
+      return found.definition
+        ? declarationHover(
+            found.definition.doc,
+            found.definition.range,
+            found.definition.doc.languageId === 'cedar' ? 'cedar' : 'json',
+            found.referenced.range,
+          )
+        : undefined;
+    }
+    return super.provideHover(document, position, token);
+  }
+}
 
 /**
  * Hover over an entity type, common type, or action in a schema file which is
@@ -269,27 +380,17 @@ export class CedarSchemaHoverProvider implements vscode.HoverProvider {
     }
 
     const definition = findDefinition(found.docs, found.name, true);
-    const md = new vscode.MarkdownString();
     if (definition && definition.doc !== schemaDoc) {
-      md.appendCodeblock(
-        declarationText(definition),
-        definition.doc.languageId === 'cedarschema' ? 'cedarschema' : 'json',
-      );
-      const uri = definition.doc.uri.with({
-        fragment: `L${definition.schemaRange.range.start.line + 1}`,
-      });
-      md.appendMarkdown(
-        `Defined in [${path.basename(definition.doc.uri.fsPath)}](${uri})`,
-      );
+      return definitionHover(definition, found.range);
     } else if (!definition && found.external) {
+      const md = new vscode.MarkdownString();
       md.appendMarkdown(
         `\`${found.name}\` is declared \`external\` but not defined by any linked schema`,
       );
-    } else {
-      // defined in this schema file
-      return undefined;
+      return { contents: [md], range: found.range };
     }
 
-    return { contents: [md], range: found.range };
+    // defined in this schema file
+    return undefined;
   }
 }

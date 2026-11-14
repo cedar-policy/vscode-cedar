@@ -14,9 +14,14 @@ import {
   semanticTokensLegend,
 } from '../../parser';
 import * as cedar from 'vscode-cedar-wasm';
+import { CedarPolicyHoverProvider } from '../../hover';
 import {
   CedarJsonDefinitionProvider,
+  cedarJsonReferences,
   CedarTemplateLinksDefinitionProvider,
+  cedarTemplateLinksReferences,
+  findJsonPolicy,
+  findTemplateLinksPolicy,
 } from '../../definition';
 
 /*
@@ -99,10 +104,23 @@ suite('Cedar JSON Semantic Tokens Suite', () => {
       );
     const location = definition as vscode.Location;
     assert.ok(location?.uri.fsPath.endsWith('policies.cedar'));
+    // an empty range, so the modifier key hover doesn't repeat the hover
+    assert.ok(location.range.isEmpty);
     const policyDoc = await vscode.workspace.openTextDocument(location.uri);
     assert.ok(
-      policyDoc.getText(location.range).includes('@id("viewPhoto-template")'),
+      policyDoc
+        .lineAt(location.range.start.line)
+        .text.includes('@id("viewPhoto-template")'),
     );
+
+    const hover = await new CedarPolicyHoverProvider(
+      findTemplateLinksPolicy,
+      cedarTemplateLinksReferences,
+    ).provideHover(doc, templateId.range.start, mockToken);
+    const md = hover?.contents[0] as vscode.MarkdownString;
+    assert.ok(md?.value.includes('@id("viewPhoto-template")'));
+    assert.ok(md?.value.includes('Defined in [policies.cedar]'));
+    assert.ok(hover?.range?.isEqual(templateId.range));
   });
 
   test('tests request variables', async () => {
@@ -283,7 +301,20 @@ suite('Cedar JSON Semantic Tokens Suite', () => {
         mockToken,
       );
     const location = definition as vscode.Location;
-    assert.equal(doc.getText(location.range), 't0');
+    // an empty range, so the modifier key hover doesn't repeat the hover
+    assert.ok(location.range.isEmpty);
+    assert.ok(
+      doc.lineAt(location.range.start.line).text.trim().startsWith('"t0": {'),
+    );
     assert.ok(location.range.start.line < item.templateIds[0].range.start.line);
+
+    const hover = await new CedarPolicyHoverProvider(
+      findJsonPolicy,
+      cedarJsonReferences,
+    ).provideHover(doc, item.templateIds[0].range.start, mockToken);
+    const md = hover?.contents[0] as vscode.MarkdownString;
+    assert.ok(md?.value.includes('```json\n"t0": {\n  "effect"'), md?.value);
+    assert.ok(md?.value.includes('"?principal"'));
+    assert.ok(hover?.range?.isEqual(item.templateIds[0].range));
   });
 });

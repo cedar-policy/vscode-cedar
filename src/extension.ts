@@ -69,6 +69,14 @@ import {
   CedarTemplateLinksDefinitionProvider,
   CedarTestsDefinitionProvider,
   CedarJsonDefinitionProvider,
+  cedarAuthReferences,
+  cedarTemplateLinksReferences,
+  findJsonPolicy,
+  findTemplateLinksPolicy,
+  findTestsPolicy,
+  cedarEntitiesReferences,
+  cedarJsonReferences,
+  cedarTestsReferences,
 } from './definition';
 import {
   semanticTokensLegend,
@@ -88,6 +96,8 @@ import {
 } from './completion';
 import {
   CedarHoverProvider,
+  CedarDefinitionHoverProvider,
+  CedarPolicyHoverProvider,
   CedarEntitiesJSONHoverProvider,
   CedarSchemaHoverProvider,
 } from './hover';
@@ -849,6 +859,12 @@ export async function activate(context: vscode.ExtensionContext) {
         new CedarEntitiesDefinitionProvider(),
       ),
     );
+    push(
+      vscode.languages.registerHoverProvider(
+        entitiesSelector,
+        new CedarDefinitionHoverProvider(cedarEntitiesReferences),
+      ),
+    );
 
     push(
       vscode.languages.registerCodeLensProvider(
@@ -903,6 +919,15 @@ export async function activate(context: vscode.ExtensionContext) {
         new CedarTemplateLinksDefinitionProvider(),
       ),
     );
+    push(
+      vscode.languages.registerHoverProvider(
+        templateLinksSelector,
+        new CedarPolicyHoverProvider(
+          findTemplateLinksPolicy,
+          cedarTemplateLinksReferences,
+        ),
+      ),
+    );
 
     /*
      * Cedar tests (JSON) file providers
@@ -932,6 +957,12 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.languages.registerDefinitionProvider(
         testsSelector,
         new CedarTestsDefinitionProvider(),
+      ),
+    );
+    push(
+      vscode.languages.registerHoverProvider(
+        testsSelector,
+        new CedarPolicyHoverProvider(findTestsPolicy, cedarTestsReferences),
       ),
     );
 
@@ -980,6 +1011,12 @@ export async function activate(context: vscode.ExtensionContext) {
         new CedarAuthDefinitionProvider(),
       ),
     );
+    push(
+      vscode.languages.registerHoverProvider(
+        authSelector,
+        new CedarDefinitionHoverProvider(cedarAuthReferences),
+      ),
+    );
 
     /*
      * Cedar (JSON) file providers
@@ -1001,6 +1038,12 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.languages.registerDefinitionProvider(
         cedarJsonSelector,
         new CedarJsonDefinitionProvider(),
+      ),
+    );
+    push(
+      vscode.languages.registerHoverProvider(
+        cedarJsonSelector,
+        new CedarPolicyHoverProvider(findJsonPolicy, cedarJsonReferences),
       ),
     );
   };
