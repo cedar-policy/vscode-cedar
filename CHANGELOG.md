@@ -1,3 +1,11 @@
+## v0.14.0 (Preview) 2026-11-16
+
+- Update to Cedar SDK 4.15.0
+- Cedar schema sets: every Cedar schema file in a folder is combined into one schema, linking `external` entity types and actions (see [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html)) or merging schema files without them
+- `cedar.schemaFile` also accepts an array of schema file paths or glob patterns
+- Update functionally for syntax highlighting, hover, and go to definition
+- Show the principal types, actions, and resource types each Cedar policy applies to as a CodeLens, going to their schema declarations (`cedar.policyScope.display`)
+
 ## v0.12.0 (Preview) 2026-10-30
 
 - Cedar tests validation, navigation, and IntelliSense

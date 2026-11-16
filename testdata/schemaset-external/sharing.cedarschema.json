@@ -1,0 +1,23 @@
+{
+  "DocApp": {
+    "entityTypes": {
+      "User": { "external": true },
+      "Team": { "external": true },
+      "Document": { "external": true }
+    },
+    "actions": {
+      "share": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Document"],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "recipient": { "type": "Entity", "name": "Team" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+// users and teams, merged with documents.cedarschema since every schema file
+// in a folder is combined into one schema
+namespace DocApp {
+  type Name = {
+    "first": String,
+    "last": String,
+  };
+
+  entity Team;
+  entity User in [Team] {
+    "email": String,
+    "name": Name,
+  };
+}

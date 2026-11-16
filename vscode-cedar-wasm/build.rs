@@ -1,5 +1,5 @@
 use std::fs;
-use toml::Value;
+use toml::Table;
 
 fn main() {
     println!("cargo:rerun-if-changed=Cargo.lock");
@@ -8,7 +8,7 @@ fn main() {
     let contents = fs::read_to_string("Cargo.lock").expect("Should be able to read Cargo.lock");
 
     // Parse the TOML content
-    let value: Value = contents
+    let value: Table = contents
         .parse()
         .expect("Should be able to parse Cargo.lock as TOML");
 

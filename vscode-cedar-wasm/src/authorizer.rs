@@ -83,7 +83,7 @@ fn apply_id_annotations(policy_set: &PolicySet) -> Result<PolicySet, String> {
 
     for template in policy_set.templates() {
         let template = match template.annotation("id") {
-            Some(id) => template.new_id(PolicyId::from_str(id).map_err(|e| e.to_string())?),
+            Some(id) => template.new_id(PolicyId::new(id)),
             None => template.clone(),
         };
         renamed.add_template(template).map_err(|e| e.to_string())?;
@@ -91,7 +91,7 @@ fn apply_id_annotations(policy_set: &PolicySet) -> Result<PolicySet, String> {
 
     for policy in policy_set.policies() {
         let policy = match policy.annotation("id") {
-            Some(id) => policy.new_id(PolicyId::from_str(id).map_err(|e| e.to_string())?),
+            Some(id) => policy.new_id(PolicyId::new(id)),
             None => policy.clone(),
         };
         renamed.add(policy).map_err(|e| e.to_string())?;
@@ -123,8 +123,8 @@ fn link_templates(policy_set: &mut PolicySet, template_links_str: &str) -> Resul
         }
         policy_set
             .link(
-                PolicyId::from_str(&link.template_id).map_err(|e| e.to_string())?,
-                PolicyId::from_str(&link.link_id).map_err(|e| e.to_string())?,
+                PolicyId::new(&link.template_id),
+                PolicyId::new(&link.link_id),
                 vals,
             )
             .map_err(|e| format!("unable to link `{}`: {e}", link.link_id))?;

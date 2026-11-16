@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
-use crate::validate_message::{convert_messages_to_js_array, ValidateMessage};
+use crate::validate_message::{ValidateMessage, convert_messages_to_js_array};
 
 // use https://github.com/cloudflare/serde-wasm-bindgen ?
 
@@ -106,9 +106,12 @@ mod test {
 
     #[test]
     fn validate_syntax_passes_multi_policy() {
-        assert_result_is_ok(validate_syntax(
-            "forbid(principal, action, resource); permit(principal == User::\"alice\", action == Action::\"view\", resource in Albums::\"alice_albums\");"
-        ), 2);
+        assert_result_is_ok(
+            validate_syntax(
+                "forbid(principal, action, resource); permit(principal == User::\"alice\", action == Action::\"view\", resource in Albums::\"alice_albums\");",
+            ),
+            2,
+        );
     }
 
     #[test]

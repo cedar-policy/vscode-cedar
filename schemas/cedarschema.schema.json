@@ -50,6 +50,11 @@
                 "type": "string"
               }
             },
+            "external": {
+              "type": "boolean",
+              "description": "Declares the entity type without defining it. A linked schema defines it.",
+              "markdownDescription": "Declares the entity type without defining it. A linked schema defines it.\n\nSee [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html)."
+            },
             "annotations": { "$ref": "#/$defs/annotationsDef" }
           },
           "additionalProperties": false,
@@ -126,6 +131,11 @@
                 },
                 "required": ["id"]
               }
+            },
+            "external": {
+              "type": "boolean",
+              "description": "Declares the action without defining it. A linked schema defines it.",
+              "markdownDescription": "Declares the action without defining it. A linked schema defines it.\n\nSee [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html)."
             }
           }
         },

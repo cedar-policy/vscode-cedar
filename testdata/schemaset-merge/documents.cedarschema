@@ -1,0 +1,17 @@
+// refers to User and Name from identity.cedarschema without declaring them,
+// so these schema files are merged as fragments of one schema
+namespace DocApp {
+  entity Folder {
+    "owner": User,
+  };
+  entity Document in [Folder] {
+    "author": Name,
+    "owner": User,
+    "title": String,
+  };
+
+  action view, edit appliesTo {
+    principal: [User],
+    resource: [Document],
+  };
+}

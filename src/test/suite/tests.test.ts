@@ -16,7 +16,12 @@ import {
 } from '../../fileutil';
 import { CedarTest, parseTestsDocText, validateTestsDoc } from '../../validate';
 import { CedarTestsDocumentSymbolProvider } from '../../documentsymbols';
-import { CedarTestsDefinitionProvider } from '../../definition';
+import {
+  cedarTestsReferences,
+  CedarTestsDefinitionProvider,
+  findTestsPolicy,
+} from '../../definition';
+import { CedarPolicyHoverProvider } from '../../hover';
 import {
   addTestsJSON,
   CedarTestsJSONCompletionItemProvider,
@@ -177,6 +182,17 @@ suite('Cedar Tests Suite', () => {
       );
     const location = definition as vscode.Location;
     assert.ok(location?.uri.fsPath.endsWith('policies.cedar'));
+    // an empty range, so the modifier key hover doesn't repeat the hover
+    assert.ok(location.range.isEmpty);
+
+    const hover = await new CedarPolicyHoverProvider(
+      findTestsPolicy,
+      cedarTestsReferences,
+    ).provideHover(testsDoc, staticPolicy.range.start, mockToken);
+    const md = hover?.contents[0] as vscode.MarkdownString;
+    assert.ok(md?.value.includes('@id("Photo-owner")'), md?.value);
+    assert.ok(md?.value.includes('Defined in [policies.cedar]'));
+    assert.ok(hover?.range?.isEqual(staticPolicy.range));
   });
 
   test('definition of template link id in reason', async () => {
@@ -194,6 +210,20 @@ suite('Cedar Tests Suite', () => {
       );
     const location = definition as vscode.Location;
     assert.ok(location?.uri.fsPath.endsWith('cedartemplatelinks.json'));
+    // an empty range, so the modifier key hover doesn't repeat the hover
+    assert.ok(location.range.isEmpty);
+
+    const hover = await new CedarPolicyHoverProvider(
+      findTestsPolicy,
+      cedarTestsReferences,
+    ).provideHover(testsDoc, link.range.start, mockToken);
+    const md = hover?.contents[0] as vscode.MarkdownString;
+    assert.ok(
+      md?.value.includes('"link_id": "DoeFamily-DoePhotos"'),
+      md?.value,
+    );
+    assert.ok(md?.value.includes('Defined in [cedartemplatelinks.json]'));
+    assert.ok(hover?.range?.isEqual(link.range));
   });
 
   test('definition of entity type in request', async () => {

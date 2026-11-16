@@ -12,7 +12,7 @@
     "url": "https://github.com/cedar-policy/vscode-cedar/issues"
   },
   "qna": "https://github.com/cedar-policy/vscode-cedar/issues",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "preview": true,
   "icon": "icons/cedar-policy.png",
   "engines": {
@@ -42,6 +42,30 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "semanticTokenScopes": [
+      {
+        "language": "json",
+        "scopes": {
+          "variable.defaultLibrary": [
+            "variable.language.cedar"
+          ],
+          "parameter": [
+            "variable.parameter.cedar"
+          ]
+        }
+      },
+      {
+        "language": "jsonc",
+        "scopes": {
+          "variable.defaultLibrary": [
+            "variable.language.cedar"
+          ],
+          "parameter": [
+            "variable.parameter.cedar"
+          ]
+        }
+      }
+    ],
     "languages": [
       {
         "id": "cedar",
@@ -371,14 +395,20 @@
       "title": "Cedar",
       "properties": {
         "cedar.schemaFile": {
-          "type": "string",
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
           "default": null,
-          "description": "Location of Cedar schema file used for policy validation."
+          "markdownDescription": "Location of the Cedar schema file used for policy validation, relative to the first workspace folder.  An array lists schema file paths or glob patterns which are combined into one schema (see [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html))."
         },
         "cedar.autodetectSchemaFile": {
           "type": "boolean",
           "default": true,
-          "description": "Auto detect Cedar schema file used for policy validation."
+          "description": "Auto detect the Cedar schema files used for policy validation. Every schema file in the folder of a document (else in the workspace folder) is combined into one schema."
         },
         "cedar.levelValidation.maxLevel": {
           "type": [
@@ -405,6 +435,20 @@
           "default": "inlayHint",
           "scope": "resource",
           "markdownDescription": "How to show the entity dereference level each Cedar policy validates at, when validated using a Cedar schema.  Inlay hints also depend on `#editor.inlayHints.enabled#`."
+        },
+        "cedar.policyScope.display": {
+          "type": "string",
+          "enum": [
+            "codeLens",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Show the number of principal types, actions, and resource types as a CodeLens above each policy, each going to their schema declarations",
+            "Don't show the policy scope"
+          ],
+          "default": "codeLens",
+          "scope": "resource",
+          "markdownDescription": "How to show the principal types, actions, and resource types each Cedar policy applies to, considering both its scope and conditions, when validated using a Cedar schema."
         },
         "cedar.fileAssociations": {
           "type": "object",
@@ -465,15 +509,15 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "=18.15.0",
     "@types/vscode": "=1.83.0",
-    "@typescript-eslint/eslint-plugin": "^8.72.0",
-    "@typescript-eslint/parser": "^8.72.0",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
+    "@typescript-eslint/parser": "^8.73.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
-    "@vscode/vsce": "^3.9.2",
+    "@vscode/vsce": "^4.1.1",
     "eslint": "^9.39.5",
     "js-yaml": "^4.3.2",
     "mocha": "^11.8.0",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "typescript": "^5.9.3",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
@@ -481,7 +525,7 @@
   "allowScripts": {
     "fsevents@2.3.3": true,
     "keytar@7.9.0": true,
-    "@vscode/vsce-sign@2.1.0": true
+    "@vscode/vsce-sign@2.1.1": true
   },
   "overrides": {
     "diff": ">=8.0.3",

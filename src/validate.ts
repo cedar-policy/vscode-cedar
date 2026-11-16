@@ -14,12 +14,23 @@ import {
   reportFormatterOff,
 } from './diagnostics';
 import {
+  CedarSchemaSet,
+  getSchemaMemberUris,
+  getSchemaSetForSchemaDoc,
   getSchemaTextDocument,
   detectEntitiesDoc,
   detectSchemaDoc,
   detectTestsDoc,
+  isCombinedSchemaDoc,
 } from './fileutil';
-import { parseCedarPoliciesDoc, parseCedarTestsDoc, TestRange } from './parser';
+import {
+  EntityTypes,
+  parseCedarPoliciesDoc,
+  PolicyRange,
+  parseCedarSchemaDoc,
+  parseCedarTestsDoc,
+  TestRange,
+} from './parser';
 
 type ValidationCacheItem = {
   version: number;
@@ -123,26 +134,31 @@ class ValidationCache {
     this.entityTypes = {};
   }
 
+  // a combined schema is associated through each of its schema files, since
+  // editing any of them changes the combined schema
   associateSchemaWithDoc(
     schemaDoc: vscode.TextDocument,
     doc: vscode.TextDocument,
   ) {
-    const s = this.docsBySchema[schemaDoc.uri.toString()] || new Set();
-    s.add(doc.uri.toString());
-    this.docsBySchema[schemaDoc.uri.toString()] = s;
+    getSchemaMemberUris(schemaDoc).forEach((schemaUri) => {
+      const s = this.docsBySchema[schemaUri] || new Set();
+      s.add(doc.uri.toString());
+      this.docsBySchema[schemaUri] = s;
+    });
   }
 
   revalidateSchema(
     schemaDoc: vscode.TextDocument,
     diagnosticCollection: vscode.DiagnosticCollection,
   ) {
-    const docs = this.docsBySchema[schemaDoc.uri.toString()];
-    if (docs) {
-      docs.forEach((docUri) => {
-        delete this.cache[docUri];
-        void revalidateDoc(docUri, diagnosticCollection);
-      });
-    }
+    const docUris = new Set<string>();
+    getSchemaMemberUris(schemaDoc).forEach((schemaUri) => {
+      this.docsBySchema[schemaUri]?.forEach((docUri) => docUris.add(docUri));
+    });
+    docUris.forEach((docUri) => {
+      delete this.cache[docUri];
+      void revalidateDoc(docUri, diagnosticCollection);
+    });
   }
 }
 const HEAD_REGEX = /(?:(permit|forbid)\s*\((.|\n)*?\))(?<!\s*(;|when|unless))/;
@@ -163,18 +179,7 @@ export const fetchEntityTypes = (
         if (match) {
           head = match[0];
         }
-        const principalTypes = determineEntityTypes(
-          schemaDoc,
-          'principal',
-          head,
-        );
-        const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
-        const actionIds = determineEntityTypes(schemaDoc, 'action', head);
-        policy.entityTypes = {
-          principals: principalTypes,
-          resources: resourceTypes,
-          actions: actionIds,
-        };
+        policy.entityTypes = determineEntityTypes(schemaDoc, head);
 
         return policy.entityTypes;
       } else {
@@ -189,6 +194,8 @@ const validationCache = new ValidationCache();
 export const clearValidationCache = () => {
   validationCache.clear();
   policyLevelsCache = {};
+  policyScopesCache = {};
+  clearSchemaHandles();
 };
 
 /*
@@ -208,6 +215,93 @@ type PolicyLevelsCacheItem = {
 let policyLevelsCache: Record<string, PolicyLevelsCacheItem> = {};
 const policyLevelsEmitter = new vscode.EventEmitter<void>();
 export const onDidChangePolicyLevels = policyLevelsEmitter.event;
+
+/*
+ * The principal types, actions, and resource types each Cedar policy applies
+ * to, considering the whole policy (scope and conditions), which is only known
+ * after the document validates against a Cedar schema
+ */
+export type PolicyScope = {
+  range: vscode.Range;
+  effectRange: vscode.Range;
+  entityTypes: EntityTypes;
+};
+type PolicyScopesCacheItem = {
+  version: number;
+  scopes: PolicyScope[];
+};
+let policyScopesCache: Record<string, PolicyScopesCacheItem> = {};
+const policyScopesEmitter = new vscode.EventEmitter<void>();
+export const onDidChangePolicyScopes = policyScopesEmitter.event;
+
+export const getPolicyScopes = (
+  cedarDoc: vscode.TextDocument,
+): PolicyScope[] => {
+  const cachedItem = policyScopesCache[cedarDoc.uri.toString()];
+  return cachedItem && cachedItem.version === cedarDoc.version
+    ? cachedItem.scopes
+    : [];
+};
+
+export type PolicyScopeDisplay = 'codeLens' | 'none';
+export const getPolicyScopeDisplay = (
+  doc: vscode.TextDocument | undefined = undefined,
+): PolicyScopeDisplay =>
+  vscode.workspace
+    .getConfiguration('cedar', doc?.uri)
+    .get<PolicyScopeDisplay>('policyScope.display', 'codeLens');
+
+/*
+ * A parsed schema per schema document, so determining the entity types of
+ * policies doesn't parse the schema each time.  Keyed by the schema text, as a
+ * combined schema's virtual document may change without a new version.
+ */
+type SchemaHandleCacheItem = {
+  text: string;
+  handle: cedar.SchemaHandle | undefined;
+};
+let schemaHandleCache: Record<string, SchemaHandleCacheItem> = {};
+
+export const getSchemaHandle = (
+  schemaDoc: vscode.TextDocument,
+): cedar.SchemaHandle | undefined => {
+  const key = schemaDoc.uri.toString();
+  const text = schemaDoc.getText();
+  const cachedItem = schemaHandleCache[key];
+  if (cachedItem && cachedItem.text === text) {
+    return cachedItem.handle;
+  }
+  cachedItem?.handle?.free();
+  const handle =
+    schemaDoc.languageId === 'cedarschema'
+      ? cedar.SchemaHandle.fromCedar(text)
+      : cedar.SchemaHandle.fromJSON(text);
+  schemaHandleCache[key] = { text, handle };
+  return handle;
+};
+
+const clearSchemaHandles = () => {
+  Object.values(schemaHandleCache).forEach((item) => item.handle?.free());
+  schemaHandleCache = {};
+};
+
+const NO_ENTITY_TYPES: EntityTypes = {
+  principals: [],
+  resources: [],
+  actions: [],
+};
+
+const toEntityTypes = (result: cedar.RequestEnvsResult): EntityTypes => {
+  try {
+    return {
+      principals: result.principals,
+      resources: result.resources,
+      actions: result.actions,
+    };
+  } finally {
+    result.free();
+  }
+};
 
 export const getPolicyLevels = (
   cedarDoc: vscode.TextDocument,
@@ -272,7 +366,7 @@ export const validateTextDocument = async (
   if (doc.languageId === 'cedar') {
     await validateCedarDoc(doc, diagnosticCollection);
   } else if (detectSchemaDoc(doc)) {
-    validateSchemaDoc(doc, diagnosticCollection);
+    await validateSchemaFileDoc(doc, diagnosticCollection);
   } else if (detectEntitiesDoc(doc)) {
     await validateEntitiesDoc(doc, diagnosticCollection);
   } else if (detectTestsDoc(doc)) {
@@ -295,6 +389,7 @@ export const validateCedarDoc = async (
 
   const diagnostics: vscode.Diagnostic[] = [];
   const levels: PolicyLevel[] = [];
+  const scopes: PolicyScope[] = [];
   reportFormatterOff(cedarDoc, diagnostics);
   const syntaxResult: cedar.ValidateSyntaxResult = cedar.validateSyntax(
     cedarDoc.getText(),
@@ -309,10 +404,19 @@ export const validateCedarDoc = async (
         if (validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated)) {
           validationCache.associateSchemaWithDoc(schemaDoc, cedarDoc);
           const maxLevel = getMaxLevel(cedarDoc);
+          const showScopes = getPolicyScopeDisplay(cedarDoc) !== 'none';
+          const validPolicies: { policyRange: PolicyRange; text: string }[] =
+            [];
+
+          // the schema is parsed once for every policy
+          const schemaHandle = getSchemaHandle(schemaDoc);
 
           parseCedarPoliciesDoc(cedarDoc, (policyRange, policyText) => {
             let policyResult: cedar.ValidatePolicyResult;
-            if (schemaDoc.languageId === 'cedarschema') {
+            if (schemaHandle) {
+              policyResult = schemaHandle.validatePolicy(policyText, maxLevel);
+            } else if (schemaDoc.languageId === 'cedarschema') {
+              // a schema which doesn't parse reports its error on each policy
               policyResult = cedar.validatePolicySchemaCedar(
                 schemaDoc.getText(),
                 policyText,
@@ -332,6 +436,9 @@ export const validateCedarDoc = async (
                   effectRange: policyRange.effectRange,
                   level: policyResult.level,
                 });
+                if (showScopes) {
+                  validPolicies.push({ policyRange, text: policyText });
+                }
               }
               if (policyResult.levelWarnings) {
                 addPolicyResultMessages(
@@ -367,6 +474,22 @@ export const validateCedarDoc = async (
               policyResult.free();
             }
           });
+
+          // a policy which validates typechecks in at least one request
+          // environment, so its conditions can narrow the entity types
+          if (validPolicies.length > 0) {
+            const entityTypes = determinePoliciesEntityTypes(
+              schemaDoc,
+              validPolicies.map((p) => p.text),
+            );
+            validPolicies.forEach(({ policyRange }, i) => {
+              scopes.push({
+                range: policyRange.range,
+                effectRange: policyRange.effectRange,
+                entityTypes: entityTypes[i],
+              });
+            });
+          }
         }
       }
     }
@@ -378,6 +501,11 @@ export const validateCedarDoc = async (
       levels: levels,
     };
     policyLevelsEmitter.fire();
+    policyScopesCache[cedarDoc.uri.toString()] = {
+      version: cedarDoc.version,
+      scopes: scopes,
+    };
+    policyScopesEmitter.fire();
 
     return Promise.resolve(success);
   } finally {
@@ -408,7 +536,9 @@ export const validateSchemaDoc = (
   }
   try {
     const success = schemaResult.success;
-    if (schemaResult.success === false && schemaResult.errors) {
+    if (isCombinedSchemaDoc(schemaDoc)) {
+      // problems are reported on the schema files by validateSchemaSet
+    } else if (schemaResult.success === false && schemaResult.errors) {
       let schemaDiagnostics: vscode.Diagnostic[] = [];
       let vse = schemaResult.errors.map((e) => {
         return { message: e.message, offset: e.offset, length: e.length };
@@ -427,16 +557,17 @@ export const validateSchemaDoc = (
         });
         diagnosticCollection.set(schemaDoc.uri, schemaDiagnostics);
       }
+    }
 
+    if (success) {
       // determine applicable principal and resource types
-      const principalTypes = determineEntityTypes(schemaDoc, 'principal');
-      const resourceTypes = determineEntityTypes(schemaDoc, 'resource');
-      const actionIds = determineEntityTypes(schemaDoc, 'action');
+      const { principals, resources, actions } =
+        determineEntityTypes(schemaDoc);
       validationCache.storeEntityTypes(
         schemaDoc,
-        principalTypes,
-        resourceTypes,
-        actionIds,
+        principals,
+        resources,
+        actions,
       );
 
       // revalidate any Cedar files using this schema
@@ -451,51 +582,161 @@ export const validateSchemaDoc = (
   }
 };
 
-// TODO: find a real API to call for determineEntityTypes
-// parsing errors from intentionally invalid policy is an ugly hack
-const UNEXPECTED_REGEX =
-  /unexpected type: expected Bool but saw (?<suggestion>.+)/;
-const ATTRIBUTE_REGEX =
-  /attribute `__vscode__` in context for (?<suggestion>.+) not found/;
+// the declaration of an entity type or action in a schema file
+const findDeclarationRange = (
+  schemaDoc: vscode.TextDocument,
+  name: string,
+  external: boolean | undefined = undefined,
+): vscode.Range | undefined =>
+  parseCedarSchemaDoc(schemaDoc).definitionRanges.find(
+    (definition) =>
+      definition.etype === name &&
+      (external === undefined || !!definition.external === external),
+  )?.etypeRange;
+
+/**
+ * Validate the schema files of a schema set together, reporting problems
+ * combining them on the schema file each problem is located in.
+ */
+export const validateSchemaSet = (
+  set: CedarSchemaSet,
+  diagnosticCollection: vscode.DiagnosticCollection,
+  userInitiated: boolean = false,
+): boolean => {
+  const link = set.link;
+  if (!link) {
+    return set.doc
+      ? validateSchemaDoc(set.doc, diagnosticCollection, userInitiated)
+      : false;
+  }
+
+  const diagnosticsByDoc: vscode.Diagnostic[][] = set.docs.map(() => []);
+  const located = (index: number) =>
+    index >= 0 && index < set.docs.length ? [index] : set.docs.keys();
+  link.errors.forEach((e) => {
+    for (const i of located(e.index)) {
+      const schemaDoc = set.docs[i];
+      if (e.index < 0) {
+        // not located, so try the declaration the message names
+        const name = e.message.match(/`([^`]+)`/)?.[1];
+        const range = name ? findDeclarationRange(schemaDoc, name) : undefined;
+        if (
+          name &&
+          !range &&
+          set.docs.some((d) => findDeclarationRange(d, name))
+        ) {
+          continue;
+        }
+        addValidationDiagnosticError(
+          diagnosticsByDoc[i],
+          e.message,
+          range || DEFAULT_RANGE,
+        );
+      } else {
+        addSyntaxDiagnosticErrors(diagnosticsByDoc[i], [e], schemaDoc);
+      }
+    }
+  });
+  link.warnings.forEach((w) => {
+    for (const i of located(w.index)) {
+      const schemaDoc = set.docs[i];
+      addValidationDiagnosticWarning(
+        diagnosticsByDoc[i],
+        w.message,
+        determineRangeFromOffset(schemaDoc, w.offset, w.length),
+      );
+    }
+  });
+
+  // an external declaration which no schema file in the set defines
+  [...link.externalEntityTypes, ...link.externalActions].forEach((name) => {
+    set.docs.forEach((schemaDoc, i) => {
+      const range = findDeclarationRange(schemaDoc, name, true);
+      if (range) {
+        const diagnostic = new vscode.Diagnostic(
+          range,
+          `\`${name}\` is declared \`external\` but not defined by any linked schema, so policies can't be validated`,
+          vscode.DiagnosticSeverity.Information,
+        );
+        diagnostic.source = 'cedar';
+        diagnosticsByDoc[i].push(diagnostic);
+      }
+    });
+  });
+
+  set.docs.forEach((schemaDoc, i) => {
+    diagnosticCollection.set(schemaDoc.uri, diagnosticsByDoc[i]);
+    validationCache.store(schemaDoc, link.success);
+  });
+
+  if (set.doc) {
+    // determines the applicable principal and resource types, and revalidates
+    // any documents using the combined schema
+    validateSchemaDoc(set.doc, diagnosticCollection, userInitiated);
+  }
+  set.docs.forEach((schemaDoc) =>
+    validationCache.revalidateSchema(schemaDoc, diagnosticCollection),
+  );
+
+  return link.success;
+};
+
+/**
+ * Validate a Cedar schema file, as part of the schema set it belongs to, else
+ * on its own.
+ */
+export const validateSchemaFileDoc = async (
+  schemaDoc: vscode.TextDocument,
+  diagnosticCollection: vscode.DiagnosticCollection,
+  userInitiated: boolean = false,
+): Promise<boolean> => {
+  if (!userInitiated) {
+    const cachedItem = validationCache.check(schemaDoc);
+    if (cachedItem) {
+      return Promise.resolve(cachedItem.valid);
+    }
+  }
+
+  const set = await getSchemaSetForSchemaDoc(schemaDoc);
+  if (set) {
+    return Promise.resolve(
+      validateSchemaSet(set, diagnosticCollection, userInitiated),
+    );
+  }
+
+  return Promise.resolve(
+    validateSchemaDoc(schemaDoc, diagnosticCollection, userInitiated),
+  );
+};
+
+/**
+ * The principal types, action ids, and resource types a policy applies to,
+ * according to the schema.  Only the policy head (scope) is considered, since
+ * the body may be incomplete while editing, and a body which doesn't
+ * typecheck excludes every request environment.
+ */
 export const determineEntityTypes = (
   schemaDoc: vscode.TextDocument,
-  scope: 'principal' | 'resource' | 'action',
   head: string = 'permit (principal, action, resource)',
-): string[] => {
-  const types: string[] = [];
-  const expr = scope === 'action' ? 'context.__vscode__' : scope;
-  const tmpPolicy = `${head} when { ${expr} };`;
-  let policyResult: cedar.ValidatePolicyResult;
-  if (schemaDoc.languageId === 'cedarschema') {
-    policyResult = cedar.validatePolicySchemaCedar(
-      schemaDoc.getText(),
-      tmpPolicy,
-    );
-  } else {
-    policyResult = cedar.validatePolicySchemaJSON(
-      schemaDoc.getText(),
-      tmpPolicy,
-    );
-  }
-  try {
-    if (policyResult.success === false && policyResult.errors) {
-      policyResult.errors.forEach((e) => {
-        let found =
-          scope === 'action'
-            ? e.message.match(ATTRIBUTE_REGEX)
-            : e.message.match(UNEXPECTED_REGEX);
+): EntityTypes => {
+  const handle = getSchemaHandle(schemaDoc);
+  return handle
+    ? toEntityTypes(handle.requestEnvs(`${head} when { true };`))
+    : NO_ENTITY_TYPES;
+};
 
-        if (found?.groups && found?.groups.suggestion) {
-          if (!found.groups.suggestion.startsWith('__cedar::internal::')) {
-            types.push(found.groups.suggestion);
-          }
-        }
-      });
-    }
-  } finally {
-    policyResult.free();
-  }
-  return types.sort();
+/**
+ * The entity types of each whole policy (scope and conditions), in the same
+ * order, determined in one call
+ */
+export const determinePoliciesEntityTypes = (
+  schemaDoc: vscode.TextDocument,
+  policyTexts: string[],
+): EntityTypes[] => {
+  const handle = getSchemaHandle(schemaDoc);
+  return handle
+    ? handle.requestEnvsBatch(policyTexts).map(toEntityTypes)
+    : policyTexts.map(() => NO_ENTITY_TYPES);
 };
 
 /*

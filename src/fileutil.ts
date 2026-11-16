@@ -3,6 +3,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
+import * as cedar from 'vscode-cedar-wasm';
 
 const CEDAR_EXTENSION = `.cedar`;
 
@@ -271,57 +273,452 @@ export const handleWillDeleteFiles = async (
   );
 };
 
-export const getSchemaUri = async (
-  doc: vscode.TextDocument | undefined = undefined,
-): Promise<vscode.Uri | undefined> => {
-  let fileUri = undefined;
-  const config = vscode.workspace.getConfiguration('cedar');
-  const schemaFile = config.get<string>('schemaFile', '');
-  if (
-    schemaFile &&
-    vscode.workspace.workspaceFolders &&
-    vscode.workspace.workspaceFolders.length > 0
-  ) {
-    fileUri = vscode.Uri.joinPath(
-      vscode.workspace.workspaceFolders[0].uri,
-      schemaFile,
-    );
+/*
+ * Cedar schema sets
+ *
+ * Every Cedar schema file found alongside a document (or in the workspace
+ * folder, or listed by `cedar.schemaFile`) is combined into one schema.  When
+ * any of them declares an `external` entity type or action they are linked,
+ * otherwise they are merged as fragments of one schema.  The combined schema
+ * is a read-only JSON document, so features expecting one schema document work
+ * the same for a single schema file or a set of them.
+ */
+
+export const CEDAR_SCHEMA_SCHEME = 'cedar-schema';
+const COMBINED_SCHEMA_FILE = 'combined.cedarschema.json';
+
+export type CedarSchemaSet = {
+  // the schema files, sorted by path
+  docs: vscode.TextDocument[];
+  // listed by the cedar.schemaFile setting, rather than autodetected
+  configured: boolean;
+  // the result of combining more than one schema file
+  link?: {
+    success: boolean;
+    mode: 'merge' | 'link';
+    complete: boolean;
+    externalEntityTypes: string[];
+    externalActions: string[];
+    errors: cedar.LinkSchemaMessage[];
+    warnings: cedar.LinkSchemaMessage[];
+  };
+  // the schema used for validation, which is the only schema file or the
+  // combined schema, or undefined when the schema files could not be combined
+  doc: vscode.TextDocument | undefined;
+};
+
+// the content of each combined schema document, and the schema files in it
+const combinedSchemas: Record<string, { text: string; uris: string[] }> = {};
+
+// forget the previous combined schemas of the same schema files, unless shown
+const pruneCombinedSchemas = (latest: vscode.Uri, uris: string[]) => {
+  const key = uris.join('\n');
+  const shown = new Set(
+    vscode.window.visibleTextEditors.map((editor) =>
+      editor.document.uri.toString(),
+    ),
+  );
+  Object.entries(combinedSchemas).forEach(([uri, combined]) => {
+    if (
+      uri !== latest.toString() &&
+      combined.uris.join('\n') === key &&
+      !shown.has(uri)
+    ) {
+      delete combinedSchemas[uri];
+    }
+  });
+};
+
+export const combinedSchemaContentProvider: vscode.TextDocumentContentProvider =
+  {
+    provideTextDocumentContent(uri: vscode.Uri): string {
+      return combinedSchemas[uri.toString()]?.text || '';
+    },
+  };
+
+export const isCombinedSchemaDoc = (doc: vscode.TextDocument): boolean =>
+  doc.uri.scheme === CEDAR_SCHEMA_SCHEME;
+
+/**
+ * The URIs of the schema files in a schema, which is just the schema itself
+ * unless it is a combined schema.
+ */
+export const getSchemaMemberUris = (schemaDoc: vscode.TextDocument): string[] =>
+  combinedSchemas[schemaDoc.uri.toString()]?.uris || [schemaDoc.uri.toString()];
+
+const GLOB_CHARS = /[*?{}[\]]/;
+
+// remove a translated foo.cedarschema.json when foo.cedarschema is present
+const withoutTranslatedSchemas = (uris: vscode.Uri[]): vscode.Uri[] => {
+  const paths = new Set(uris.map((uri) => uri.path));
+  return uris.filter(
+    (uri) =>
+      !(
+        uri.path.endsWith(`${CEDAR_SCHEMA_EXTENSION}.json`) &&
+        paths.has(uri.path.substring(0, uri.path.length - 5))
+      ),
+  );
+};
+
+const sortUris = (uris: vscode.Uri[]): vscode.Uri[] =>
+  uris.sort((a, b) => a.path.localeCompare(b.path));
+
+/**
+ * The `cedar.schemaFile` setting, relative to the first workspace folder.  A
+ * string is a single schema file path, exactly as before schema sets.  An
+ * array lists schema file paths or glob patterns, all combined into one set.
+ */
+const getConfiguredSchemaUris = async (): Promise<vscode.Uri[]> => {
+  const schemaFile = vscode.workspace
+    .getConfiguration('cedar')
+    .get<string | string[]>('schemaFile', '');
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!schemaFile || !folder) {
+    return Promise.resolve([]);
   }
 
-  const autodetect = config.get<boolean>('autodetectSchemaFile', true);
-  if (doc && autodetect) {
-    const cedarDocPath = path.dirname(doc.uri.fsPath);
-    const files = await findSchemaFilesInFolder(cedarDocPath, doc);
-    if (files.length === 1) {
-      fileUri = vscode.Uri.file(path.join(cedarDocPath, files[0]));
+  if (typeof schemaFile === 'string') {
+    return Promise.resolve([vscode.Uri.joinPath(folder.uri, schemaFile)]);
+  }
+
+  const uris: vscode.Uri[] = [];
+  for (const entry of schemaFile) {
+    if (typeof entry !== 'string' || entry.length === 0) {
+      continue;
+    }
+    if (GLOB_CHARS.test(entry)) {
+      const found = await vscode.workspace.findFiles(
+        new vscode.RelativePattern(folder, entry),
+      );
+      uris.push(...found);
     } else {
-      const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
-      if (workspace?.uri) {
-        const files = await findSchemaFilesInFolder(workspace.uri.fsPath, doc);
-        if (files.length === 1) {
-          fileUri = vscode.Uri.file(path.join(workspace.uri.fsPath, files[0]));
-        }
+      uris.push(vscode.Uri.joinPath(folder.uri, entry));
+    }
+  }
+  const unique = new Map(uris.map((uri) => [uri.toString(), uri]));
+
+  return Promise.resolve(
+    sortUris(withoutTranslatedSchemas(Array.from(unique.values()))),
+  );
+};
+
+const schemaUrisInFolder = async (
+  folder: string,
+  doc: vscode.TextDocument | undefined,
+): Promise<vscode.Uri[]> =>
+  sortUris(
+    (await findSchemaFilesInFolder(folder, doc)).map((filename) =>
+      vscode.Uri.file(path.join(folder, filename)),
+    ),
+  );
+
+/**
+ * The schema files a document validates with: those alongside the document,
+ * else those in its workspace folder, else the `cedar.schemaFile` setting.
+ */
+const getSchemaUris = async (
+  doc: vscode.TextDocument | undefined = undefined,
+): Promise<{ uris: vscode.Uri[]; configured: boolean }> => {
+  const autodetect = vscode.workspace
+    .getConfiguration('cedar')
+    .get<boolean>('autodetectSchemaFile', true);
+  if (doc && autodetect && doc.uri.scheme === 'file') {
+    const folders = [path.dirname(doc.uri.fsPath)];
+    const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
+    if (workspace?.uri) {
+      folders.push(workspace.uri.fsPath);
+    }
+    for (const folder of folders) {
+      const uris = await schemaUrisInFolder(folder, doc);
+      if (uris.length > 0) {
+        return Promise.resolve({ uris, configured: false });
       }
     }
   }
 
-  return Promise.resolve(fileUri);
+  return Promise.resolve({
+    uris: await getConfiguredSchemaUris(),
+    configured: true,
+  });
+};
+
+const hashText = (text: string): string =>
+  createHash('sha1').update(text).digest('hex').substring(0, 16);
+
+const combineSchemaDocs = async (
+  docs: vscode.TextDocument[],
+  configured: boolean,
+  combinedDoc: boolean = true,
+): Promise<CedarSchemaSet> => {
+  const result = cedar.linkSchemas(
+    docs.map((doc) => doc.getText()),
+    docs.map((doc) => (doc.languageId === 'cedarschema' ? 'cedar' : 'json')),
+  );
+  try {
+    const set: CedarSchemaSet = {
+      docs: docs,
+      configured: configured,
+      link: {
+        success: result.success,
+        mode: result.mode,
+        complete: result.complete,
+        externalEntityTypes: result.externalEntityTypes,
+        externalActions: result.externalActions,
+        errors: result.errors,
+        warnings: result.warnings,
+      },
+      doc: undefined,
+    };
+
+    if (combinedDoc && result.success && result.schema) {
+      // the content is part of the URI, so a cached parse of a combined
+      // schema document is never stale
+      const folder = configured
+        ? vscode.workspace.workspaceFolders?.[0]?.uri.path ||
+          path.posix.dirname(docs[0].uri.path)
+        : path.posix.dirname(docs[0].uri.path);
+      // multiple lines for readability, like a translated schema
+      const text = formatJsonText(result.schema);
+      const uri = vscode.Uri.from({
+        scheme: CEDAR_SCHEMA_SCHEME,
+        path: path.posix.join(folder, COMBINED_SCHEMA_FILE),
+        query: hashText(text),
+      });
+      const uris = docs.map((doc) => doc.uri.toString());
+      combinedSchemas[uri.toString()] = { text: text, uris: uris };
+      pruneCombinedSchemas(uri, uris);
+      set.doc = await vscode.workspace.openTextDocument(uri);
+    }
+
+    return Promise.resolve(set);
+  } finally {
+    result.free();
+  }
+};
+
+type SchemaSetCacheItem = { key: string; set: CedarSchemaSet };
+let schemaSetCache: Record<string, SchemaSetCacheItem> = {};
+export const clearSchemaSetCache = () => {
+  schemaSetCache = {};
+};
+
+const openSchemaSet = async (
+  uris: vscode.Uri[],
+  configured: boolean,
+): Promise<CedarSchemaSet | undefined> => {
+  const docs: vscode.TextDocument[] = [];
+  for (const uri of uris) {
+    try {
+      docs.push(await vscode.workspace.openTextDocument(uri));
+    } catch {
+      vscode.window.showErrorMessage(`Missing cedar.schemaFile: ${uri}`);
+    }
+  }
+  if (docs.length === 0) {
+    return Promise.resolve(undefined);
+  }
+  // a single schema file is used as is, unless it is a partial schema with
+  // `external` declarations, which are reported by the schema set
+  const single = docs.length === 1;
+  if (single && !/\bexternal\b/.test(docs[0].getText())) {
+    return Promise.resolve({ docs, configured, doc: docs[0] });
+  }
+
+  // combine again only when a schema file has changed
+  const key = docs.map((doc) => `${doc.uri}#${doc.version}`).join('\n');
+  const cachedItem = schemaSetCache[key];
+  if (cachedItem) {
+    return Promise.resolve(cachedItem.set);
+  }
+  const set = single
+    ? { ...(await combineSchemaDocs(docs, configured, false)), doc: docs[0] }
+    : await combineSchemaDocs(docs, configured);
+  schemaSetCache[key] = { key, set };
+
+  return Promise.resolve(set);
+};
+
+/**
+ * The Cedar schema set a document (a Cedar policy, entities, tests, ...)
+ * validates with, or undefined when there is no Cedar schema.
+ */
+export const getSchemaSet = async (
+  doc: vscode.TextDocument | undefined = undefined,
+): Promise<CedarSchemaSet | undefined> => {
+  const { uris, configured } = await getSchemaUris(doc);
+
+  return openSchemaSet(uris, configured);
+};
+
+// any file which validates with a schema found in the same folder
+const SCHEMA_CONSUMER_KINDS: CedarKind[] = [
+  'cedarentities',
+  'avpentities',
+  'cedartemplatelinks',
+  'cedarauth',
+  'cedartests',
+];
+
+/**
+ * The Cedar schema set a schema file belongs to, when its schema files are
+ * combined.  A folder of unrelated schema files (with no `external`
+ * declarations and nothing alongside them to validate) is not a set, so each
+ * of those schema files is still validated on its own.
+ */
+export const getSchemaSetForSchemaDoc = async (
+  schemaDoc: vscode.TextDocument,
+): Promise<CedarSchemaSet | undefined> => {
+  if (schemaDoc.uri.scheme !== 'file') {
+    return Promise.resolve(undefined);
+  }
+  const contains = (uris: vscode.Uri[]) =>
+    uris.length > 1 &&
+    uris.some((uri) => uri.toString() === schemaDoc.uri.toString());
+
+  const autodetect = vscode.workspace
+    .getConfiguration('cedar')
+    .get<boolean>('autodetectSchemaFile', true);
+  if (autodetect) {
+    const folder = path.dirname(schemaDoc.uri.fsPath);
+    const uris = await schemaUrisInFolder(folder, schemaDoc);
+    if (contains(uris)) {
+      const set = await openSchemaSet(uris, false);
+      const workspace = vscode.workspace.getWorkspaceFolder(schemaDoc.uri);
+      const consumers = await findFileNamesInFolder(
+        folder,
+        (filename) =>
+          filename.endsWith(CEDAR_EXTENSION) ||
+          cedarKindFilenameMatcher(SCHEMA_CONSUMER_KINDS, schemaDoc)(filename),
+      );
+      if (
+        set?.link?.mode === 'link' ||
+        consumers.length > 0 ||
+        workspace?.uri.fsPath === folder
+      ) {
+        return Promise.resolve(set);
+      }
+      return Promise.resolve(undefined);
+    }
+  }
+
+  const configured = await getConfiguredSchemaUris();
+  if (contains(configured)) {
+    return openSchemaSet(configured, true);
+  }
+
+  return Promise.resolve(undefined);
 };
 
 export const getSchemaTextDocument = async (
   doc: vscode.TextDocument | undefined = undefined,
 ): Promise<vscode.TextDocument | undefined> => {
-  let schemaDoc = undefined;
-  const fileUri = await getSchemaUri(doc);
-  if (fileUri) {
-    try {
-      schemaDoc = await vscode.workspace.openTextDocument(fileUri);
-    } catch {
-      vscode.window.showErrorMessage(`Missing cedar.schemaFile: ${fileUri}`);
-    }
+  const set = await getSchemaSet(doc);
+
+  return Promise.resolve(set?.doc);
+};
+
+const relativeSchemaPath = (
+  doc: vscode.TextDocument,
+  uri: vscode.Uri,
+): string => {
+  const workspace = vscode.workspace.getWorkspaceFolder(doc.uri);
+  return workspace?.uri && uri.fsPath.startsWith(workspace.uri.fsPath)
+    ? uri.fsPath.substring(workspace.uri.fsPath.length + 1)
+    : uri.fsPath;
+};
+
+// a schema file alongside the document is named by its filename, otherwise by
+// its path, such as the workspace folder fallback or the cedar.schemaFile setting
+const schemaFileLabel = (doc: vscode.TextDocument, uri: vscode.Uri): string =>
+  path.dirname(uri.fsPath) === path.dirname(doc.uri.fsPath)
+    ? path.basename(uri.fsPath)
+    : relativeSchemaPath(doc, uri);
+
+/**
+ * Describe the schema a document validates with, such as for a CodeLens.
+ */
+export const describeSchemaSet = (
+  doc: vscode.TextDocument,
+  set: CedarSchemaSet,
+): { title: string; tooltip: string } => {
+  // the Problems panel names the `external` declarations without definitions
+  const incomplete =
+    (set.link?.externalEntityTypes.length || 0) +
+      (set.link?.externalActions.length || 0) >
+    0
+      ? ' (incomplete)'
+      : '';
+  const names = set.docs
+    .map((schemaDoc) => schemaFileLabel(doc, schemaDoc.uri))
+    .join(', ');
+  if (set.docs.length === 1) {
+    return {
+      title: `Validated using ${names}${incomplete}`,
+      tooltip: `Open ${set.docs[0].uri.fsPath}`,
+    };
   }
 
-  return Promise.resolve(schemaDoc);
+  const tooltip = set.docs.map((schemaDoc) => schemaDoc.uri.fsPath).join('\n');
+  if (!set.doc) {
+    return {
+      title: `Cedar schema errors in ${names}`,
+      tooltip: tooltip,
+    };
+  }
+
+  return {
+    title: `Validated using ${names}${incomplete}`,
+    tooltip: tooltip,
+  };
+};
+
+/**
+ * Open the schema a document validates with, choosing one of the schema files
+ * or the combined schema for a set of them.
+ */
+export const openSchemaSetFiles = async (
+  doc: vscode.TextDocument,
+): Promise<void> => {
+  const set = await getSchemaSet(doc);
+  if (!set) {
+    vscode.window.showErrorMessage(
+      `Cedar schema file not found or configured in settings.json`,
+    );
+    return;
+  }
+
+  let uri: vscode.Uri | undefined = set.docs[0].uri;
+  if (set.docs.length > 1) {
+    const items: (vscode.QuickPickItem & { uri?: vscode.Uri })[] = set.docs.map(
+      (schemaDoc) => ({
+        label: path.basename(schemaDoc.uri.fsPath),
+        description: relativeSchemaPath(doc, schemaDoc.uri),
+        uri: schemaDoc.uri,
+      }),
+    );
+    if (set.doc) {
+      items.push(
+        { label: '', kind: vscode.QuickPickItemKind.Separator },
+        {
+          label: 'Combined schema (JSON)',
+          description: set.link?.mode === 'link' ? 'linked' : 'merged',
+          uri: set.doc.uri,
+        },
+      );
+    }
+    const result = await vscode.window.showQuickPick(items, {
+      title: 'Open Cedar schema',
+    });
+    uri = result?.uri;
+  }
+
+  if (uri) {
+    try {
+      await vscode.commands.executeCommand('vscode.open', uri);
+    } catch {
+      vscode.window.showErrorMessage(`Cannot open Cedar schema file: ${uri}`);
+    }
+  }
 };
 
 // look next to doc first, then fallback to the workspace folder

@@ -20,7 +20,12 @@ import {
 } from '../../regex';
 
 import { before } from 'mocha';
-import { determineEntityTypes } from '../../validate';
+import {
+  determineEntityTypes,
+  fetchEntityTypes,
+  narrowEntityTypes,
+} from '../../validate';
+import { parseCedarPoliciesDoc } from '../../parser';
 
 const readTestDataFile = (dirname: string, filename: string): string => {
   const filepath = path.join(process.cwd(), 'testdata', dirname, filename);
@@ -490,57 +495,154 @@ action view appliesTo { principal: User, resource: Photo };`;
 });
 
 suite('Validate Policy Entities Test Suite', () => {
-  const fetchEntityTypes = async (
-    head: string,
-  ): Promise<{
-    principals: string[];
-    resources: string[];
-    actions: string[];
-  }> => {
-    const schemaDoc = await vscode.workspace.openTextDocument(
+  const NARROW_SCHEMA_CEDAR = `namespace NS {
+  entity E;
+  entity E1 in [E] { p1: String };
+  entity E2 in [E] { p1: Long };
+  entity R;
+  entity R1 in [R] { p1: String };
+  entity R2 in [R] { p1: Long };
+  action "as";
+  action a in ["as"] appliesTo { principal: [E1, E2], resource: [R1, R2] };
+  action a1 in ["as"] appliesTo { principal: E1, resource: R1 };
+  action a2 in ["as"] appliesTo { principal: E2, resource: R2 };
+}`;
+
+  const openSchemaJSON = () =>
+    vscode.workspace.openTextDocument(
       path.join(process.cwd(), 'testdata', 'narrow', 'cedarschema.json'),
     );
-
-    const principalTypes = determineEntityTypes(schemaDoc, 'principal', head);
-    const resourceTypes = determineEntityTypes(schemaDoc, 'resource', head);
-    const actionIds = determineEntityTypes(schemaDoc, 'action', head);
-
-    return Promise.resolve({
-      principals: principalTypes,
-      resources: resourceTypes,
-      actions: actionIds,
+  const openSchemaCedar = () =>
+    vscode.workspace.openTextDocument({
+      language: 'cedarschema',
+      content: NARROW_SCHEMA_CEDAR,
     });
+
+  const ALL = {
+    principals: ['NS::E1', 'NS::E2'],
+    actions: [`NS::Action::"a"`, `NS::Action::"a1"`, `NS::Action::"a2"`],
+    resources: ['NS::R1', 'NS::R2'],
   };
 
   test('validate unspecified', async () => {
-    const head = `permit(principal, action, resource)`;
-    const e = await fetchEntityTypes(head);
+    const schemaDoc = await openSchemaJSON();
+    assert.deepEqual(determineEntityTypes(schemaDoc), ALL);
+    assert.deepEqual(
+      determineEntityTypes(schemaDoc, 'permit(principal, action, resource)'),
+      ALL,
+    );
+  });
 
-    assert.equal(e.principals.length, 2);
-    assert.equal(e.principals[0], 'NS::E1');
-    assert.equal(e.principals[1], 'NS::E2');
-
-    assert.equal(e.actions.length, 3);
-    assert.equal(e.actions[0], `NS::Action::"a"`);
-    assert.equal(e.actions[1], `NS::Action::"a1"`);
-    assert.equal(e.actions[2], `NS::Action::"a2"`);
-
-    assert.equal(e.resources.length, 2);
-    assert.equal(e.resources[0], 'NS::R1');
-    assert.equal(e.resources[1], 'NS::R2');
+  test('validate unspecified cedarschema', async () => {
+    const schemaDoc = await openSchemaCedar();
+    assert.equal(schemaDoc.languageId, 'cedarschema');
+    assert.deepEqual(determineEntityTypes(schemaDoc), ALL);
   });
 
   test('validate E1 a1 R1', async () => {
     const head = `permit (principal in NS::E::"id", action == NS::Action::"a1", resource)`;
-    const e = await fetchEntityTypes(head);
+    for (const schemaDoc of [await openSchemaJSON(), await openSchemaCedar()]) {
+      assert.deepEqual(determineEntityTypes(schemaDoc, head), {
+        principals: ['NS::E1'],
+        actions: [`NS::Action::"a1"`],
+        resources: ['NS::R1'],
+      });
+    }
+  });
 
-    assert.equal(e.principals.length, 1);
-    assert.equal(e.principals[0], 'NS::E1');
+  test('validate action in list', async () => {
+    const head = `forbid (principal, action in [NS::Action::"a1", NS::Action::"a2"], resource)`;
+    const e = determineEntityTypes(await openSchemaJSON(), head);
+    assert.deepEqual(e, {
+      principals: ['NS::E1', 'NS::E2'],
+      actions: [`NS::Action::"a1"`, `NS::Action::"a2"`],
+      resources: ['NS::R1', 'NS::R2'],
+    });
+  });
 
-    assert.equal(e.actions.length, 1);
-    assert.equal(e.actions[0], `NS::Action::"a1"`);
+  test('validate template slots', async () => {
+    const head = `permit (principal == ?principal, action == NS::Action::"a2", resource in ?resource)`;
+    const e = determineEntityTypes(await openSchemaJSON(), head);
+    assert.deepEqual(e, {
+      principals: ['NS::E2'],
+      actions: [`NS::Action::"a2"`],
+      resources: ['NS::R2'],
+    });
+  });
 
-    assert.equal(e.resources.length, 1);
-    assert.equal(e.resources[0], 'NS::R1');
+  test('validate impossible head', async () => {
+    const head = `permit (principal is NS::E, action, resource)`;
+    assert.deepEqual(determineEntityTypes(await openSchemaJSON(), head), {
+      principals: [],
+      actions: [],
+      resources: [],
+    });
+  });
+
+  test('validate incomplete head', async () => {
+    const head = `permit (principal is , action, resource)`;
+    assert.deepEqual(determineEntityTypes(await openSchemaJSON(), head), {
+      principals: [],
+      actions: [],
+      resources: [],
+    });
+  });
+
+  test('validate invalid schema', async () => {
+    const schemaDoc = await vscode.workspace.openTextDocument({
+      language: 'cedarschema',
+      content: 'entity',
+    });
+    assert.deepEqual(determineEntityTypes(schemaDoc), {
+      principals: [],
+      actions: [],
+      resources: [],
+    });
+  });
+
+  // each policy @id encodes the expected "principals actions resources"
+  test('validate narrow policies', async () => {
+    const schemaDoc = await openSchemaJSON();
+    const cedarDoc = await vscode.workspace.openTextDocument(
+      path.join(process.cwd(), 'testdata', 'narrow', 'policies.cedar'),
+    );
+    const policies = parseCedarPoliciesDoc(cedarDoc).policies;
+    assert.equal(policies.length, 6);
+    for (const policy of policies) {
+      const position = policy.effectRange.start;
+      const e = fetchEntityTypes(schemaDoc, cedarDoc, position);
+      if (policy.id === 'all') {
+        assert.deepEqual(e, ALL, policy.id);
+      } else {
+        const [principals, actions, resources] = policy.id.split(' ');
+        assert.deepEqual(
+          e,
+          {
+            principals: principals.split(',').map((p) => `NS::${p}`),
+            resources: resources.split(',').map((r) => `NS::${r}`),
+            actions: actions.split(',').map((a) => `NS::Action::"${a}"`),
+          },
+          policy.id,
+        );
+      }
+
+      // hover and completion narrow through the same entity types
+      assert.deepEqual(
+        narrowEntityTypes(schemaDoc, 'principal', cedarDoc, position),
+        e.principals,
+      );
+      assert.deepEqual(
+        narrowEntityTypes(schemaDoc, 'resource', cedarDoc, position),
+        e.resources,
+      );
+      assert.deepEqual(
+        narrowEntityTypes(schemaDoc, 'action', cedarDoc, position),
+        e.actions,
+      );
+      assert.deepEqual(
+        narrowEntityTypes(schemaDoc, 'context', cedarDoc, position),
+        e.actions,
+      );
+    }
   });
 });

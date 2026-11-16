@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as vscode from 'vscode';
-import { getSchemaTextDocument } from './fileutil';
-import { COMMAND_CEDAR_SCHEMATRANSLATE } from './commands';
+import { describeSchemaSet, getSchemaSet } from './fileutil';
+import {
+  COMMAND_CEDAR_SCHEMAOPEN,
+  COMMAND_CEDAR_SCHEMATRANSLATE,
+} from './commands';
 
 export class ValidateWithSchemaCodeLensProvider
   implements vscode.CodeLensProvider
@@ -11,22 +14,25 @@ export class ValidateWithSchemaCodeLensProvider
   async provideCodeLenses(
     document: vscode.TextDocument,
   ): Promise<vscode.CodeLens[]> {
-    const schemaDoc = await getSchemaTextDocument(document);
-    if (schemaDoc) {
-      let schemaFileName = schemaDoc?.uri.fsPath;
-      const workspace = vscode.workspace.getWorkspaceFolder(document.uri);
-      if (workspace?.uri) {
-        schemaFileName = schemaFileName.substring(
-          workspace.uri.fsPath.length + 1,
-        );
-      }
+    const set = await getSchemaSet(document);
+    if (set) {
+      const { title, tooltip } = describeSchemaSet(document, set);
 
-      const openCommand: vscode.Command = {
-        command: 'vscode.open',
-        title: `Validated using ${schemaFileName}`,
-        tooltip: `Open ${schemaDoc?.uri.fsPath}`,
-        arguments: [schemaDoc?.uri],
-      };
+      // a single schema file opens directly, otherwise choose a schema file or
+      // the combined schema
+      const openCommand: vscode.Command =
+        set.docs.length === 1
+          ? {
+              command: 'vscode.open',
+              title: title,
+              tooltip: tooltip,
+              arguments: [set.docs[0].uri],
+            }
+          : {
+              command: COMMAND_CEDAR_SCHEMAOPEN,
+              title: title,
+              tooltip: tooltip,
+            };
 
       const codeLens = new vscode.CodeLens(
         new vscode.Range(0, 0, 0, 0),
