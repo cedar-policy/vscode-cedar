@@ -79,6 +79,7 @@ suite('Policy Scope Test Suite', () => {
     const handle = cedar.SchemaHandle.fromJSON(
       JSON.stringify({
         '': {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
           entityTypes: { User: {}, Photo: {} },
           actions: {
             view: {
