@@ -1,7 +1,7 @@
 // Copyright Cedar Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use cedar_policy_formatter::{policies_str_to_pretty, Config};
+use cedar_policy_formatter::{Config, policies_str_to_pretty};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 

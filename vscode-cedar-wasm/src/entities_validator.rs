@@ -6,7 +6,7 @@ use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::validate_message::{convert_messages_to_js_array, ValidateMessage};
+use crate::validate_message::{ValidateMessage, convert_messages_to_js_array};
 
 #[wasm_bindgen(typescript_custom_section)]
 const VALIDATE_ENTITIES_RESULT: &'static str = r#"

@@ -262,7 +262,7 @@ pub fn link_schemas(sources: Vec<String>, formats: Vec<String>) -> LinkSchemasRe
                     index: -1,
                 }],
                 warnings,
-            )
+            );
         }
     };
 

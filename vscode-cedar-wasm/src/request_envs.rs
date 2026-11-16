@@ -7,7 +7,7 @@ use cedar_policy::{Policy, RequestEnv, Schema, Template, Validator};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::policy_validator::{validate_policy_schema, ValidatePolicyResult};
+use crate::policy_validator::{ValidatePolicyResult, validate_policy_schema};
 
 #[wasm_bindgen(typescript_custom_section)]
 const REQUEST_ENVS_RESULT: &'static str = r#"

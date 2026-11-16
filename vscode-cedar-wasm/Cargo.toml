@@ -2,7 +2,7 @@
 name = "vscode-cedar-wasm"
 
 version = "0.14.0"
-edition = "2021"
+edition = "2024"
 rust-version = "1.89"
 description = "WASM bindgen bindings for cedar-policy"
 license = "Apache-2.0"

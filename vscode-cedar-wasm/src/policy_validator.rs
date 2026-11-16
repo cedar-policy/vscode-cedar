@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use cedar_policy::{
-    validation_errors::EntityDerefLevelViolation, PolicySet, Schema, ValidationError,
-    ValidationMode, Validator,
+    PolicySet, Schema, ValidationError, ValidationMode, Validator,
+    validation_errors::EntityDerefLevelViolation,
 };
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
-use crate::validate_message::{convert_messages_to_js_array, ValidateMessage};
+use crate::validate_message::{ValidateMessage, convert_messages_to_js_array};
 
 #[wasm_bindgen(typescript_custom_section)]
 const VALIDATE_POLICY_RESULT: &'static str = r#"
@@ -197,7 +197,7 @@ pub(crate) fn validate_policy_schema(
                 errors: None,
                 level: None,
                 level_warnings: None,
-            }
+            };
         }
     };
     let result = validator.validate(&pset, ValidationMode::Strict);
