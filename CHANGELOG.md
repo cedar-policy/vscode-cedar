@@ -1,17 +1,10 @@
-## v0.14.0 (Preview) Unreleased
+## v0.14.0 (Preview) 2026-11-16
 
-- Update to Cedar SDK 4.14.0
+- Update to Cedar SDK 4.14.1
 - Cedar schema sets: every Cedar schema file in a folder is combined into one schema, linking `external` entity types and actions (see [schema linking](https://docs.cedarpolicy.com/schema/schema-linking.html)) or merging schema files without them
 - `cedar.schemaFile` also accepts an array of schema file paths or glob patterns
-- Syntax highlighting for `external` declarations, with hover and go to definition of the schema file defining them
-- Color `principal`, `action`, `resource`, `context`, `?principal`, and `?resource` in Cedar JSON, template links, auth, and tests files the same as in Cedar files
-- Go to definition of a template links `template_id`, and of a Cedar JSON policy set `templateLinks` `templateId`
-- Color and go to definition of entity types in the `context` of Cedar auth and Cedar tests files
-- Color word operators, methods, and extension functions in Cedar JSON policy conditions
-- Narrow `principal`, `action`, and `resource` hover and completion using the Cedar SDK request environments for each policy (`get_valid_request_envs`), instead of parsing validation errors
+- Update functionally for syntax highlighting, hover, and go to definition
 - Show the principal types, actions, and resource types each Cedar policy applies to as a CodeLens, going to their schema declarations (`cedar.policyScope.display`)
-- Hover over an entity type or action in a Cedar file, or a Cedar entities, template links, auth, tests, or JSON policy file, to see its schema definition (or a policy id to see its policy: a template links `template_id`, a Cedar tests `reason`, or a JSON policy set `templateId`), without holding the go to definition modifier key
-- **Behavior change:** a folder with more than one Cedar schema file now combines them, where it previously fell back to the workspace folder or `cedar.schemaFile`.  To keep using separate schemas, set `cedar.autodetectSchemaFile` to `false` and `cedar.schemaFile` to the schema to use.  An array `cedar.schemaFile` is not understood by earlier versions of the extension (such as through Settings Sync)
 
 ## v0.12.0 (Preview) 2026-10-30
 
